@@ -15,6 +15,12 @@ export const transitIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("transfer"), to: index }),
   z.object({ type: z.literal("exit"), exit: index }),
   z.object({ type: z.literal("enter"), station: index }),
+  z.object({
+    type: z.literal("walkTo"),
+    lat: z.number().min(40).max(41.5),
+    lon: z.number().min(-74.5).max(-73),
+    pano: z.string().max(200).optional(),
+  }),
 ]);
 
 export const questionSchema = z.discriminatedUnion("kind", [
@@ -34,6 +40,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ask"), question: questionSchema }),
   z.object({ type: z.literal("startThermometer") }),
   z.object({ type: z.literal("giveUp") }),
+  z.object({ type: z.literal("catch") }),
   z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),
 ]);
 

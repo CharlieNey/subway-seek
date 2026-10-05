@@ -12,6 +12,7 @@ import {
   type Train,
 } from "./map/layers.ts";
 import { pathUntil, stepReplay, useReplay } from "./replay.ts";
+import { walkToward } from "./street.ts";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
 
@@ -58,6 +59,8 @@ export function MapView() {
         ? createGoogleBase(container.current, TIMES_SQ, tooltip)
         : createMapLibreBase(container.current, TIMES_SQ, tooltip);
     base.onUserDrag(() => useGame.getState().setFollow(false));
+    // On the street, clicking the map means "walk there".
+    base.onClick(([lon, lat]) => void walkToward(lat, lon));
 
     // Re-shade stations and question overlays when the round changes; reveal the hider.
     const unsubscribeGame = useGame.subscribe((st, prev) => {

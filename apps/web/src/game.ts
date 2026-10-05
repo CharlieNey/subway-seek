@@ -78,6 +78,8 @@ export const useGame = create<GameStore>((set) => ({
   setTab: (tab) => set({ tab }),
 }));
 
+if (import.meta.env.DEV) (window as unknown as { __game: typeof useGame }).__game = useGame;
+
 /** Current game time from the last clock sync. */
 export function nowGameTime(): number | null {
   const { sync } = useGame.getState();

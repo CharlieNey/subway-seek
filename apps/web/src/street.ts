@@ -1,0 +1,89 @@
+/**
+ * Street View helpers for the endgame. Panorama lookups (StreetViewService) are free;
+ * displaying a panorama is billed per StreetViewPanorama created, so the game creates
+ * one and reuses it (StreetView.tsx).
+ */
+import { resolve, type SoloView } from "@stand-clear/engine";
+import { nowGameTime, useGame, type World } from "./game.ts";
+import { loadGoogleMaps } from "./map/loadGoogle.ts";
+
+export interface PanoPoint {
+  pano: string;
+  lat: number;
+  lon: number;
+}
+
+let service: google.maps.StreetViewService | null = null;
+
+async function sv(): Promise<google.maps.StreetViewService> {
+  await loadGoogleMaps();
+  await google.maps.importLibrary("streetView");
+  service ??= new google.maps.StreetViewService();
+  return service;
+}
+
+const OFFICIAL = () => [google.maps.StreetViewSource.GOOGLE, google.maps.StreetViewSource.OUTDOOR];
+
+/** Google's own outdoor panorama nearest a point (within `radius` m), if any. */
+export async function nearestPano(
+  lat: number,
+  lon: number,
+  radius = 50,
+): Promise<PanoPoint | null> {
+  try {
+    const { data } = await (await sv()).getPanorama({
+      location: { lat, lng: lon },
+      radius,
+      sources: OFFICIAL(),
+    });
+    const ll = data.location?.latLng;
+    return data.location?.pano && ll
+      ? { pano: data.location.pano, lat: ll.lat(), lon: ll.lng() }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where a panorama is. */
+export async function panoPoint(pano: string): Promise<PanoPoint | null> {
+  try {
+    const { data } = await (await sv()).getPanorama({ pano });
+    const ll = data.location?.latLng;
+    return ll ? { pano, lat: ll.lat(), lon: ll.lng() } : null;
+  } catch {
+    return null;
+  }
+}
+
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
+const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"] as const;
+
+export function compass(heading: number): string {
+  const i = Math.round((((heading % 360) + 360) % 360) / 45) % 8;
+  return `${ARROWS[i]} ${COMPASS[i]}`;
+}
+
+/** You're on the street (standing, or walking up/along it): Street View takes over. */
+export function onStreet(view: SoloView | null, t: number | null, world: World | null): boolean {
+  if (!view || t === null || !world || view.result) return false;
+  const s = resolve(view.seeker, t, world.idx);
+  return (
+    s.kind === "street" || (s.kind === "walking" && (s.reason === "street" || s.reason === "exit"))
+  );
+}
+
+/** Walk to the panorama nearest a point on the map (only while on the street). */
+export async function walkToward(lat: number, lon: number): Promise<void> {
+  const { view, world, send } = useGame.getState();
+  if (!onStreet(view, nowGameTime(), world)) return;
+  const p = await nearestPano(lat, lon, 40);
+  if (!p) {
+    useGame.setState({ notice: "No street to walk to there — click closer to a street." });
+    return;
+  }
+  send({ type: "walkTo", lat: p.lat, lon: p.lon, pano: p.pano });
+}
+
+if (import.meta.env.DEV)
+  (window as unknown as { __walkToward: typeof walkToward }).__walkToward = walkToward;

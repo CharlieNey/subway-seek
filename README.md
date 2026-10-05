@@ -2,7 +2,7 @@
 
 Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. Design, rules and build plan: [DESIGN.md](DESIGN.md).
 
-**Playable now:** a daily challenge (same hidden station for everyone, shareable result) plus practice rounds against a bot hider. Ride the real subway at 6×, ask map questions (radar, thermometer, routes, borough, express, more routes) and watch the possible stations shrink, then get off at the hider's station to win.
+**Playable now:** a daily challenge (same hidden station for everyone, shareable result) plus practice rounds against a bot hider. Find the station with map questions, then search the streets around it in Google Street View and catch the hider. Ride the real subway at 6×, ask map questions (radar, thermometer, routes, borough, express, more routes) and watch the possible stations shrink, then get off at the hider's station to win.
 
 ## Quickstart
 
@@ -13,6 +13,7 @@ pnpm dev:web        # client on http://localhost:5173
 ```
 
 Optional env:
+- `GOOGLE_STREETVIEW_SERVER_KEY` in `apps/server/.env.local` (gitignored): server key (Street View API only) used to pick the bot hider's exact Street View spot. Without it, rounds fall back to "find the station".
 - `DAILY_SECRET` (server): mixed into the daily seed so players can't compute the answer. A dev default is used if unset; set a real one anywhere public.
 - `VITE_GOOGLE_MAPS_API_KEY` in `apps/web/.env.local` (gitignored): browser key from the `stand-clear-nyc` Google Cloud project, restricted to the Maps JavaScript + Street View Static APIs and `http://localhost:5173/*`. The game's map uses it (Google Maps; one billed map load per page).
 - `VITE_MAP_PROVIDER=maplibre` (web): use the free MapLibre/OpenFreeMap base map instead of Google, e.g. while iterating locally. Google's terms require the Google map once Street View is on screen.

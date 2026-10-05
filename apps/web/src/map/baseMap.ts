@@ -25,6 +25,8 @@ export interface BaseMap {
   getZoom(): number;
   /** Called when the player starts dragging the map (stop following them). */
   onUserDrag(cb: () => void): void;
+  /** Called with [lon, lat] when the player clicks the map. */
+  onClick(cb: (p: LonLat) => void): void;
   remove(): void;
 }
 
@@ -56,6 +58,7 @@ export function createMapLibreBase(
     fitBounds: (sw, ne) => map.fitBounds([sw, ne], { padding: 80, maxZoom: 15, duration: 600 }),
     getZoom: () => map.getZoom(),
     onUserDrag: (cb) => map.on("dragstart", cb),
+    onClick: (cb) => map.on("click", (e) => cb([e.lngLat.lng, e.lngLat.lat])),
     remove: () => map.remove(),
   };
 }

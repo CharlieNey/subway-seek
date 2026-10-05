@@ -12,6 +12,12 @@ import type { TimetableIndex } from "./timetable.ts";
 /** Going up to the street or back down to the platform takes 2 game-minutes. */
 export const EXIT_SECONDS = 120;
 export const ENTER_SECONDS = 120;
+/** Walking pace on the street (game time). */
+export const WALK_MPS = 1.4;
+/** Street distance ≈ straight-line × this (Manhattan-grid-ish detour). */
+export const WALK_DETOUR = 1.3;
+/** How far from your station's center you can wander on foot before you have to ride. */
+export const STREET_RADIUS_M = 600;
 
 export interface OnPlatform {
   kind: "platform";
@@ -22,11 +28,20 @@ export interface OnPlatform {
   arrivedDir: Direction | null;
 }
 
+export interface StreetPoint {
+  lat: number;
+  lon: number;
+  /** Street View panorama at this point, when known. */
+  pano?: string;
+}
+
 export interface OnStreet {
   kind: "street";
   complex: number;
-  /** Index into the complex's exits. */
+  /** The exit you came up at. */
   exit: number;
+  /** Where you're standing, once you've walked away from the exit. */
+  at?: StreetPoint;
   since: number;
 }
 
@@ -43,7 +58,7 @@ export interface OnTrain {
 
 export interface Walking {
   kind: "walking";
-  reason: "transfer" | "exit" | "enter";
+  reason: "transfer" | "exit" | "enter" | "street";
   start: number;
   end: number;
   fromPoint: LatLon;
@@ -60,7 +75,8 @@ export type TransitIntent =
   | { type: "alightAt"; stop: number }
   | { type: "transfer"; to: number }
   | { type: "exit"; exit: number }
-  | { type: "enter"; station: number };
+  | { type: "enter"; station: number }
+  | { type: "walkTo"; lat: number; lon: number; pano?: string };
 
 export type ApplyResult = { ok: true; state: Transit } | { ok: false; error: string };
 
@@ -207,25 +223,86 @@ export function applyIntent(
       if (!complex || !station || !complex.stations.includes(intent.station)) {
         return fail("That station isn't part of this complex.");
       }
+      // From wherever you're standing: walk to the nearest exit, then down.
+      const here = streetPoint(state, idx);
+      const walkBack = Math.min(
+        ...complex.exits.map(([lat, lon]) => walkSeconds(here, { lat, lon })),
+      );
+      const duration = walkBack + ENTER_SECONDS;
       return {
         ok: true,
         state: {
           kind: "walking",
           reason: "enter",
           start: t,
-          end: t + ENTER_SECONDS,
-          fromPoint: complex.exits[state.exit] ?? [complex.lat, complex.lon],
+          end: t + duration,
+          fromPoint: [here.lat, here.lon],
           toPoint: [station.lat, station.lon],
           dest: {
             kind: "platform",
             station: intent.station,
-            since: t + ENTER_SECONDS,
+            since: t + duration,
             arrivedDir: null,
           },
         },
       };
     }
+
+    case "walkTo": {
+      if (state.kind !== "street") return fail("You need to be on the street to walk around.");
+      const complex = ds.complexes[state.complex];
+      if (!complex) return fail("No such station.");
+      const target: StreetPoint = { lat: intent.lat, lon: intent.lon, pano: intent.pano };
+      if (metersBetween(complex, target) > STREET_RADIUS_M) {
+        return fail("That's too far to walk — take the subway.");
+      }
+      const here = streetPoint(state, idx);
+      const end = t + walkSeconds(here, target);
+      return {
+        ok: true,
+        state: {
+          kind: "walking",
+          reason: "street",
+          start: t,
+          end,
+          fromPoint: [here.lat, here.lon],
+          toPoint: [target.lat, target.lon],
+          dest: {
+            kind: "street",
+            complex: state.complex,
+            exit: state.exit,
+            at: target,
+            since: end,
+          },
+        },
+      };
+    }
   }
+}
+
+/** Straight-line meters (equirectangular; fine at city scale). */
+export function metersBetween(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const kx = 111_320 * Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
+  return Math.hypot((a.lon - b.lon) * kx, (a.lat - b.lat) * 110_540);
+}
+
+/** Game seconds to walk between two points along the streets. */
+export function walkSeconds(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  return (metersBetween(a, b) * WALK_DETOUR) / WALK_MPS;
+}
+
+/** Where someone on the street is standing: where they walked to, or their exit. */
+export function streetPoint(state: OnStreet, idx: TimetableIndex): StreetPoint {
+  if (state.at) return state.at;
+  const c = idx.ds.complexes[state.complex];
+  const [lat, lon] = c?.exits[state.exit] ?? [c?.lat ?? 0, c?.lon ?? 0];
+  return { lat, lon };
 }
 
 /** The station index a state is "at" for questions and UI: your platform, or your train's last stop. */

@@ -4,6 +4,7 @@
  * clock starts at 10:20. The server holds the round (including the secret hider) and
  * only ever sends the seeker's view of it. Rooms and a human hider come in M3.
  */
+import "./env.ts";
 import { formatServiceTime } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
@@ -19,14 +20,16 @@ import {
   type GameClock,
   gameTime,
   nyDate,
+  placeHider,
   type RoundMode,
   type ServerMessage,
   type SoloRound,
-  soloView,
+  soloViewAt,
   startClock,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
 import { MatchLog } from "./matchLog.ts";
+import { pickSpot } from "./spot.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -53,9 +56,11 @@ interface Session {
   log: MatchLog;
 }
 
-function newRound(mode: RoundMode): { round: SoloRound; clock: GameClock; log: MatchLog } {
+async function newRound(
+  mode: RoundMode,
+): Promise<{ round: SoloRound; clock: GameClock; log: MatchLog }> {
   const date = nyDate(new Date());
-  const round =
+  let round =
     mode === "daily"
       ? createSoloRound(idx, {
           hub,
@@ -64,12 +69,17 @@ function newRound(mode: RoundMode): { round: SoloRound; clock: GameClock; log: M
           daily: { date, number: dailyNumber(date) },
         })
       : createSoloRound(idx, { hub, hideStart: HIDE_START });
+  // The exact hiding spot for the Street View endgame (same spot all day for the daily).
+  const spotRandom = mode === "daily" ? dailyRandom(`${date}|spot`, DAILY_SECRET) : Math.random;
+  const spot = await pickSpot(dataset, round.hider, spotRandom);
+  if (spot) round = placeHider(round, spot, idx);
   const log = new MatchLog();
   log.write("round_start", {
     mode,
     daily: round.daily,
     hub: dataset.stations[hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
+    spot: spot ? { lat: spot.lat, lon: spot.lon } : null,
     reachable: round.reachable.length,
     seekStart: round.seekStart,
   });
@@ -100,34 +110,50 @@ function logEnd(session: Session) {
     questions: round.asked.length,
     bonusMin: bonusSeconds(round) / 60,
     hiderScoreMin: Math.round((elapsed + bonusSeconds(round)) / 60),
+    stationFoundMin:
+      round.stationFoundAt === null
+        ? null
+        : Math.round((round.stationFoundAt - round.seekStart) / 60),
   });
 }
 
 const wss = new WebSocketServer({ port: PORT });
 
-wss.on("connection", (socket) => {
-  const session: Session = { ...newRound("daily"), lastSeq: -1 };
+wss.on("connection", async (socket) => {
+  const session: Session = { ...(await newRound("daily")), lastSeq: -1 };
+  /** The seeker's view right now (the hider's marker shows only when they're close). */
+  const viewNow = (now: number) => soloViewAt(session.round, gameTime(session.clock, now), idx);
+  let markerShown = false;
+  let stationLogged = false;
+  const remember = (now: number) => {
+    const v = viewNow(now);
+    markerShown = v.spotNearby !== null;
+    return v;
+  };
+  const sendState = (seq: number, now: number) =>
+    send(socket, { type: "state", seq, clock: sync(session.clock, now), view: remember(now) });
+
   send(socket, {
     type: "hello",
     serviceDate: dataset.meta.serviceDate,
     clock: sync(session.clock, Date.now()),
-    view: soloView(session.round, idx),
+    view: remember(Date.now()),
   });
 
-  // Rides and walks resolve lazily, so check once a second whether the seeker has
-  // reached the hider's station or run out of time.
+  // Rides and walks resolve lazily, so once a second: has the seeker reached the
+  // hider's station, come within sight of their spot, or run out of time?
   const timer = setInterval(() => {
     const now = Date.now();
     const next = advanceSolo(session.round, gameTime(session.clock, now), idx);
-    if (next !== session.round) {
-      session.round = next;
-      logEnd(session);
-      send(socket, {
-        type: "state",
-        seq: session.lastSeq,
-        clock: sync(session.clock, now),
-        view: soloView(next, idx),
-      });
+    const changed = next !== session.round;
+    session.round = next;
+    if (changed) logEnd(session);
+    if (session.round.stationFoundAt !== null && !stationLogged) {
+      stationLogged = true;
+      session.log.write("station_found", { t: session.round.stationFoundAt });
+    }
+    if (changed || (viewNow(now).spotNearby !== null) !== markerShown) {
+      sendState(session.lastSeq, now);
     }
   }, 1000);
   socket.on("close", () => {
@@ -135,7 +161,7 @@ wss.on("connection", (socket) => {
     session.log.write("disconnect", {});
   });
 
-  socket.on("message", (raw) => {
+  socket.on("message", async (raw) => {
     let json: unknown;
     try {
       json = JSON.parse(String(raw));
@@ -150,31 +176,22 @@ wss.on("connection", (socket) => {
         seq: -1,
         error: "Malformed message.",
         clock: sync(session.clock, now),
-        view: soloView(session.round, idx),
+        view: viewNow(now),
       });
       return;
     }
     const { seq, intent } = parsed.data;
     if (seq <= session.lastSeq) {
       // A retry of something already handled: just restate the round.
-      send(socket, {
-        type: "state",
-        seq,
-        clock: sync(session.clock, now),
-        view: soloView(session.round, idx),
-      });
+      sendState(seq, now);
       return;
     }
     session.lastSeq = seq;
 
     if (intent.type === "newRound") {
-      Object.assign(session, newRound(intent.mode));
-      send(socket, {
-        type: "state",
-        seq,
-        clock: sync(session.clock, now),
-        view: soloView(session.round, idx),
-      });
+      Object.assign(session, await newRound(intent.mode));
+      stationLogged = false;
+      sendState(seq, Date.now());
       return;
     }
 
@@ -191,12 +208,7 @@ wss.on("connection", (socket) => {
         session.log.write("intent", { t, type: intent.type });
       }
       logEnd(session);
-      send(socket, {
-        type: "state",
-        seq,
-        clock: sync(session.clock, now),
-        view: soloView(session.round, idx),
-      });
+      sendState(seq, now);
     } else {
       session.log.write("rejected", { t, type: intent.type, error: result.error });
       send(socket, {
@@ -204,7 +216,7 @@ wss.on("connection", (socket) => {
         seq,
         error: result.error,
         clock: sync(session.clock, now),
-        view: soloView(session.round, idx),
+        view: viewNow(now),
       });
     }
     console.log(

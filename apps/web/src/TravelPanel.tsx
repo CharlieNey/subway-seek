@@ -1,11 +1,14 @@
 import type { Direction } from "@stand-clear/data";
 import {
   departures,
+  ENTER_SECONDS,
   type OnPlatform,
   type OnStreet,
   type OnTrain,
   resolve,
+  streetPoint,
   type Walking,
+  walkSeconds,
 } from "@stand-clear/engine";
 import { cn } from "./cn.ts";
 import { useGame, type World } from "./game.ts";
@@ -219,6 +222,8 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
   const what =
     state.reason === "exit" ? (
       "Heading up to the street"
+    ) : state.reason === "street" ? (
+      "Walking"
     ) : dest.kind === "platform" ? (
       <>
         Walking to <StationName world={world} station={dest.station} />
@@ -237,17 +242,26 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
   );
 }
 
-function StreetView({ world, state }: { world: World; state: OnStreet }) {
-  const { send, busy } = useGame();
+function StreetPanel({ world, state }: { world: World; state: OnStreet }) {
+  const { send, busy, view } = useGame();
   const complex = world.ds.complexes[state.complex];
   if (!complex) return null;
+  // Going back down means walking to the nearest exit first.
+  const here = streetPoint(state, world.idx);
+  const backMin = Math.ceil(
+    (Math.min(...complex.exits.map(([lat, lon]) => walkSeconds(here, { lat, lon }))) +
+      ENTER_SECONDS) /
+      60,
+  );
   return (
     <>
       <div className="px-4 pb-3">
-        <div className="text-xs text-stone-500">On the street at</div>
+        <div className="text-xs text-stone-500">On foot near</div>
         <div className="text-lg font-semibold">{complex.name}</div>
-        <p className="mt-1 text-xs text-stone-500">
-          Walking around the neighborhood arrives with Street View (M4).
+        <p className="mt-1 text-sm text-stone-600">
+          {view?.hasSpot
+            ? "If the hider's here, they're within ¼ mile of the station. Look around in Street View; walk with the arrows or by clicking the map."
+            : "Look around in Street View; walk with the arrows or by clicking the map."}
         </p>
       </div>
       <Section title="Go back down">
@@ -257,7 +271,7 @@ function StreetView({ world, state }: { world: World; state: OnStreet }) {
               <span className="flex-1">
                 <StationName world={world} station={s} />
               </span>
-              <span className="text-xs text-stone-500">2 min</span>
+              <span className="text-xs text-stone-500">{backMin} min</span>
               <ActionButton
                 quiet
                 disabled={busy}
@@ -286,6 +300,6 @@ export function TravelPanel({ world, t }: { world: World; t: number }) {
     case "walking":
       return <WalkingView world={world} state={s} t={t} />;
     case "street":
-      return <StreetView world={world} state={s} />;
+      return <StreetPanel world={world} state={s} />;
   }
 }

@@ -9,7 +9,7 @@
  */
 import type { Dataset } from "@stand-clear/data";
 import type { TimetableIndex } from "./timetable.ts";
-import { lastStation, resolve, type Transit } from "./transit.ts";
+import { lastStation, resolve, streetPoint, type Transit } from "./transit.ts";
 
 export const RADAR_MILES = [0.25, 0.5, 1, 2, 5] as const;
 /** A thermometer needs you to have moved at least this far since you started it. */
@@ -124,9 +124,8 @@ export function questionOrigin(state: Transit, t: number, idx: TimetableIndex): 
     case "train":
       return atStation(lastStation(s, t, idx) as number);
     case "street": {
-      const c = ds.complexes[s.complex];
-      const [lat, lon] = c?.exits[s.exit] ?? [c?.lat ?? 0, c?.lon ?? 0];
-      return { lat, lon, complex: s.complex };
+      const p = streetPoint(s, idx);
+      return { lat: p.lat, lon: p.lon, complex: s.complex };
     }
     case "walking": {
       const dest = s.dest;

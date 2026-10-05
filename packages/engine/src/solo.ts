@@ -19,12 +19,34 @@ import {
 import { earliestJourney, reachableComplexes } from "./reach.ts";
 import type { TimetableIndex } from "./timetable.ts";
 import { type TrailEntry, trailFromLegs } from "./trail.ts";
-import { applyIntent, resolve, type Transit, type TransitIntent } from "./transit.ts";
+import {
+  applyIntent,
+  EXIT_SECONDS,
+  metersBetween,
+  resolve,
+  streetPoint,
+  type Transit,
+  type TransitIntent,
+  walkSeconds,
+} from "./transit.ts";
 
 export const HIDE_SECONDS = 20 * 60;
 export const SEEK_LIMIT_SECONDS = 2 * 3600;
 export const QUESTION_COOLDOWN_SECONDS = 5 * 60;
 export const QUESTION_BONUS_SECONDS = 10 * 60;
+/** Zone radius around the hider's station; the hiding spot is inside it. */
+export const ZONE_RADIUS_M = 400;
+/** You catch the hider by clicking their marker from within this distance. */
+export const CATCH_METERS = 25;
+/** Their marker shows up in your Street View within this distance. */
+export const SPOT_REVEAL_METERS = 40;
+
+/** Where the hider is hiding: a Street View panorama inside the zone. */
+export interface HidingSpot {
+  lat: number;
+  lon: number;
+  pano: string;
+}
 
 export interface AskedQuestion extends Asked {
   at: number;
@@ -61,13 +83,21 @@ export interface SoloRound {
   hiderTrail: TrailEntry[];
   /** Every move the seeker made, for the replay. */
   seekerTrail: TrailEntry[];
+  /**
+   * The hider's exact spot (secret). Null = no Street View endgame this round (no
+   * spot could be picked): finding the station ends the round, as in M2.
+   */
+  spot: HidingSpot | null;
+  /** When the seeker first stood in the hider's station: the endgame starts. */
+  stationFoundAt: number | null;
 }
 
 export type SoloIntent =
   | TransitIntent
   | { type: "ask"; question: Question }
   | { type: "startThermometer" }
-  | { type: "giveUp" };
+  | { type: "giveUp" }
+  | { type: "catch" };
 
 export function createSoloRound(
   idx: TimetableIndex,
@@ -108,6 +138,62 @@ export function createSoloRound(
     hiderTrail: trailFromLegs(idx, hub, hideStart, legs),
     // The seeker waits at the start while the bot hides.
     seekerTrail: [{ t: hideStart, state: hubPlatform }],
+    spot: null,
+    stationFoundAt: null,
+  };
+}
+
+/**
+ * Put the hider at a spot near their station: they go up the exit closest to it and
+ * walk there (that walk shows in the replay). The spot comes from Street View, so the
+ * server picks it (see apps/server) and hands it in.
+ */
+export function placeHider(round: SoloRound, spot: HidingSpot, idx: TimetableIndex): SoloRound {
+  const complex = idx.ds.complexes[round.hider];
+  const last = round.hiderTrail.at(-1);
+  if (!complex || !last) return { ...round, spot };
+  const arrived = resolve(last.state, round.seekStart, idx);
+  if (arrived.kind !== "platform") return { ...round, spot };
+  const station = idx.ds.stations[arrived.station];
+  let exit = 0;
+  complex.exits.forEach(([lat, lon], i) => {
+    const [bLat, bLon] = complex.exits[exit] ?? [lat, lon];
+    if (metersBetween({ lat, lon }, spot) < metersBetween({ lat: bLat, lon: bLon }, spot)) exit = i;
+  });
+  const [exLat, exLon] = complex.exits[exit] ?? [complex.lat, complex.lon];
+  const up = arrived.since;
+  const out = up + EXIT_SECONDS;
+  const there = out + walkSeconds({ lat: exLat, lon: exLon }, spot);
+  return {
+    ...round,
+    spot,
+    hiderTrail: [
+      ...round.hiderTrail,
+      {
+        t: up,
+        state: {
+          kind: "walking",
+          reason: "exit",
+          start: up,
+          end: out,
+          fromPoint: [station?.lat ?? complex.lat, station?.lon ?? complex.lon],
+          toPoint: [exLat, exLon],
+          dest: { kind: "street", complex: round.hider, exit, since: out },
+        },
+      },
+      {
+        t: out,
+        state: {
+          kind: "walking",
+          reason: "street",
+          start: out,
+          end: there,
+          fromPoint: [exLat, exLon],
+          toPoint: [spot.lat, spot.lon],
+          dest: { kind: "street", complex: round.hider, exit, at: spot, since: there },
+        },
+      },
+    ],
   };
 }
 
@@ -120,15 +206,28 @@ function standingAt(round: SoloRound, t: number, idx: TimetableIndex) {
   return null;
 }
 
-/** Settle the round at time t: found the station, or ran out of time. */
+/**
+ * Settle the round at time t. Standing in the hider's station marks it found (and,
+ * with no hiding spot, ends the round); running out of time ends it.
+ */
 export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
   if (round.result) return round;
   const here = standingAt(round, t, idx);
-  if (here && here.complex === round.hider) {
-    return { ...round, result: { kind: "found", at: Math.min(here.since, round.seekEnd) } };
+  if (here && here.complex === round.hider && round.stationFoundAt === null) {
+    const at = Math.min(here.since, round.seekEnd);
+    if (!round.spot) return { ...round, stationFoundAt: at, result: { kind: "found", at } };
+    round = { ...round, stationFoundAt: at };
   }
   if (t >= round.seekEnd) return { ...round, result: { kind: "timeout", at: round.seekEnd } };
   return round;
+}
+
+/** Meters from the seeker (standing on the street) to the hiding spot; null if not applicable. */
+function metersToSpot(round: SoloRound, t: number, idx: TimetableIndex): number | null {
+  if (!round.spot) return null;
+  const s = resolve(round.seeker, t, idx);
+  if (s.kind !== "street") return null;
+  return metersBetween(streetPoint(s, idx), round.spot);
 }
 
 export type SoloResult = { ok: true; round: SoloRound } | { ok: false; error: string };
@@ -170,6 +269,12 @@ export function applySoloIntent(
     }
     case "giveUp":
       return { ok: true, round: { ...round, result: { kind: "gaveUp", at: t } } };
+    case "catch": {
+      const d = metersToSpot(round, t, idx);
+      if (d === null) return { ok: false, error: "There's no one to catch here." };
+      if (d > CATCH_METERS) return { ok: false, error: "Not close enough — get within 25 m." };
+      return { ok: true, round: { ...round, result: { kind: "found", at: t } } };
+    }
     case "startThermometer":
       return { ok: true, round: { ...round, thermometer: questionOrigin(round.seeker, t, idx) } };
     default: {
@@ -212,6 +317,12 @@ export interface SoloView {
   hider: number | null;
   /** Both routes, for the end-of-round replay — only once the round is over. */
   replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
+  /** Whether this round has a Street View endgame (a hiding spot to catch). */
+  hasSpot: boolean;
+  /** When you first reached the hider's station — only revealed once the round is over. */
+  stationFoundAt: number | null;
+  /** The hider's spot once you're within SPOT_REVEAL_METERS on the street (or after the round). */
+  spotNearby: { lat: number; lon: number } | null;
 }
 
 export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
@@ -232,5 +343,18 @@ export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
     result: round.result,
     hider: round.result ? round.hider : null,
     replay: round.result ? { hider: round.hiderTrail, seeker: round.seekerTrail } : null,
+    hasSpot: round.spot !== null,
+    // Not shown mid-round: confirming "right station" would give the zone away.
+    stationFoundAt: round.result ? round.stationFoundAt : null,
+    spotNearby: null,
   };
+}
+
+/** soloView plus the time-dependent reveal of the hider's marker. */
+export function soloViewAt(round: SoloRound, t: number, idx: TimetableIndex): SoloView {
+  const view = soloView(round, idx);
+  if (!round.spot) return view;
+  const near =
+    round.result !== null || (metersToSpot(round, t, idx) ?? Infinity) <= SPOT_REVEAL_METERS;
+  return near ? { ...view, spotNearby: { lat: round.spot.lat, lon: round.spot.lon } } : view;
 }

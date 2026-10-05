@@ -19,6 +19,9 @@ const view = (over: Partial<SoloView>): SoloView => ({
   result: null,
   hider: null,
   replay: null,
+  hasSpot: false,
+  stationFoundAt: null,
+  spotNearby: null,
   ...over,
 });
 const asked = (kind: "radar" | "borough") => ({

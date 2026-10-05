@@ -5,7 +5,7 @@
  */
 import type { Dataset, Trip } from "@stand-clear/data";
 import type { TimetableIndex } from "./timetable.ts";
-import { resolve, type Transit } from "./transit.ts";
+import { resolve, streetPoint, type Transit } from "./transit.ts";
 
 export type LonLat = [number, number];
 
@@ -153,9 +153,8 @@ export class Geometry {
         return st ? [st.lon, st.lat] : [0, 0];
       }
       case "street": {
-        const c = ds.complexes[s.complex];
-        const [lat, lon] = c?.exits[s.exit] ?? [c?.lat ?? 0, c?.lon ?? 0];
-        return [lon, lat];
+        const p = streetPoint(s, this.idx);
+        return [p.lon, p.lat];
       }
       case "walking": {
         const f = Math.max(0, Math.min(1, (t - s.start) / Math.max(1, s.end - s.start)));

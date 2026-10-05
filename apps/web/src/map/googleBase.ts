@@ -80,6 +80,14 @@ export function createGoogleBase(
       whenMap((m) => m.fitBounds({ south: sw[1], west: sw[0], north: ne[1], east: ne[0] }, 80)),
     getZoom: () => map?.getZoom() ?? 13.5,
     onUserDrag: (cb) => whenMap((m) => listeners.push(m.addListener("dragstart", cb))),
+    onClick: (cb) =>
+      whenMap((m) =>
+        listeners.push(
+          m.addListener("click", (e: google.maps.MapMouseEvent) => {
+            if (e.latLng) cb([e.latLng.lng(), e.latLng.lat()]);
+          }),
+        ),
+      ),
     remove: () => {
       removed = true;
       for (const l of listeners) l.remove();
