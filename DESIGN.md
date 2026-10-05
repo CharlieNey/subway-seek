@@ -308,7 +308,7 @@ Charlie is holding off on live playtests, so these come before M3. They make sol
 
 | # | Item | Done when |
 |---|---|---|
-| S1 | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result line ("Stand Clear #12 · found in 41 min · 3 questions"); practice rounds stay random; results history kept in the browser |
+| S1 ✅ | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result line ("Stand Clear #12 · found in 41 min · 3 questions"); practice rounds stay random; results history kept in the browser. *Done 2026-10-05: Daily #1 verified identical across connections; share text, stats and history unit-tested.* |
 | S2 | **End-of-round replay** | After a round, an animated map replays the bot's hidden route and your route side by side, like the show's map graphics; makes the daily share worth clicking. *Charlie wants this — schedule it soon after S1.* |
 | S3 | **You hide, a bot seeks** | The hider half of the game solo: the 20-min hiding phase, watching the seeker close in, the freeze rule, the map-pin endgame. The bot seeker plans journeys toward the remaining stations and asks questions with the M2 simulation's strategy |
 | S4 | **Bot vs bot balance sim** | The S3 seeker vs a bot hider at full speed, with real travel time: distributions of station-finding time, endgame share and hider score, to tune the hide time, cooldown and prices without playtests |
@@ -455,6 +455,8 @@ Hand limit: 6.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | The daily follows New York time; #1 = 2026-10-05; its seed mixes in a server secret (`DAILY_SECRET`) | S1: the engine ships to the browser, so a date-only seed would let anyone compute the answer |
+| 2026-10-05 | Daily share shows question *types* (📡🌡️🚇🗽⚡➕), not answers; the first finish of the day counts, replays are allowed but don't | S1: Wordle-style — no spoilers, no retrying for a better score |
 | 2026-10-05 | Street View can't share a screen with the MapLibre map, and photos can't be server-relayed Google images | Street View spike: Google ToS 3.2.3(e) and 3.2.3(a) + geo guidelines; provider decision pending a Mapillary check |
 | 2026-10-05 | Keep +10 min per question and the 5-min cooldown | M2 simulation: ~5.5 questions narrow 97 stations to ≤ 3, ~7 pin it; past that, visiting is cheaper than asking |
 | 2026-10-05 | The hider must leave the start complex | M2: otherwise "stay put" is a free hide; the seeker's first look rules it out anyway |

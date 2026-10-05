@@ -2,7 +2,7 @@
 
 Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. Design, rules and build plan: [DESIGN.md](DESIGN.md).
 
-**Playable now (M2):** solo rounds against a bot hider. Ride the real subway at 6×, ask map questions (radar, thermometer, routes, borough, express, more routes) and watch the possible stations shrink, then get off at the hider's station to win.
+**Playable now:** a daily challenge (same hidden station for everyone, shareable result) plus practice rounds against a bot hider. Ride the real subway at 6×, ask map questions (radar, thermometer, routes, borough, express, more routes) and watch the possible stations shrink, then get off at the hider's station to win.
 
 ## Quickstart
 
@@ -11,6 +11,10 @@ pnpm install
 pnpm dev:server     # game server on ws://localhost:8787
 pnpm dev:web        # client on http://localhost:5173
 ```
+
+Optional env:
+- `DAILY_SECRET` (server): mixed into the daily seed so players can't compute the answer. A dev default is used if unset; set a real one anywhere public.
+- `VITE_GOOGLE_MAPS_API_KEY` in `apps/web/.env.local` (gitignored): only the Street View spike page uses it so far.
 
 ## Commands
 

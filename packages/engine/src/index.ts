@@ -1,4 +1,5 @@
 export * from "./clock.ts";
+export * from "./daily.ts";
 export * from "./geometry.ts";
 export * from "./protocol.ts";
 export * from "./questions.ts";

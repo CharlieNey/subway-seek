@@ -1,17 +1,19 @@
+import { useState } from "react";
 import { AskPanel, QuestionLog } from "./AskPanel.tsx";
 import { cn } from "./cn.ts";
 import { useGame, type World } from "./game.ts";
+import { dailyStats } from "./history.ts";
+import { formatMinutes, shareText } from "./share.ts";
 import { TravelPanel } from "./TravelPanel.tsx";
 import { ActionButton, Bullets, routesFor } from "./ui.tsx";
 import { formatClock, useGameTime } from "./useGameTime.ts";
 
-/** "47 min" or "1 h 27 min". */
-function formatDuration(seconds: number): string {
-  const min = Math.round(seconds / 60);
-  return min < 60
-    ? `${min} min`
-    : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
-}
+const formatDay = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 
 function RoundBar({ t }: { t: number }) {
   const view = useGame((s) => s.view);
@@ -24,7 +26,7 @@ function RoundBar({ t }: { t: number }) {
         <div className="text-[11px] text-stone-500">stations possible</div>
       </div>
       <div>
-        <div className="text-lg font-semibold tabular-nums">{formatDuration(left)}</div>
+        <div className="text-lg font-semibold tabular-nums">{formatMinutes(left)}</div>
         <div className="text-[11px] text-stone-500">left to find it</div>
       </div>
       <div>
@@ -35,23 +37,59 @@ function RoundBar({ t }: { t: number }) {
   );
 }
 
+/** Start a daily or practice round; confirms before abandoning one in progress. */
+function useNewRound() {
+  const { view, send } = useGame();
+  return (mode: "daily" | "practice") => {
+    const inProgress = view && !view.result && view.asked.length > 0;
+    if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
+    send({ type: "newRound", mode });
+  };
+}
+
+function ShareButton() {
+  const view = useGame((s) => s.view);
+  const [copied, setCopied] = useState(false);
+  if (!view?.result) return null;
+  return (
+    <ActionButton
+      onClick={() => {
+        navigator.clipboard
+          .writeText(shareText(view))
+          .then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          })
+          .catch(() => window.prompt("Copy your result:", shareText(view)));
+      }}
+    >
+      {copied ? "Copied!" : "Share result"}
+    </ActionButton>
+  );
+}
+
 function ResultCard({ world }: { world: World }) {
-  const { view, send, busy } = useGame();
+  const { view, busy, results, replay } = useGame();
+  const newRound = useNewRound();
   if (!view?.result || view.hider === null) return null;
   const hider = world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
   const found = view.result.kind === "found";
+  const stats = dailyStats(results);
   return (
     <div className={cn("mx-4 mb-3 rounded-lg px-4 py-3", found ? "bg-amber-50" : "bg-stone-100")}>
-      <div className="text-lg font-semibold">{found ? "Found it!" : "Time's up"}</div>
-      <div className="mt-1 flex items-center gap-1.5 text-sm">
+      <div className="text-lg font-semibold">
+        {view.daily ? `Daily #${view.daily.number}: ` : ""}
+        {found ? "Found it!" : "Time's up"}
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
         The hider was at <span className="font-semibold">{hider?.name}</span>
         {hider && <Bullets routes={routesFor(world, hider.routes)} />}
       </div>
       <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
         <div>
           <dt className="text-[11px] text-stone-500">{found ? "found in" : "searched"}</dt>
-          <dd className="font-semibold">{formatDuration(elapsed)}</dd>
+          <dd className="font-semibold">{formatMinutes(elapsed)}</dd>
         </div>
         <div>
           <dt className="text-[11px] text-stone-500">questions</dt>
@@ -61,13 +99,26 @@ function ResultCard({ world }: { world: World }) {
         </div>
         <div>
           <dt className="text-[11px] text-stone-500">hider score</dt>
-          <dd className="font-semibold">{formatDuration(elapsed + view.bonusSeconds)}</dd>
+          <dd className="font-semibold">{formatMinutes(elapsed + view.bonusSeconds)}</dd>
         </div>
       </dl>
-      <div className="mt-3">
-        <ActionButton disabled={busy} onClick={() => send({ type: "newRound" })}>
-          Play again
+      {view.daily && (
+        <p className="mt-2 text-xs text-stone-600">
+          {replay
+            ? "Replay: your first result today is the one that counts."
+            : `Daily stats: ${stats.played} played · ${stats.found} found · streak ${stats.streak}`}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <ShareButton />
+        <ActionButton quiet disabled={busy} onClick={() => newRound("practice")}>
+          {view.daily ? "Practice round" : "Play again"}
         </ActionButton>
+        {!view.daily && (
+          <ActionButton quiet disabled={busy} onClick={() => newRound("daily")}>
+            Today's daily
+          </ActionButton>
+        )}
       </div>
     </div>
   );
@@ -96,8 +147,33 @@ function Tabs() {
   );
 }
 
+function ModeLine() {
+  const { view, busy, replay } = useGame();
+  const newRound = useNewRound();
+  if (!view) return <div className="text-xs text-stone-500">Find the hider's station</div>;
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-stone-500">
+      <span>
+        {view.daily
+          ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${replay ? " · replay" : ""}`
+          : "Practice round"}
+      </span>
+      {!view.result && (
+        <button
+          type="button"
+          disabled={busy}
+          className="underline decoration-stone-300 underline-offset-2 hover:text-stone-800"
+          onClick={() => newRound(view.daily ? "practice" : "daily")}
+        >
+          {view.daily ? "practice instead" : "today's daily"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Panel() {
-  const { status, error, world, view, notice, dismissNotice, tab } = useGame();
+  const { status, error, world, view, notice, dismissNotice, tab, replay } = useGame();
   const t = useGameTime(4);
   const ready = status === "ready" && world && view && t !== null;
 
@@ -106,7 +182,7 @@ export function Panel() {
       <header className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1">
           <div className="text-sm font-bold tracking-tight">Stand Clear</div>
-          <div className="text-xs text-stone-500">Find the hider's station · solo vs bot</div>
+          <ModeLine />
         </div>
         {t !== null && (
           <div className="text-right">
@@ -115,6 +191,11 @@ export function Panel() {
           </div>
         )}
       </header>
+      {ready && replay && !view.result && (
+        <p className="mx-4 mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-600">
+          You've already played today's challenge. This replay won't change your result.
+        </p>
+      )}
       {ready && <RoundBar t={t} />}
       {ready && <ResultCard world={world} />}
       {ready && <Tabs />}

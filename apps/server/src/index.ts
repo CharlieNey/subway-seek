@@ -14,8 +14,12 @@ import {
   type ClockSync,
   clientMessageSchema,
   createSoloRound,
+  dailyNumber,
+  dailyRandom,
   type GameClock,
   gameTime,
+  nyDate,
+  type RoundMode,
   type ServerMessage,
   type SoloRound,
   soloView,
@@ -28,6 +32,9 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
 const SPEED = 6;
 const HUB_STATION_ID = "127"; // Times Sq-42 St (1/2/3)
+// Mixed into the daily seed so players can't compute today's answer from the client code.
+const DAILY_SECRET = process.env.DAILY_SECRET ?? "dev-only-daily-secret";
+if (!process.env.DAILY_SECRET) console.warn("DAILY_SECRET not set — using a dev secret");
 
 const t0 = performance.now();
 const dataset = loadDataset();
@@ -46,10 +53,21 @@ interface Session {
   log: MatchLog;
 }
 
-function newRound(): { round: SoloRound; clock: GameClock; log: MatchLog } {
-  const round = createSoloRound(idx, { hub, hideStart: HIDE_START });
+function newRound(mode: RoundMode): { round: SoloRound; clock: GameClock; log: MatchLog } {
+  const date = nyDate(new Date());
+  const round =
+    mode === "daily"
+      ? createSoloRound(idx, {
+          hub,
+          hideStart: HIDE_START,
+          random: dailyRandom(date, DAILY_SECRET),
+          daily: { date, number: dailyNumber(date) },
+        })
+      : createSoloRound(idx, { hub, hideStart: HIDE_START });
   const log = new MatchLog();
   log.write("round_start", {
+    mode,
+    daily: round.daily,
     hub: dataset.stations[hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
     reachable: round.reachable.length,
@@ -88,7 +106,7 @@ function logEnd(session: Session) {
 const wss = new WebSocketServer({ port: PORT });
 
 wss.on("connection", (socket) => {
-  const session: Session = { ...newRound(), lastSeq: -1 };
+  const session: Session = { ...newRound("daily"), lastSeq: -1 };
   send(socket, {
     type: "hello",
     serviceDate: dataset.meta.serviceDate,
@@ -150,7 +168,7 @@ wss.on("connection", (socket) => {
     session.lastSeq = seq;
 
     if (intent.type === "newRound") {
-      Object.assign(session, newRound());
+      Object.assign(session, newRound(intent.mode));
       send(socket, {
         type: "state",
         seq,
@@ -195,4 +213,6 @@ wss.on("connection", (socket) => {
   });
 });
 
-console.log(`listening on ws://localhost:${PORT} · solo rounds from Times Sq, ${SPEED}×`);
+console.log(
+  `listening on ws://localhost:${PORT} · daily #${dailyNumber(nyDate(new Date()))} + practice rounds from Times Sq, ${SPEED}×`,
+);

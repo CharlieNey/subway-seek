@@ -3,7 +3,7 @@
  * the engine sees them; server messages are plain types (the server is trusted).
  */
 import { z } from "zod";
-import type { SoloIntent, SoloView } from "./solo.ts";
+import type { RoundMode, SoloIntent, SoloView } from "./solo.ts";
 import type { TransitIntent } from "./transit.ts";
 
 const index = z.number().int().nonnegative();
@@ -26,14 +26,14 @@ export const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("moreRoutes") }),
 ]);
 
-export type NewRoundIntent = { type: "newRound" };
+export type NewRoundIntent = { type: "newRound"; mode: RoundMode };
 export type ClientIntent = SoloIntent | NewRoundIntent;
 
 export const clientIntentSchema = z.discriminatedUnion("type", [
   ...transitIntentSchema.options,
   z.object({ type: z.literal("ask"), question: questionSchema }),
   z.object({ type: z.literal("startThermometer") }),
-  z.object({ type: z.literal("newRound") }),
+  z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),
 ]);
 
 // Keep the schemas and the engine's types in lockstep.

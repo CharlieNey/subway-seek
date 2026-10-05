@@ -16,6 +16,8 @@ import {
   type TimetableIndex,
 } from "@stand-clear/engine";
 import { create } from "zustand";
+import { type DailyResult, loadResults, saveResult } from "./history.ts";
+import { shareText } from "./share.ts";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:8787";
 
@@ -32,6 +34,9 @@ interface GameStore {
   sync: ClockSync | null;
   view: SoloView | null;
   tab: "travel" | "ask";
+  /** This daily was already finished in this browser: a replay doesn't count. */
+  replay: boolean;
+  results: Record<string, DailyResult>;
   /** Last rejection, shown as a toast. */
   notice: string | null;
   /** An intent is in flight (disable buttons until the server answers). */
@@ -45,6 +50,8 @@ interface GameStore {
 
 let socket: WebSocket | null = null;
 let seq = 0;
+/** The next state answers a "newRound": recentre and reset the panel. */
+let awaitingNewRound = false;
 
 export const useGame = create<GameStore>((set) => ({
   status: "loading",
@@ -53,6 +60,8 @@ export const useGame = create<GameStore>((set) => ({
   sync: null,
   view: null,
   tab: "travel",
+  replay: false,
+  results: loadResults(),
   notice: null,
   busy: false,
   follow: true,
@@ -60,6 +69,7 @@ export const useGame = create<GameStore>((set) => ({
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     seq += 1;
     socket.send(JSON.stringify({ type: "intent", seq, intent }));
+    if (intent.type === "newRound") awaitingNewRound = true;
     set({ busy: true, notice: null });
   },
   dismissNotice: () => set({ notice: null }),
@@ -73,24 +83,41 @@ export function nowGameTime(): number | null {
   return sync ? syncedGameTime(sync, Date.now()) : null;
 }
 
+/** Bookkeeping when a round's view arrives: replay flag at the start, history at the end. */
+function onView(view: SoloView): Partial<GameStore> {
+  if (!view.result) {
+    return { replay: !!(view.daily && loadResults()[view.daily.date]) };
+  }
+  if (view.daily && !useGame.getState().replay) saveResult(view, shareText(view));
+  return { results: loadResults() };
+}
+
 function handle(msg: ServerMessage) {
   switch (msg.type) {
     case "hello":
-      useGame.setState({ status: "ready", sync: msg.clock, view: msg.view });
+      useGame.setState({ status: "ready", sync: msg.clock, view: msg.view, ...onView(msg.view) });
       break;
     case "state": {
-      // A fresh round (after "Play again"): follow the seeker again.
-      const fresh = useGame.getState().view?.result != null && msg.view.result === null;
+      // A fresh round: follow the seeker again.
+      const fresh = awaitingNewRound;
+      awaitingNewRound = false;
       useGame.setState({
         sync: msg.clock,
         view: msg.view,
         busy: false,
+        ...onView(msg.view),
         ...(fresh ? { follow: true, tab: "travel" as const } : {}),
       });
       break;
     }
     case "rejected":
-      useGame.setState({ sync: msg.clock, view: msg.view, busy: false, notice: msg.error });
+      useGame.setState({
+        sync: msg.clock,
+        view: msg.view,
+        busy: false,
+        notice: msg.error,
+        ...onView(msg.view),
+      });
       break;
   }
 }

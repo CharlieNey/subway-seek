@@ -4,6 +4,7 @@
  * You find the station by being there: on one of its platforms or at its street exit.
  * The two-player round with a real hiding phase and a spot endgame is M3.
  */
+import type { DailyInfo } from "./daily.ts";
 import {
   type Answer,
   type AskContext,
@@ -32,7 +33,12 @@ export interface AskedQuestion extends Asked {
 
 export type RoundResult = { kind: "found"; at: number } | { kind: "timeout"; at: number };
 
+export type RoundMode = "daily" | "practice";
+
 export interface SoloRound {
+  mode: RoundMode;
+  /** Set for the daily challenge. */
+  daily: DailyInfo | null;
   /** Station the round starts from (e.g. Times Sq 1/2/3). */
   hub: number;
   hideStart: number;
@@ -60,13 +66,16 @@ export function createSoloRound(
     hub,
     hideStart,
     random = Math.random,
-  }: { hub: number; hideStart: number; random?: () => number },
+    daily = null,
+  }: { hub: number; hideStart: number; random?: () => number; daily?: DailyInfo | null },
 ): SoloRound {
   const seekStart = hideStart + HIDE_SECONDS;
   const reachable = reachableComplexes(idx, hub, hideStart, seekStart);
   if (reachable.length === 0) throw new Error("hider can't reach anywhere");
   const hider = reachable[Math.floor(random() * reachable.length)] as number;
   return {
+    mode: daily ? "daily" : "practice",
+    daily,
     hub,
     hideStart,
     seekStart,
@@ -158,6 +167,8 @@ export function bonusSeconds(round: SoloRound): number {
 
 /** What the seeker may see: everything except the hider, until the round ends. */
 export interface SoloView {
+  mode: RoundMode;
+  daily: DailyInfo | null;
   hub: number;
   hideStart: number;
   seekStart: number;
@@ -176,6 +187,8 @@ export interface SoloView {
 
 export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
   return {
+    mode: round.mode,
+    daily: round.daily,
     hub: round.hub,
     hideStart: round.hideStart,
     seekStart: round.seekStart,
