@@ -137,20 +137,21 @@ export function StreetView({ visible }: { visible: boolean }) {
 
   return (
     <div className="relative h-full w-full bg-stone-300">
-      <div ref={el} className="h-full w-full" />
+      {/* Its own stacking context, so Google's internal z-indexes stay below our overlays. */}
+      <div ref={el} className="absolute inset-0 z-0" />
       {spot && (
-        <div className="absolute inset-x-0 top-3 flex justify-center">
+        <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
           <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white shadow">
             Someone's here — click them to catch
           </span>
         </div>
       )}
       {status && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/25">
           <span className="rounded-md bg-white/95 px-3 py-1.5 text-sm font-semibold">{status}</span>
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-3 flex flex-wrap justify-center gap-1.5 px-3">
+      <div className="absolute inset-x-0 bottom-9 z-10 flex flex-wrap justify-center gap-1.5 px-3">
         {[...links]
           .sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0))
           .map((l) => (
