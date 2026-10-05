@@ -4,6 +4,8 @@
  * You find the station by being there: on one of its platforms or at its street exit.
  * The two-player round with a real hiding phase and a spot endgame is M3.
  */
+
+import type { LatLon } from "@stand-clear/data";
 import type { DailyInfo } from "./daily.ts";
 import {
   type Answer,
@@ -11,7 +13,9 @@ import {
   type Asked,
   categoryOf,
   evaluate,
+  evaluateSpot,
   filterCandidates,
+  isSpotQuestion,
   type Place,
   photoCamera,
   type Question,
@@ -26,6 +30,7 @@ import {
   applyIntent,
   EXIT_SECONDS,
   metersBetween,
+  type OnStreet,
   resolve,
   streetPoint,
   type Transit,
@@ -55,13 +60,16 @@ export const QUESTION_RULES: Record<
   // Answers name a landmark, so it splits the map many ways: the dearest question.
   tentacles: { bonusSeconds: 20 * 60, cooldownSeconds: 40 * 60 },
   photo: { bonusSeconds: 15 * 60, cooldownSeconds: 15 * 60 },
+  // On foot, about the exact spot: cheap and quick, so the street search is a string of
+  // small deductions rather than a blind sweep. Tuned with `pnpm sim:endgame`: an
+  // efficient seeker's endgame takes ~17 game-min (36–41% of seeking), against ~56 with
+  // no questions at all. See docs/endgame-balance.md.
+  onFoot: { bonusSeconds: 3 * 60, cooldownSeconds: 5 * 60 },
 };
 /** Least time between any two questions (the old single cooldown). */
 export const QUESTION_GAP_SECONDS = 5 * 60;
 /** Photos from the hiding spot open this long into the round. */
 export const SPOT_PHOTOS_OPEN_SECONDS = 15 * 60;
-/** Zone radius around the hider's station; the hiding spot is inside it. */
-export const ZONE_RADIUS_M = 400;
 /** You catch the hider by clicking their marker from within this distance. */
 export const CATCH_METERS = 25;
 /** Their marker shows up in your Street View within this distance. */
@@ -103,6 +111,8 @@ export interface SoloRound {
   seeker: Transit;
   asked: AskedQuestion[];
   thermometer: Place | null;
+  /** The walking thermometer's start (on-foot hotter/colder about the spot). */
+  footThermometer: Place | null;
   result: RoundResult | null;
   /** The bot's route to its hiding station (secret until the round ends). */
   hiderTrail: TrailEntry[];
@@ -123,6 +133,7 @@ export type SoloIntent =
   | TransitIntent
   | { type: "ask"; question: Question }
   | { type: "startThermometer" }
+  | { type: "startFootThermometer" }
   | { type: "giveUp" }
   | { type: "catch" };
 
@@ -160,6 +171,7 @@ export function createSoloRound(
     seeker: { kind: "platform", station: hub, since: seekStart, arrivedDir: null },
     asked: [],
     thermometer: null,
+    footThermometer: null,
     result: null,
     hiderTrail: trailFromLegs(idx, hub, hideStart, legs),
     // The seeker waits at the start while the bot hides.
@@ -239,6 +251,7 @@ function standingAt(round: SoloRound, t: number, idx: TimetableIndex) {
  */
 export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
   if (round.result) return round;
+  round = spotOnTheWay(round, t);
   const here = standingAt(round, t, idx);
   if (here && here.complex === round.hider && round.stationFoundAt === null) {
     const at = Math.min(here.since, round.seekEnd);
@@ -247,6 +260,57 @@ export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): S
   }
   if (t >= round.seekEnd) return { ...round, result: { kind: "timeout", at: round.seekEnd } };
   return round;
+}
+
+/** Flat-earth meters east/north of `o` (the same metric as metersBetween). */
+function local(o: { lat: number; lon: number }, lat: number, lon: number): [number, number] {
+  const kx = 111_320 * Math.cos((((o.lat + lat) / 2) * Math.PI) / 180);
+  return [(lon - o.lon) * kx, (lat - o.lat) * 110_540];
+}
+
+/**
+ * How far along a straight walk from `a` to `b` (0–1) you first come within `r` m of
+ * `p`. Null if you never do, or if you start within it (walking away from a marker
+ * you can already see shouldn't stop you).
+ */
+export function firstWithin(a: LatLon, b: LatLon, p: { lat: number; lon: number }, r: number) {
+  const [ax, ay] = local(p, a[0], a[1]);
+  const [bx, by] = local(p, b[0], b[1]);
+  const [dx, dy] = [bx - ax, by - ay];
+  const qa = dx * dx + dy * dy;
+  const qb = 2 * (ax * dx + ay * dy);
+  const qc = ax * ax + ay * ay - r * r;
+  if (qc <= 0 || qa === 0) return null;
+  const disc = qb * qb - 4 * qa * qc;
+  if (disc < 0) return null;
+  const f = (-qb - Math.sqrt(disc)) / (2 * qa);
+  return f >= 0 && f <= 1 ? f : null;
+}
+
+/**
+ * Walking past the hider: a walk along the street stops where they come into view, so
+ * clicking the map to cross the zone is a real way to search, and everywhere you've
+ * walked is searched (see SoloView.footpath).
+ */
+function spotOnTheWay(round: SoloRound, t: number): SoloRound {
+  const s = round.seeker;
+  if (!round.spot || s.kind !== "walking" || s.reason !== "street") return round;
+  // A hair inside the reveal distance, so the marker shows where you stop.
+  const f = firstWithin(s.fromPoint, s.toPoint, round.spot, SPOT_REVEAL_METERS - 0.5);
+  if (f === null) return round;
+  const at = s.start + f * (s.end - s.start);
+  if (at > t || s.dest.kind !== "street") return round;
+  const stop: OnStreet = {
+    kind: "street",
+    complex: s.dest.complex,
+    exit: s.dest.exit,
+    at: {
+      lat: s.fromPoint[0] + f * (s.toPoint[0] - s.fromPoint[0]),
+      lon: s.fromPoint[1] + f * (s.toPoint[1] - s.fromPoint[1]),
+    },
+    since: at,
+  };
+  return { ...round, seeker: stop, seekerTrail: [...round.seekerTrail, { t: at, state: stop }] };
 }
 
 /** Meters from the seeker (standing on the street) to the hiding spot; null if not applicable. */
@@ -275,13 +339,26 @@ export function applySoloIntent(
         const min = Math.ceil((ready - t) / 60);
         return { ok: false, error: `You can ask that again in ${min} min.` };
       }
+      const q = intent.question;
       const ctx: AskContext = {
         origin: questionOrigin(round.seeker, t, idx),
-        baseline: intent.question.kind === "thermometer" ? round.thermometer : null,
+        baseline:
+          q.kind === "thermometer"
+            ? round.thermometer
+            : q.kind === "spotThermometer"
+              ? round.footThermometer
+              : null,
       };
-      const q = intent.question;
       let answer: Answer;
-      if (q.kind === "photo") {
+      if (isSpotQuestion(q)) {
+        if (!round.spot) return { ok: false, error: "There's no hiding spot this round." };
+        if (resolve(round.seeker, t, idx).kind !== "street") {
+          return { ok: false, error: "Ask on-foot questions standing on the street." };
+        }
+        const error = questionError(idx.ds, q, ctx);
+        if (error) return { ok: false, error };
+        answer = evaluateSpot(q, round.spot, ctx);
+      } else if (q.kind === "photo") {
         const pano = q.from === "exit" ? round.photoExit : round.spot?.pano;
         if (!pano) return { ok: false, error: "No photo available for this round." };
         if (q.from === "spot" && t < round.seekStart + SPOT_PHOTOS_OPEN_SECONDS) {
@@ -301,7 +378,8 @@ export function applySoloIntent(
           ...round,
           asked: [...round.asked, { ...entry, at: t, remaining }],
           // A thermometer reading restarts it from here, so you can keep chaining.
-          thermometer: intent.question.kind === "thermometer" ? ctx.origin : round.thermometer,
+          thermometer: q.kind === "thermometer" ? ctx.origin : round.thermometer,
+          footThermometer: q.kind === "spotThermometer" ? ctx.origin : round.footThermometer,
         },
       };
     }
@@ -315,6 +393,15 @@ export function applySoloIntent(
     }
     case "startThermometer":
       return { ok: true, round: { ...round, thermometer: questionOrigin(round.seeker, t, idx) } };
+    case "startFootThermometer": {
+      if (resolve(round.seeker, t, idx).kind !== "street") {
+        return { ok: false, error: "Start it standing on the street." };
+      }
+      return {
+        ok: true,
+        round: { ...round, footThermometer: questionOrigin(round.seeker, t, idx) },
+      };
+    }
     default: {
       const moved = applyIntent(round.seeker, intent, t, idx);
       if (!moved.ok) return moved;
@@ -337,7 +424,8 @@ export function bonusSeconds(round: { asked: readonly { q: Question }[] }): numb
 
 /**
  * When a question of this category can next be asked: its own cooldown since the last
- * one of the category, and the short gap since any question. 0 = right away.
+ * one of the category, and the short gap since any question. On-foot questions skip the
+ * gap (it paces the station hunt; the street search wants quick questions). 0 = now.
  */
 export function askReadyAt(
   asked: readonly { q: Question; at: number }[],
@@ -345,8 +433,11 @@ export function askReadyAt(
 ): number {
   let ready = 0;
   for (const a of asked) {
-    ready = Math.max(ready, a.at + QUESTION_GAP_SECONDS);
-    if (categoryOf(a.q) === category) {
+    const other = categoryOf(a.q);
+    if (category !== "onFoot" && other !== "onFoot") {
+      ready = Math.max(ready, a.at + QUESTION_GAP_SECONDS);
+    }
+    if (other === category) {
       ready = Math.max(ready, a.at + QUESTION_RULES[category].cooldownSeconds);
     }
   }
@@ -378,6 +469,43 @@ export interface SoloView {
   stationFoundAt: number | null;
   /** The hider's spot once you're within SPOT_REVEAL_METERS on the street (or after the round). */
   spotNearby: { lat: number; lon: number } | null;
+  footThermometer: Place | null;
+  /** Everywhere you've walked or stood on the street, for the searched area. */
+  footpath: FootSegment[];
+}
+
+/**
+ * A stretch you walked on the street (from `a` at `start` to `b` at `end`), or a place
+ * you stood (a = b). Nobody is within SPOT_REVEAL_METERS of it, or you'd have seen them.
+ */
+export interface FootSegment {
+  a: LatLon;
+  b: LatLon;
+  start: number;
+  end: number;
+}
+
+/** The seeker's street walks from their trail, each cut short where the next move began. */
+export function footpathOf(trail: readonly TrailEntry[]): FootSegment[] {
+  const out: FootSegment[] = [];
+  trail.forEach(({ state: s }, i) => {
+    const next = trail[i + 1]?.t ?? Number.POSITIVE_INFINITY;
+    if (s.kind === "walking" && s.reason === "street") {
+      const end = Math.min(s.end, next);
+      const f = s.end > s.start ? (end - s.start) / (s.end - s.start) : 1;
+      const b: LatLon = [
+        s.fromPoint[0] + f * (s.toPoint[0] - s.fromPoint[0]),
+        s.fromPoint[1] + f * (s.toPoint[1] - s.fromPoint[1]),
+      ];
+      out.push({ a: s.fromPoint, b, start: s.start, end });
+    } else if (s.kind === "walking" && s.reason === "exit" && s.dest.kind === "street") {
+      out.push({ a: s.toPoint, b: s.toPoint, start: s.end, end: s.end });
+    } else if (s.kind === "street" && s.at) {
+      const p: LatLon = [s.at.lat, s.at.lon];
+      out.push({ a: p, b: p, start: s.since, end: s.since });
+    }
+  });
+  return out;
 }
 
 export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
@@ -401,6 +529,8 @@ export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
     // Not shown mid-round: confirming "right station" would give the zone away.
     stationFoundAt: round.result ? round.stationFoundAt : null,
     spotNearby: null,
+    footThermometer: round.footThermometer,
+    footpath: footpathOf(round.seekerTrail),
   };
 }
 

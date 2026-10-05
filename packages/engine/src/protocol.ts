@@ -39,6 +39,8 @@ export const questionSchema = z.discriminatedUnion("kind", [
     from: z.enum(["exit", "spot"]),
     look: z.enum(["N", "E", "S", "W", "up"]),
   }),
+  z.object({ kind: z.literal("spotRadar"), meters: z.number() }),
+  z.object({ kind: z.literal("spotThermometer") }),
 ]);
 
 export type NewRoundIntent = { type: "newRound"; mode: RoundMode };
@@ -53,6 +55,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   ...transitIntentSchema.options,
   z.object({ type: z.literal("ask"), question: questionSchema }),
   z.object({ type: z.literal("startThermometer") }),
+  z.object({ type: z.literal("startFootThermometer") }),
   z.object({ type: z.literal("giveUp") }),
   z.object({ type: z.literal("catch") }),
   z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),

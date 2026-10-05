@@ -113,9 +113,17 @@ export interface LandmarkScene {
   range: [number, number][] | null;
 }
 
+/** On foot: your search circle, and where in it the hider could still be. */
+export interface SearchScene {
+  complex: number;
+  ring: [number, number][];
+  possible: LonLat[];
+}
+
 export interface Scene {
   data: StaticData;
   landmarks: LandmarkScene | null;
+  search: SearchScene | null;
   round: RoundData;
   zoom: number;
   trains: Train[];
@@ -162,6 +170,24 @@ export function buildLayers(scene: Scene): Layer[] {
       dashUnits: "pixels",
       extensions: [dashes],
       updateTriggers: { getPath: round.version, getColor: round.version },
+    }),
+    new ScatterplotLayer<LonLat>({
+      id: "search-possible",
+      data: scene.search?.possible ?? [],
+      getPosition: (p) => p,
+      // A touch over half the 8 m grid, so the cells join up into an area.
+      getRadius: 5,
+      radiusUnits: "meters",
+      getFillColor: rgb("f59e0b", 70),
+      stroked: false,
+    }),
+    new PathLayer<[number, number][]>({
+      id: "search-ring",
+      data: scene.search ? [scene.search.ring] : [],
+      getPath: (p) => p,
+      getColor: INK,
+      getWidth: 1.5,
+      widthUnits: "pixels",
     }),
     new PathLayer<StaticData["lines"][number]>({
       id: "lines",

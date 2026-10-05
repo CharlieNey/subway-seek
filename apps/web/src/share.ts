@@ -10,6 +10,8 @@ const EMOJI: Record<Question["kind"], string> = {
   matching: "🟰",
   measuring: "📏",
   tentacles: "🐙",
+  spotRadar: "🎯",
+  spotThermometer: "🔥",
   photo: "📸",
 };
 

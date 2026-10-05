@@ -42,6 +42,8 @@ const QUESTION_NAME: Record<string, string> = {
   matching: "Matching",
   measuring: "Measuring",
   tentacles: "Tentacles",
+  spotRadar: "Street radar",
+  spotThermometer: "Hotter/colder",
   photo: "Photo",
 };
 

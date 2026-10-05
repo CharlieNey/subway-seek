@@ -260,7 +260,7 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
 }
 
 function StreetPanel({ world, state }: { world: World; state: OnStreet }) {
-  const { send, busy, view } = useGame();
+  const { send, busy, view, setTab } = useGame();
   const complex = world.ds.complexes[state.complex];
   if (!complex) return null;
   // Going back down means walking to the nearest exit first.
@@ -277,9 +277,16 @@ function StreetPanel({ world, state }: { world: World; state: OnStreet }) {
         <div className="text-lg font-semibold">{complex.name}</div>
         <p className="mt-1 text-sm text-stone-600">
           {view?.hasSpot
-            ? "If the hider's here, they're within ¼ mile of the station. Look around in Street View; walk with the arrows or by clicking the map."
+            ? "If the hider's here, they're inside the circle on the map, within ¼ mile of the station. Walk with the arrows or by clicking the map: you'll stop as soon as they're in sight (40 m), and the shading shows where they could still be."
             : "Look around in Street View; walk with the arrows or by clicking the map."}
         </p>
+        {view?.hasSpot && (
+          <div className="mt-2">
+            <ActionButton quiet onClick={() => setTab("ask")}>
+              Ask about their exact spot
+            </ActionButton>
+          </div>
+        )}
       </div>
       <Section title="Go back down">
         <ul className="space-y-1.5">

@@ -1,4 +1,10 @@
-import { type LonLat, milesToMeters, nearestLandmark, questionOrigin } from "@stand-clear/engine";
+import {
+  type LonLat,
+  milesToMeters,
+  nearestLandmark,
+  questionOrigin,
+  ZONE_RADIUS_M,
+} from "@stand-clear/engine";
 import { useEffect, useRef } from "react";
 import { type LandmarkPreview, nowGameTime, useGame, type World } from "./game.ts";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
@@ -11,9 +17,11 @@ import {
   type LandmarkScene,
   type ReplayScene,
   type RoundData,
+  type SearchScene,
   type Train,
 } from "./map/layers.ts";
 import { pathUntil, stepReplay, useReplay } from "./replay.ts";
+import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
@@ -75,6 +83,8 @@ export function MapView() {
     let lastTrains = 0;
     let lastFrame = performance.now();
     let raf = 0;
+    /** The search circle the map last framed. */
+    let framed: number | null = null;
 
     const tooltip = ({ object }: { object?: unknown }) => {
       const s = object as { complex?: number } | undefined;
@@ -137,6 +147,7 @@ export function MapView() {
       let me: LonLat | null = null;
       let replayScene: ReplayScene | null = null;
       let landmarks: LandmarkScene | null = null;
+      let search: SearchScene | null = null;
       if (replay.active) {
         const seekerPath = pathUntil(replay.seeker, t);
         replayScene = {
@@ -154,12 +165,24 @@ export function MapView() {
           if (follow) base.setCenter(me);
           if (preview)
             landmarks = landmarkScene(world, preview, questionOrigin(view.seeker, t, world.idx));
+          search = searchScene(world, view, t);
+          // Coming up to the street: frame the search circle (the design's "Search area").
+          if (search && search.complex !== framed) {
+            const c = world.ds.complexes[search.complex];
+            if (c) {
+              const dLat = ZONE_RADIUS_M / 110_540;
+              const dLon = ZONE_RADIUS_M / (111_320 * Math.cos((c.lat * Math.PI) / 180));
+              base.fitBounds([c.lon - dLon, c.lat - dLat], [c.lon + dLon, c.lat + dLat]);
+            }
+          }
+          framed = search?.complex ?? null;
         }
       }
       base.setLayers(
         buildLayers({
           data,
           landmarks,
+          search,
           round,
           zoom: base.getZoom(),
           trains,

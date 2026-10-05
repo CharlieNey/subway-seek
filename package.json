@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "sim": "pnpm --filter @stand-clear/engine sim"
+    "sim": "pnpm --filter @stand-clear/engine sim",
+    "sim:endgame": "pnpm --filter @stand-clear/engine sim:endgame"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

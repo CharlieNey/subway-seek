@@ -8,6 +8,7 @@ import {
   LANDMARK_WORDS,
   landmarksWithin,
   milesText,
+  ON_FOOT_RANGE_M,
   PHOTO_LOOKS,
   type PhotoLook,
   QUESTION_RULES,
@@ -16,14 +17,18 @@ import {
   questionError,
   questionOrigin,
   RADAR_MILES,
+  resolve,
   SPOT_PHOTOS_OPEN_SECONDS,
+  SPOT_RADAR_METERS,
+  searchGrid,
   TENTACLE_MILES,
 } from "@stand-clear/engine";
 import { type ReactNode, useState } from "react";
 import { cn } from "./cn.ts";
 import { type LandmarkPreview, useGame, type World } from "./game.ts";
 import { RouteBullet } from "./RouteBullet.tsx";
-import { photoUrl } from "./street.ts";
+import { searchScene } from "./searchArea.ts";
+import { onStreet, photoUrl } from "./street.ts";
 import { ActionButton, Section } from "./ui.tsx";
 import { formatClock } from "./useGameTime.ts";
 
@@ -50,6 +55,7 @@ const CATEGORY_TITLE: Record<QuestionCategory, string> = {
   thermometer: "Thermometer",
   tentacles: "Tentacles · which is nearest you?",
   photo: "Photos",
+  onFoot: "On foot · their exact spot",
 };
 const TENTACLE_KINDS = LANDMARK_KINDS.filter((k) => TENTACLE_MILES[k] !== undefined);
 
@@ -144,17 +150,88 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
   );
   const nameOf = (complex: number) => ds.complexes[complex]?.name ?? "?";
   const spotOpensAt = view.seekStart + SPOT_PHOTOS_OPEN_SECONDS;
+  const onFoot = view.hasSpot && onStreet(view, t, world);
+  // On-foot questions are asked standing still, from where you stand.
+  const standing = resolve(view.seeker, t, world.idx).kind === "street";
+  const search = onFoot ? searchScene(world, view, t) : null;
+  const searchCenter = search ? ds.complexes[search.complex] : undefined;
+  const leftPct =
+    search && searchCenter
+      ? Math.round((search.possible.length / searchGrid(searchCenter).length) * 100)
+      : null;
+  const footThermoError = questionError(
+    ds,
+    { kind: "spotThermometer" },
+    { origin, baseline: view.footThermometer },
+  );
 
   return (
     <>
       <div className="px-4 pb-3">
         <div className="text-xs text-stone-500">Asking from</div>
-        <div className="text-lg font-semibold">{nameOf(origin.complex)}</div>
+        <div className="text-lg font-semibold">
+          {onFoot ? `The street near ${nameOf(origin.complex)}` : nameOf(origin.complex)}
+        </div>
         <div className="mt-1 text-xs text-stone-500">
           Each question adds minutes to the hider's score, and each kind has its own cooldown. Hover
           a landmark question to see them on the map.
         </div>
       </div>
+
+      {onFoot && (
+        <Category category="onFoot" t={t}>
+          <p className="mb-2 text-sm text-stone-600">
+            About exactly where they're standing. They only work near the hider: from more than{" "}
+            {ON_FOOT_RANGE_M} m away the answer is "Not near you".
+          </p>
+          {leftPct !== null && (
+            <p
+              className={cn(
+                "mb-2 text-sm font-semibold",
+                leftPct === 0 ? "text-red-700" : "text-amber-800",
+              )}
+            >
+              {leftPct === 0
+                ? "Nowhere in this circle fits: they're not hiding near this station."
+                : `${leftPct}% of the circle is left (shaded on the map).`}
+            </p>
+          )}
+          <div className="mb-1 text-xs text-stone-500">Is your spot within … of me?</div>
+          <div className="flex flex-wrap gap-1.5">
+            {SPOT_RADAR_METERS.map((meters) => (
+              <ActionButton
+                key={meters}
+                quiet
+                disabled={blocked("onFoot") || !standing}
+                onClick={() => ask({ kind: "spotRadar", meters })}
+              >
+                {meters} m
+              </ActionButton>
+            ))}
+          </div>
+          <div className="mt-2.5 mb-1 text-xs text-stone-500">
+            Hotter or colder:{" "}
+            {view.footThermometer
+              ? "walk at least 30 m, then ask if you got closer."
+              : "start it here, walk, then ask if you got closer."}
+          </div>
+          <div className="flex gap-1.5">
+            <ActionButton
+              quiet
+              disabled={busy || over || !standing}
+              onClick={() => send({ type: "startFootThermometer" })}
+            >
+              {view.footThermometer ? "Restart here" : "Start here (free)"}
+            </ActionButton>
+            <ActionButton
+              disabled={blocked("onFoot") || !standing || footThermoError !== null}
+              onClick={() => ask({ kind: "spotThermometer" })}
+            >
+              Am I closer?
+            </ActionButton>
+          </div>
+        </Category>
+      )}
 
       <Category category="matching" t={t}>
         <div className="mb-1 text-xs text-stone-500">Is your nearest … the same as mine?</div>

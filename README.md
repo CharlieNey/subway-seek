@@ -26,6 +26,7 @@ Optional env:
 | `pnpm --filter @stand-clear/data build-landmarks` | Rebuild `nyc-landmarks.json` (parks, museums, libraries, hospitals, zoos, airports) from OpenStreetMap + NYC Open Data |
 | `pnpm test` | Vitest across all packages |
 | `pnpm sim` | Balance check: questions to find the hider's station, and which kinds a strong seeker uses (`--pace 8`, `SIM_RULES=…`; see `docs/question-balance.md`) |
+| `pnpm sim:endgame` | Balance check: how long the street search takes, with and without on-foot questions (see `docs/endgame-balance.md`) |
 | `pnpm typecheck` | `tsc --noEmit` in every package |
 | `pnpm lint` / `pnpm format` | Biome check / fix |
 

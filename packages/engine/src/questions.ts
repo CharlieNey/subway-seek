@@ -26,6 +26,17 @@ import type { TimetableIndex } from "./timetable.ts";
 import { lastStation, resolve, streetPoint, type Transit } from "./transit.ts";
 
 export const RADAR_MILES = [0.25, 0.5, 1, 2, 5] as const;
+/** Zone radius around the hider's station; their hiding spot is inside it. */
+export const ZONE_RADIUS_M = 400;
+/**
+ * On-foot questions are about the hider's exact spot, and only work near it: from
+ * further than this, every one of them answers "Not near you". (So a walking
+ * thermometer can't be fired from across the city to find the station.)
+ */
+export const ON_FOOT_RANGE_M = 600;
+export const SPOT_RADAR_METERS = [50, 100, 200] as const;
+/** A walking hotter/colder needs you to have moved at least this far since you started it. */
+export const FOOT_THERMOMETER_MIN_METERS = 30;
 /** A thermometer needs you to have moved at least this far since you started it. */
 export const THERMOMETER_MIN_METERS = 400;
 
@@ -48,7 +59,21 @@ export type Question =
   /** Of the ___ within TENTACLE_MILES of me, which is nearest your station? */
   | { kind: "tentacles"; landmark: LandmarkKind }
   /** A Street View view from the hider's station exit or their hiding spot. */
-  | { kind: "photo"; from: "exit" | "spot"; look: PhotoLook };
+  | { kind: "photo"; from: "exit" | "spot"; look: PhotoLook }
+  | SpotQuestion;
+
+/** On foot, about the hider's exact spot (asked standing on the street). */
+export type SpotQuestion =
+  /** Is your spot within this many meters of me? */
+  | { kind: "spotRadar"; meters: number }
+  /** Am I closer to your spot than where I started the walking thermometer? */
+  | { kind: "spotThermometer" };
+
+const SPOT_KINDS = new Set(["spotRadar", "spotThermometer"]);
+
+export function isSpotQuestion(q: Question): q is SpotQuestion {
+  return SPOT_KINDS.has(q.kind);
+}
 
 export type QuestionCategory =
   | "matching"
@@ -56,7 +81,8 @@ export type QuestionCategory =
   | "radar"
   | "thermometer"
   | "tentacles"
-  | "photo";
+  | "photo"
+  | "onFoot";
 
 export const QUESTION_CATEGORIES: readonly QuestionCategory[] = [
   "matching",
@@ -65,6 +91,7 @@ export const QUESTION_CATEGORIES: readonly QuestionCategory[] = [
   "thermometer",
   "tentacles",
   "photo",
+  "onFoot",
 ];
 
 export function categoryOf(q: Question): QuestionCategory {
@@ -77,6 +104,9 @@ export function categoryOf(q: Question): QuestionCategory {
     case "moreRoutes":
     case "measuring":
       return "measuring";
+    case "spotRadar":
+    case "spotThermometer":
+      return "onFoot";
     default:
       return q.kind;
   }
@@ -93,13 +123,15 @@ export interface Photo {
 /** Tentacles: the landmark nearest the hider, or null when they're out of range. */
 export type TentacleAnswer = { landmark: number | null };
 export type MapAnswer = boolean | "hotter" | "colder" | TentacleAnswer;
-export type Answer = MapAnswer | { photo: Photo };
+/** "far": the hider's spot is more than ON_FOOT_RANGE_M from you. */
+export type SpotAnswer = boolean | "hotter" | "colder" | "far";
+export type Answer = MapAnswer | SpotAnswer | { photo: Photo };
 
-/** Map questions narrow the candidate stations automatically; photos are for you to read. */
-export type MapQuestion = Exclude<Question, { kind: "photo" }>;
+/** Map questions narrow the candidate stations; photos are for you to read. */
+export type MapQuestion = Exclude<Question, { kind: "photo" } | SpotQuestion>;
 
 export function isMapQuestion(q: Question): q is MapQuestion {
-  return q.kind !== "photo";
+  return q.kind !== "photo" && !isSpotQuestion(q);
 }
 
 export function sameAnswer(a: Answer, b: Answer): boolean {
@@ -198,6 +230,37 @@ export function evaluate(
   }
 }
 
+type Point = { lat: number; lon: number };
+
+/** The answer if the hider's spot were at `p`. Asked from where the seeker stands. */
+export function evaluateSpot(q: SpotQuestion, p: Point, ctx: AskContext): SpotAnswer {
+  const d = distanceMeters(p, ctx.origin);
+  if (d > ON_FOOT_RANGE_M) return "far";
+  switch (q.kind) {
+    case "spotRadar":
+      return d <= q.meters;
+    case "spotThermometer": {
+      if (!ctx.baseline) throw new Error("thermometer without a baseline");
+      return d < distanceMeters(p, ctx.baseline) ? "hotter" : "colder";
+    }
+  }
+}
+
+/**
+ * Whether the hider's station could be complex `c` given an on-foot answer. The spot is
+ * within ZONE_RADIUS_M of the station, so "Not near you" rules out stations close to
+ * where you asked, and any other answer rules out those far from it.
+ */
+function stationFitsSpotAnswer(ds: Dataset, c: number, ctx: AskContext, answer: Answer) {
+  const station = ds.complexes[c];
+  if (!station) return false;
+  const d = distanceMeters(station, ctx.origin);
+  const slack = 5; // the server checks the zone with a flat-earth distance
+  return answer === "far"
+    ? d > ON_FOOT_RANGE_M - ZONE_RADIUS_M - slack
+    : d <= ON_FOOT_RANGE_M + ZONE_RADIUS_M + slack;
+}
+
 /** Why a question can't be asked right now, or null if it can. */
 export function questionError(ds: Dataset, q: Question, ctx: AskContext): string | null {
   switch (q.kind) {
@@ -224,6 +287,16 @@ export function questionError(ds: Dataset, q: Question, ctx: AskContext): string
       return LANDMARK_KINDS.includes(q.landmark) && ds.landmarks[q.landmark].length > 0
         ? null
         : "No such landmark.";
+    case "spotRadar":
+      return (SPOT_RADAR_METERS as readonly number[]).includes(q.meters)
+        ? null
+        : "Pick a distance.";
+    case "spotThermometer":
+      if (!ctx.baseline) return "Start the walking thermometer first, then walk.";
+      if (distanceMeters(ctx.baseline, ctx.origin) < FOOT_THERMOMETER_MIN_METERS) {
+        return `Walk at least ${FOOT_THERMOMETER_MIN_METERS} m before reading it.`;
+      }
+      return null;
     case "tentacles": {
       const miles = TENTACLE_MILES[q.landmark];
       if (miles === undefined) return "No such landmark.";
@@ -248,9 +321,14 @@ export function filterCandidates(
   candidates: readonly number[],
   asked: readonly Asked[],
 ) {
-  // Photos don't narrow anything automatically: they're for you to read.
+  // Photos don't narrow anything automatically: they're for you to read. On-foot
+  // answers only say roughly how far the station is (see stationFitsSpotAnswer).
   return candidates.filter((c) =>
-    asked.every((a) => !isMapQuestion(a.q) || sameAnswer(evaluate(ds, a.q, c, a.ctx), a.answer)),
+    asked.every((a) => {
+      if (isMapQuestion(a.q)) return sameAnswer(evaluate(ds, a.q, c, a.ctx), a.answer);
+      if (isSpotQuestion(a.q)) return stationFitsSpotAnswer(ds, c, a.ctx, a.answer);
+      return true;
+    }),
   );
 }
 
@@ -337,6 +415,10 @@ export function describeQuestion(q: Question, ds?: Dataset, ctx?: AskContext): s
       const n = ds && ctx ? landmarksWithin(ds, q.landmark, ctx.origin, miles).length : null;
       return `Of the ${n ?? ""}${n === null ? "" : " "}${words.many} within ${milesText(miles)} of me, which is nearest you?`;
     }
+    case "spotRadar":
+      return `Is your spot within ${q.meters} m of me?`;
+    case "spotThermometer":
+      return "Am I closer to your spot than where I started walking?";
     case "photo": {
       const where = q.from === "exit" ? "your station's exit" : "where you're hiding";
       const dir = { N: "north", E: "east", S: "south", W: "west", up: "up" }[q.look];
@@ -355,6 +437,7 @@ export function describeAnswer(a: Answer, q?: Question, ds?: Dataset): string {
     const name = q?.kind === "tentacles" ? ds?.landmarks[q.landmark][a.landmark]?.name : null;
     return name ?? "Answered";
   }
+  if (a === "far") return "Not near you";
   if (a === "hotter") return "Hotter";
   if (a === "colder") return "Colder";
   if (q?.kind === "measuring" || q?.kind === "moreRoutes") return a ? "Closer" : "No";
