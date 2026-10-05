@@ -6,6 +6,7 @@ import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useEffect, useRef } from "react";
 import { nowGameTime, useGame, type World } from "./game.ts";
+import { pathUntil, stepReplay, useReplay } from "./replay.ts";
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -133,6 +134,26 @@ export function MapView() {
     meEl.className =
       "h-4 w-4 rounded-full border-[3px] border-white bg-stone-900 shadow-[0_0_0_7px_rgba(17,24,39,0.18)]";
     const me = new maplibregl.Marker({ element: meEl }).setLngLat(TIMES_SQ).addTo(map);
+    // The bot hider, shown only during the replay.
+    const hiderEl = document.createElement("div");
+    hiderEl.className = "h-4 w-4 rounded-full border-[3px] border-white bg-red-600 shadow";
+    const hiderMarker = new maplibregl.Marker({ element: hiderEl }).setLngLat(TIMES_SQ);
+    // Frame both routes when a replay opens.
+    const unsubscribeReplay = useReplay.subscribe((r, prev) => {
+      if (!r.active || prev.active) return;
+      useGame.getState().setFollow(false);
+      const pts = [...r.hider, ...r.seeker].map((s) => s.p);
+      if (pts.length === 0) return;
+      const lons = pts.map((p) => p[0]);
+      const lats = pts.map((p) => p[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: 80, maxZoom: 15, duration: 600 },
+      );
+    });
 
     map.on("load", () => {
       map.addSource("lines", { type: "geojson", data: linesGeoJSON(world) });
@@ -246,12 +267,48 @@ export function MapView() {
           "circle-stroke-width": 1,
         },
       });
+      // Replay: both routes drawn up to replay time, plus where each question was asked.
+      map.addSource("replay-paths", { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "replay-paths",
+        type: "line",
+        source: "replay-paths",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": ["match", ["get", "who"], "hider", "#dc2626", "#111827"],
+          "line-width": 4,
+          "line-opacity": 0.85,
+        },
+      });
+      map.addSource("replay-events", { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "replay-events",
+        type: "symbol",
+        source: "replay-events",
+        layout: {
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 12,
+          "text-offset": [0, -1.4],
+          "text-allow-overlap": true,
+        },
+        paint: { "text-color": "#111827", "text-halo-color": "#ffffff", "text-halo-width": 2 },
+      });
       const trainsSource = map.getSource("trains") as maplibregl.GeoJSONSource;
+      const pathsSource = map.getSource("replay-paths") as maplibregl.GeoJSONSource;
+      const eventsSource = map.getSource("replay-events") as maplibregl.GeoJSONSource;
+      let lastFrame = performance.now();
+      let lastPaths = 0;
+      let shownEvents = -1;
       const tick = () => {
         raf = requestAnimationFrame(tick);
-        const t = nowGameTime();
-        if (t === null) return;
         const now = performance.now();
+        stepReplay(now - lastFrame);
+        lastFrame = now;
+        const replay = useReplay.getState();
+        // While replaying, the whole map (trains included) shows replay time.
+        const t = replay.active ? replay.t : nowGameTime();
+        if (t === null) return;
         if (now - lastTrains > 100) {
           lastTrains = now;
           const features: Feature<Point>[] = [];
@@ -267,6 +324,52 @@ export function MapView() {
             }
           }
           trainsSource.setData({ type: "FeatureCollection", features });
+        }
+        if (replay.active) {
+          const seekerPath = pathUntil(replay.seeker, t);
+          const hiderPath = pathUntil(replay.hider, t);
+          const seekerHead = seekerPath.at(-1);
+          const hiderHead = hiderPath.at(-1);
+          if (seekerHead) me.setLngLat(seekerHead);
+          if (hiderHead) hiderMarker.setLngLat(hiderHead).addTo(map);
+          if (now - lastPaths > 50) {
+            lastPaths = now;
+            pathsSource.setData({
+              type: "FeatureCollection",
+              features: (
+                [
+                  ["hider", hiderPath],
+                  ["seeker", seekerPath],
+                ] as const
+              )
+                .filter(([, path]) => path.length > 1)
+                .map(([who, path]) => ({
+                  type: "Feature",
+                  geometry: { type: "LineString", coordinates: path },
+                  properties: { who },
+                })),
+            });
+          }
+          const asked = replay.events.filter((e) => e.t <= t);
+          if (asked.length !== shownEvents) {
+            shownEvents = asked.length;
+            eventsSource.setData({
+              type: "FeatureCollection",
+              features: asked.map((e) => ({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: e.p },
+                properties: { label: e.label },
+              })),
+            });
+          }
+          return;
+        }
+        if (shownEvents !== -1) {
+          // Replay just closed: clear its layers.
+          shownEvents = -1;
+          hiderMarker.remove();
+          pathsSource.setData(EMPTY);
+          eventsSource.setData(EMPTY);
         }
         const { view, follow } = useGame.getState();
         if (view) {
@@ -315,7 +418,9 @@ export function MapView() {
     return () => {
       cancelAnimationFrame(raf);
       unsubscribe();
+      unsubscribeReplay();
       me.remove();
+      hiderMarker.remove();
       popup.remove();
       map.remove();
     };

@@ -18,6 +18,7 @@ const view = (over: Partial<SoloView>): SoloView => ({
   bonusSeconds: 0,
   result: null,
   hider: null,
+  replay: null,
   ...over,
 });
 const asked = (kind: "radar" | "borough") => ({

@@ -33,6 +33,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   ...transitIntentSchema.options,
   z.object({ type: z.literal("ask"), question: questionSchema }),
   z.object({ type: z.literal("startThermometer") }),
+  z.object({ type: z.literal("giveUp") }),
   z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),
 ]);
 

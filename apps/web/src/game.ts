@@ -17,6 +17,7 @@ import {
 } from "@stand-clear/engine";
 import { create } from "zustand";
 import { type DailyResult, loadResults, saveResult } from "./history.ts";
+import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:8787";
@@ -34,8 +35,8 @@ interface GameStore {
   sync: ClockSync | null;
   view: SoloView | null;
   tab: "travel" | "ask";
-  /** This daily was already finished in this browser: a replay doesn't count. */
-  replay: boolean;
+  /** This daily was already finished in this browser: playing it again doesn't count. */
+  alreadyPlayed: boolean;
   results: Record<string, DailyResult>;
   /** Last rejection, shown as a toast. */
   notice: string | null;
@@ -60,7 +61,7 @@ export const useGame = create<GameStore>((set) => ({
   sync: null,
   view: null,
   tab: "travel",
-  replay: false,
+  alreadyPlayed: false,
   results: loadResults(),
   notice: null,
   busy: false,
@@ -83,12 +84,12 @@ export function nowGameTime(): number | null {
   return sync ? syncedGameTime(sync, Date.now()) : null;
 }
 
-/** Bookkeeping when a round's view arrives: replay flag at the start, history at the end. */
+/** Bookkeeping when a round's view arrives: already-played flag at the start, history at the end. */
 function onView(view: SoloView): Partial<GameStore> {
   if (!view.result) {
-    return { replay: !!(view.daily && loadResults()[view.daily.date]) };
+    return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
-  if (view.daily && !useGame.getState().replay) saveResult(view, shareText(view));
+  if (view.daily && !useGame.getState().alreadyPlayed) saveResult(view, shareText(view));
   return { results: loadResults() };
 }
 
@@ -101,6 +102,7 @@ function handle(msg: ServerMessage) {
       // A fresh round: follow the seeker again.
       const fresh = awaitingNewRound;
       awaitingNewRound = false;
+      if (fresh) useReplay.getState().close();
       useGame.setState({
         sync: msg.clock,
         view: msg.view,

@@ -16,8 +16,9 @@ import {
   questionError,
   questionOrigin,
 } from "./questions.ts";
-import { reachableComplexes } from "./reach.ts";
+import { earliestJourney, reachableComplexes } from "./reach.ts";
 import type { TimetableIndex } from "./timetable.ts";
+import { type TrailEntry, trailFromLegs } from "./trail.ts";
 import { applyIntent, resolve, type Transit, type TransitIntent } from "./transit.ts";
 
 export const HIDE_SECONDS = 20 * 60;
@@ -31,7 +32,10 @@ export interface AskedQuestion extends Asked {
   remaining: number;
 }
 
-export type RoundResult = { kind: "found"; at: number } | { kind: "timeout"; at: number };
+export type RoundResult =
+  | { kind: "found"; at: number }
+  | { kind: "timeout"; at: number }
+  | { kind: "gaveUp"; at: number };
 
 export type RoundMode = "daily" | "practice";
 
@@ -53,12 +57,17 @@ export interface SoloRound {
   thermometer: Place | null;
   cooldownUntil: number;
   result: RoundResult | null;
+  /** The bot's route to its hiding station (secret until the round ends). */
+  hiderTrail: TrailEntry[];
+  /** Every move the seeker made, for the replay. */
+  seekerTrail: TrailEntry[];
 }
 
 export type SoloIntent =
   | TransitIntent
   | { type: "ask"; question: Question }
-  | { type: "startThermometer" };
+  | { type: "startThermometer" }
+  | { type: "giveUp" };
 
 export function createSoloRound(
   idx: TimetableIndex,
@@ -73,6 +82,15 @@ export function createSoloRound(
   const reachable = reachableComplexes(idx, hub, hideStart, seekStart);
   if (reachable.length === 0) throw new Error("hider can't reach anywhere");
   const hider = reachable[Math.floor(random() * reachable.length)] as number;
+  // The bot takes the fastest route there; the replay shows it once the round is over.
+  const targets = idx.ds.complexes[hider]?.stations ?? [];
+  const legs = earliestJourney(idx, hub, hideStart, seekStart, targets) ?? [];
+  const hubPlatform = {
+    kind: "platform" as const,
+    station: hub,
+    since: hideStart,
+    arrivedDir: null,
+  };
   return {
     mode: daily ? "daily" : "practice",
     daily,
@@ -87,6 +105,9 @@ export function createSoloRound(
     thermometer: null,
     cooldownUntil: seekStart,
     result: null,
+    hiderTrail: trailFromLegs(idx, hub, hideStart, legs),
+    // The seeker waits at the start while the bot hides.
+    seekerTrail: [{ t: hideStart, state: hubPlatform }],
   };
 }
 
@@ -147,12 +168,18 @@ export function applySoloIntent(
         },
       };
     }
+    case "giveUp":
+      return { ok: true, round: { ...round, result: { kind: "gaveUp", at: t } } };
     case "startThermometer":
       return { ok: true, round: { ...round, thermometer: questionOrigin(round.seeker, t, idx) } };
     default: {
       const moved = applyIntent(round.seeker, intent, t, idx);
       if (!moved.ok) return moved;
-      return { ok: true, round: advanceSolo({ ...round, seeker: moved.state }, t, idx) };
+      const seekerTrail = [...round.seekerTrail, { t, state: moved.state }];
+      return {
+        ok: true,
+        round: advanceSolo({ ...round, seeker: moved.state, seekerTrail }, t, idx),
+      };
     }
   }
 }
@@ -183,6 +210,8 @@ export interface SoloView {
   result: RoundResult | null;
   /** Only once the round is over. */
   hider: number | null;
+  /** Both routes, for the end-of-round replay — only once the round is over. */
+  replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
 }
 
 export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
@@ -202,5 +231,6 @@ export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
     bonusSeconds: bonusSeconds(round),
     result: round.result,
     hider: round.result ? round.hider : null,
+    replay: round.result ? { hider: round.hiderTrail, seeker: round.seekerTrail } : null,
   };
 }

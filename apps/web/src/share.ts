@@ -25,10 +25,13 @@ export function shareText(view: SoloView): string {
   const elapsed = view.result.at - view.seekStart;
   const n = view.asked.length;
   const title = view.daily ? `Stand Clear #${view.daily.number}` : "Stand Clear (practice)";
+  const qs = `${n} ${n === 1 ? "question" : "questions"}`;
   const line =
     view.result.kind === "found"
-      ? `Found it in ${formatMinutes(elapsed)} · ${n} ${n === 1 ? "question" : "questions"}`
-      : `Didn't find it in ${formatMinutes(elapsed)} · ${n} ${n === 1 ? "question" : "questions"}`;
+      ? `Found it in ${formatMinutes(elapsed)} · ${qs}`
+      : view.result.kind === "gaveUp"
+        ? `Gave up after ${formatMinutes(elapsed)} · ${qs}`
+        : `Didn't find it in ${formatMinutes(elapsed)} · ${qs}`;
   const trail = view.asked.map((a) => EMOJI[a.q.kind]).join("");
   return [`${title} 🚇`, line, trail, `Hider score: ${formatMinutes(elapsed + view.bonusSeconds)}`]
     .filter(Boolean)

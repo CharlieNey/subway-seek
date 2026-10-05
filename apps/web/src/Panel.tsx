@@ -3,6 +3,7 @@ import { AskPanel, QuestionLog } from "./AskPanel.tsx";
 import { cn } from "./cn.ts";
 import { useGame, type World } from "./game.ts";
 import { dailyStats } from "./history.ts";
+import { useReplay } from "./replay.ts";
 import { formatMinutes, shareText } from "./share.ts";
 import { TravelPanel } from "./TravelPanel.tsx";
 import { ActionButton, Bullets, routesFor } from "./ui.tsx";
@@ -16,22 +17,38 @@ const formatDay = (date: string) =>
   });
 
 function RoundBar({ t }: { t: number }) {
-  const view = useGame((s) => s.view);
+  const { view, send, busy } = useGame();
   if (!view || view.result) return null;
   const left = Math.max(0, view.seekEnd - t);
+  const giveUp = () => {
+    const note = view.daily ? " It counts as not found for today." : "";
+    if (window.confirm(`Give up and see where the hider was?${note}`)) send({ type: "giveUp" });
+  };
   return (
-    <div className="mx-4 mb-3 grid grid-cols-3 gap-2 rounded-lg bg-stone-100 px-3 py-2 text-center">
-      <div>
-        <div className="text-lg font-semibold tabular-nums">{view.candidates.length}</div>
-        <div className="text-[11px] text-stone-500">stations possible</div>
+    <div className="mx-4 mb-3">
+      <div className="grid grid-cols-3 gap-2 rounded-lg bg-stone-100 px-3 py-2 text-center">
+        <div>
+          <div className="text-lg font-semibold tabular-nums">{view.candidates.length}</div>
+          <div className="text-[11px] text-stone-500">stations possible</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold tabular-nums">{formatMinutes(left)}</div>
+          <div className="text-[11px] text-stone-500">left to find it</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold tabular-nums">+{view.bonusSeconds / 60}</div>
+          <div className="text-[11px] text-stone-500">hider bonus (min)</div>
+        </div>
       </div>
-      <div>
-        <div className="text-lg font-semibold tabular-nums">{formatMinutes(left)}</div>
-        <div className="text-[11px] text-stone-500">left to find it</div>
-      </div>
-      <div>
-        <div className="text-lg font-semibold tabular-nums">+{view.bonusSeconds / 60}</div>
-        <div className="text-[11px] text-stone-500">hider bonus (min)</div>
+      <div className="mt-1 text-right">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={giveUp}
+          className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-stone-800"
+        >
+          Give up
+        </button>
       </div>
     </div>
   );
@@ -69,7 +86,7 @@ function ShareButton() {
 }
 
 function ResultCard({ world }: { world: World }) {
-  const { view, busy, results, replay } = useGame();
+  const { view, busy, results, alreadyPlayed } = useGame();
   const newRound = useNewRound();
   if (!view?.result || view.hider === null) return null;
   const hider = world.ds.complexes[view.hider];
@@ -80,7 +97,7 @@ function ResultCard({ world }: { world: World }) {
     <div className={cn("mx-4 mb-3 rounded-lg px-4 py-3", found ? "bg-amber-50" : "bg-stone-100")}>
       <div className="text-lg font-semibold">
         {view.daily ? `Daily #${view.daily.number}: ` : ""}
-        {found ? "Found it!" : "Time's up"}
+        {found ? "Found it!" : view.result.kind === "gaveUp" ? "You gave up" : "Time's up"}
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
         The hider was at <span className="font-semibold">{hider?.name}</span>
@@ -104,12 +121,17 @@ function ResultCard({ world }: { world: World }) {
       </dl>
       {view.daily && (
         <p className="mt-2 text-xs text-stone-600">
-          {replay
-            ? "Replay: your first result today is the one that counts."
+          {alreadyPlayed
+            ? "Played again: your first result today is the one that counts."
             : `Daily stats: ${stats.played} played · ${stats.found} found · streak ${stats.streak}`}
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {view.replay && (
+          <ActionButton onClick={() => useReplay.getState().open(world, view)}>
+            Watch replay
+          </ActionButton>
+        )}
         <ShareButton />
         <ActionButton quiet disabled={busy} onClick={() => newRound("practice")}>
           {view.daily ? "Practice round" : "Play again"}
@@ -148,14 +170,14 @@ function Tabs() {
 }
 
 function ModeLine() {
-  const { view, busy, replay } = useGame();
+  const { view, busy, alreadyPlayed } = useGame();
   const newRound = useNewRound();
   if (!view) return <div className="text-xs text-stone-500">Find the hider's station</div>;
   return (
     <div className="flex items-center gap-1.5 text-xs text-stone-500">
       <span>
         {view.daily
-          ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${replay ? " · replay" : ""}`
+          ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
           : "Practice round"}
       </span>
       {!view.result && (
@@ -173,7 +195,7 @@ function ModeLine() {
 }
 
 export function Panel() {
-  const { status, error, world, view, notice, dismissNotice, tab, replay } = useGame();
+  const { status, error, world, view, notice, dismissNotice, tab, alreadyPlayed } = useGame();
   const t = useGameTime(4);
   const ready = status === "ready" && world && view && t !== null;
 
@@ -191,9 +213,9 @@ export function Panel() {
           </div>
         )}
       </header>
-      {ready && replay && !view.result && (
+      {ready && alreadyPlayed && !view.result && (
         <p className="mx-4 mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-600">
-          You've already played today's challenge. This replay won't change your result.
+          You've already played today's challenge. Playing again won't change your result.
         </p>
       )}
       {ready && <RoundBar t={t} />}

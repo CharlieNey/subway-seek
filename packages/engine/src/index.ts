@@ -6,4 +6,5 @@ export * from "./questions.ts";
 export * from "./reach.ts";
 export * from "./solo.ts";
 export * from "./timetable.ts";
+export * from "./trail.ts";
 export * from "./transit.ts";
