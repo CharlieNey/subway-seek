@@ -12,6 +12,7 @@ import {
   evaluate,
   filterCandidates,
   type Place,
+  photoCamera,
   type Question,
   questionError,
   questionOrigin,
@@ -34,6 +35,10 @@ export const HIDE_SECONDS = 20 * 60;
 export const SEEK_LIMIT_SECONDS = 2 * 3600;
 export const QUESTION_COOLDOWN_SECONDS = 5 * 60;
 export const QUESTION_BONUS_SECONDS = 10 * 60;
+/** Photos can give away a lot, so they cost more. */
+export const PHOTO_BONUS_SECONDS = 15 * 60;
+/** Photos from the hiding spot open this long into the round. */
+export const SPOT_PHOTOS_OPEN_SECONDS = 15 * 60;
 /** Zone radius around the hider's station; the hiding spot is inside it. */
 export const ZONE_RADIUS_M = 400;
 /** You catch the hider by clicking their marker from within this distance. */
@@ -90,6 +95,8 @@ export interface SoloRound {
   spot: HidingSpot | null;
   /** When the seeker first stood in the hider's station: the endgame starts. */
   stationFoundAt: number | null;
+  /** The panorama outside one exit of the hider's station, for "photo from your exit". */
+  photoExit: string | null;
 }
 
 export type SoloIntent =
@@ -140,6 +147,7 @@ export function createSoloRound(
     seekerTrail: [{ t: hideStart, state: hubPlatform }],
     spot: null,
     stationFoundAt: null,
+    photoExit: null,
   };
 }
 
@@ -251,9 +259,20 @@ export function applySoloIntent(
         origin: questionOrigin(round.seeker, t, idx),
         baseline: intent.question.kind === "thermometer" ? round.thermometer : null,
       };
-      const error = questionError(idx.ds, intent.question, ctx);
-      if (error) return { ok: false, error };
-      const answer: Answer = evaluate(idx.ds, intent.question, round.hider, ctx);
+      const q = intent.question;
+      let answer: Answer;
+      if (q.kind === "photo") {
+        const pano = q.from === "exit" ? round.photoExit : round.spot?.pano;
+        if (!pano) return { ok: false, error: "No photo available for this round." };
+        if (q.from === "spot" && t < round.seekStart + SPOT_PHOTOS_OPEN_SECONDS) {
+          return { ok: false, error: "Photos from the hiding spot open 15 min into the round." };
+        }
+        answer = { photo: photoCamera(pano, q.look) };
+      } else {
+        const error = questionError(idx.ds, q, ctx);
+        if (error) return { ok: false, error };
+        answer = evaluate(idx.ds, q, round.hider, ctx);
+      }
       const entry: Asked = { q: intent.question, ctx, answer };
       const remaining = filterCandidates(idx.ds, round.reachable, [...round.asked, entry]).length;
       return {
@@ -294,7 +313,10 @@ export function candidates(round: SoloRound, idx: TimetableIndex): number[] {
 }
 
 export function bonusSeconds(round: SoloRound): number {
-  return round.asked.length * QUESTION_BONUS_SECONDS;
+  return round.asked.reduce(
+    (sum, a) => sum + (a.q.kind === "photo" ? PHOTO_BONUS_SECONDS : QUESTION_BONUS_SECONDS),
+    0,
+  );
 }
 
 /** What the seeker may see: everything except the hider, until the round ends. */

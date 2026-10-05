@@ -7,6 +7,7 @@ const EMOJI: Record<Question["kind"], string> = {
   borough: "🗽",
   express: "⚡",
   moreRoutes: "➕",
+  photo: "📸",
 };
 
 export function formatMinutes(seconds: number): string {

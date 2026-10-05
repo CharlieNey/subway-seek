@@ -30,6 +30,11 @@ export const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("borough") }),
   z.object({ kind: z.literal("express") }),
   z.object({ kind: z.literal("moreRoutes") }),
+  z.object({
+    kind: z.literal("photo"),
+    from: z.enum(["exit", "spot"]),
+    look: z.enum(["N", "E", "S", "W", "up"]),
+  }),
 ]);
 
 export type NewRoundIntent = { type: "newRound"; mode: RoundMode };

@@ -16,15 +16,41 @@ export const RADAR_MILES = [0.25, 0.5, 1, 2, 5] as const;
 export const THERMOMETER_MIN_METERS = 400;
 const METERS_PER_MILE = 1609.344;
 
+export type PhotoLook = "N" | "E" | "S" | "W" | "up";
+export const PHOTO_LOOKS: readonly PhotoLook[] = ["N", "E", "S", "W", "up"];
+
 export type Question =
   | { kind: "radar"; miles: number }
   | { kind: "thermometer" }
   | { kind: "route"; letter: string }
   | { kind: "borough" }
   | { kind: "express" }
-  | { kind: "moreRoutes" };
+  | { kind: "moreRoutes" }
+  /** A Street View view from the hider's station exit or their hiding spot. */
+  | { kind: "photo"; from: "exit" | "spot"; look: PhotoLook };
 
-export type Answer = boolean | "hotter" | "colder";
+/** A Street View view: which panorama, and where the camera points. */
+export interface Photo {
+  pano: string;
+  heading: number;
+  pitch: number;
+  fov: number;
+}
+
+export type Answer = boolean | "hotter" | "colder" | { photo: Photo };
+
+/** Map questions narrow the candidate stations automatically; photos are for you to read. */
+export type MapQuestion = Exclude<Question, { kind: "photo" }>;
+
+export function isMapQuestion(q: Question): q is MapQuestion {
+  return q.kind !== "photo";
+}
+
+/** The camera for a photo: a compass direction at eye level, or straight up-ish. */
+export function photoCamera(pano: string, look: PhotoLook): Photo {
+  const heading = { N: 0, E: 90, S: 180, W: 270, up: 0 }[look];
+  return { pano, heading, pitch: look === "up" ? 55 : 5, fov: 90 };
+}
 
 export interface Place {
   lat: number;
@@ -51,7 +77,12 @@ export function distanceMeters(a: { lat: number; lon: number }, b: { lat: number
 }
 
 /** The answer if the hider were at complex `candidate`. */
-export function evaluate(ds: Dataset, q: Question, candidate: number, ctx: AskContext): Answer {
+export function evaluate(
+  ds: Dataset,
+  q: MapQuestion,
+  candidate: number,
+  ctx: AskContext,
+): boolean | "hotter" | "colder" {
   const c = ds.complexes[candidate];
   const mine = ds.complexes[ctx.origin.complex];
   if (!c || !mine) throw new Error("unknown complex");
@@ -106,7 +137,10 @@ export function filterCandidates(
   candidates: readonly number[],
   asked: readonly Asked[],
 ) {
-  return candidates.filter((c) => asked.every((a) => evaluate(ds, a.q, c, a.ctx) === a.answer));
+  // Photos don't narrow anything automatically: they're for you to read.
+  return candidates.filter((c) =>
+    asked.every((a) => !isMapQuestion(a.q) || evaluate(ds, a.q, c, a.ctx) === a.answer),
+  );
 }
 
 /** Where questions are asked from, given the seeker's movement state at time t. */
@@ -155,10 +189,16 @@ export function describeQuestion(q: Question, ds?: Dataset): string {
       return "Do express trains stop at your station?";
     case "moreRoutes":
       return "Do more routes stop at your station than at mine?";
+    case "photo": {
+      const where = q.from === "exit" ? "your station's exit" : "where you're hiding";
+      const dir = { N: "north", E: "east", S: "south", W: "west", up: "up" }[q.look];
+      return `Photo from ${where}, looking ${dir}`;
+    }
   }
 }
 
 export function describeAnswer(a: Answer): string {
+  if (typeof a === "object") return "Photo";
   if (a === "hotter") return "Hotter";
   if (a === "colder") return "Colder";
   return a ? "Yes" : "No";

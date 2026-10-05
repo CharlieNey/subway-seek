@@ -18,7 +18,7 @@ interface Metadata {
   location?: { lat: number; lng: number };
 }
 
-async function nearestPano(lat: number, lon: number): Promise<HidingSpot | null> {
+export async function nearestPano(lat: number, lon: number): Promise<HidingSpot | null> {
   const url =
     `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lon}` +
     `&radius=40&source=outdoor&key=${KEY}`;
@@ -50,6 +50,35 @@ export async function pickSpot(
       if (spot && metersBetween(c, spot) <= ZONE_RADIUS_M) return spot;
     } catch (err) {
       console.warn(`spot lookup failed: ${String(err)}`);
+    }
+  }
+  return null;
+}
+
+/**
+ * The panorama just outside one exit of the complex (picked with `random`), used to
+ * answer "photo from your station's exit". Null when there's no key or no imagery.
+ */
+export async function pickExitPano(
+  ds: Dataset,
+  complex: number,
+  random: () => number,
+): Promise<string | null> {
+  const c = ds.complexes[complex];
+  if (!KEY || !c || c.exits.length === 0) return null;
+  // Fisher–Yates with the round's random source (deterministic for the daily).
+  const order = [...c.exits.keys()];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j] as number, order[i] as number];
+  }
+  for (const i of order.slice(0, 4)) {
+    const [lat, lon] = c.exits[i] ?? [c.lat, c.lon];
+    try {
+      const p = await nearestPano(lat, lon);
+      if (p) return p.pano;
+    } catch (err) {
+      console.warn(`exit panorama lookup failed: ${String(err)}`);
     }
   }
   return null;

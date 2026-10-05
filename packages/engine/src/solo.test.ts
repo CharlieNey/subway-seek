@@ -5,8 +5,8 @@ import {
   type AskContext,
   evaluate,
   filterCandidates,
+  type MapQuestion,
   type Place,
-  type Question,
   questionError,
   RADAR_MILES,
 } from "./questions.ts";
@@ -104,7 +104,7 @@ describe("questions", () => {
 
   it("never rules out the hider, whatever is asked", () => {
     const reach = reachableComplexes(idx, station("127"), TEN, TEN + HIDE_SECONDS);
-    const pool: Question[] = [
+    const pool: MapQuestion[] = [
       ...RADAR_MILES.map((miles) => ({ kind: "radar" as const, miles })),
       ...["1", "A", "L", "7", "Q", "4"].map((letter) => ({ kind: "route" as const, letter })),
       { kind: "borough" },

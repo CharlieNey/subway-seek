@@ -2,19 +2,32 @@ import type { Route } from "@stand-clear/data";
 import {
   describeAnswer,
   describeQuestion,
+  PHOTO_BONUS_SECONDS,
+  PHOTO_LOOKS,
+  type PhotoLook,
   QUESTION_BONUS_SECONDS,
   type Question,
   questionError,
   questionOrigin,
   RADAR_MILES,
+  SPOT_PHOTOS_OPEN_SECONDS,
 } from "@stand-clear/engine";
+import { useState } from "react";
 import { cn } from "./cn.ts";
 import { useGame, type World } from "./game.ts";
 import { RouteBullet } from "./RouteBullet.tsx";
+import { photoUrl } from "./street.ts";
 import { ActionButton, Section } from "./ui.tsx";
 import { formatClock } from "./useGameTime.ts";
 
 const radarLabel = (m: number) => (m === 0.25 ? "¼ mi" : m === 0.5 ? "½ mi" : `${m} mi`);
+const LOOK_LABEL: Record<PhotoLook, string> = {
+  N: "North",
+  E: "East",
+  S: "South",
+  W: "West",
+  up: "Up",
+};
 
 const FACTS = [
   { kind: "borough", label: "In the same borough as me?" },
@@ -125,6 +138,50 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
         </ul>
       </Section>
 
+      <Section title={`Photos (+${PHOTO_BONUS_SECONDS / 60} min each)`}>
+        <p className="mb-2 text-sm text-stone-600">
+          A Street View photo, looking the way you choose.
+        </p>
+        <div className="space-y-2">
+          <div>
+            <div className="mb-1 text-xs text-stone-500">From their station's exit</div>
+            <div className="flex flex-wrap gap-1.5">
+              {PHOTO_LOOKS.map((look) => (
+                <ActionButton
+                  key={look}
+                  quiet
+                  disabled={blocked}
+                  onClick={() => ask({ kind: "photo", from: "exit", look })}
+                >
+                  {LOOK_LABEL[look]}
+                </ActionButton>
+              ))}
+            </div>
+          </div>
+          {view.hasSpot && (
+            <div>
+              <div className="mb-1 text-xs text-stone-500">
+                From where they're hiding
+                {t < view.seekStart + SPOT_PHOTOS_OPEN_SECONDS &&
+                  ` · opens at ${formatClock(view.seekStart + SPOT_PHOTOS_OPEN_SECONDS).slice(0, 5)}`}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PHOTO_LOOKS.map((look) => (
+                  <ActionButton
+                    key={look}
+                    quiet
+                    disabled={blocked || t < view.seekStart + SPOT_PHOTOS_OPEN_SECONDS}
+                    onClick={() => ask({ kind: "photo", from: "spot", look })}
+                  >
+                    {LOOK_LABEL[look]}
+                  </ActionButton>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
+
       <QuestionLog world={world} />
     </>
   );
@@ -132,12 +189,14 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
 
 export function QuestionLog({ world }: { world: World }) {
   const view = useGame((s) => s.view);
+  const [enlarged, setEnlarged] = useState<string | null>(null);
   if (!view || view.asked.length === 0) return null;
   return (
     <Section title={`Asked (${view.asked.length})`}>
       <ol className="space-y-2.5">
         {[...view.asked].reverse().map((a) => {
           const positive = a.answer === true || a.answer === "hotter";
+          const photo = typeof a.answer === "object" ? photoUrl(a.answer.photo) : null;
           return (
             <li key={a.at} className="text-sm">
               <div className="flex items-start gap-2">
@@ -151,6 +210,19 @@ export function QuestionLog({ world }: { world: World }) {
                   {describeAnswer(a.answer)}
                 </span>
               </div>
+              {photo && (
+                <button
+                  type="button"
+                  className="mt-1.5 block w-full"
+                  onClick={() => setEnlarged(photo)}
+                >
+                  <img
+                    src={photo}
+                    alt="Street View from the hider, as asked"
+                    className="w-full rounded-md"
+                  />
+                </button>
+              )}
               <div className="text-xs text-stone-500">
                 {formatClock(a.at).slice(0, 5)} from{" "}
                 {world.ds.complexes[a.ctx.origin.complex]?.name} · {a.remaining}{" "}
@@ -160,6 +232,19 @@ export function QuestionLog({ world }: { world: World }) {
           );
         })}
       </ol>
+      {enlarged && (
+        <button
+          type="button"
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/70 p-6"
+          onClick={() => setEnlarged(null)}
+        >
+          <img
+            src={enlarged}
+            alt="Street View from the hider, as asked"
+            className="max-h-full max-w-full rounded-lg"
+          />
+        </button>
+      )}
     </Section>
   );
 }

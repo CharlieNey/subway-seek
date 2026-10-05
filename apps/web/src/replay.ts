@@ -39,6 +39,7 @@ const QUESTION_NAME: Record<string, string> = {
   borough: "Borough",
   express: "Express",
   moreRoutes: "More routes",
+  photo: "Photo",
 };
 
 export const useReplay = create<ReplayStore>((set, get) => ({

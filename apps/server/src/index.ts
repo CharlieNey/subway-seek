@@ -29,7 +29,7 @@ import {
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
 import { MatchLog } from "./matchLog.ts";
-import { pickSpot } from "./spot.ts";
+import { pickExitPano, pickSpot } from "./spot.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -73,6 +73,8 @@ async function newRound(
   const spotRandom = mode === "daily" ? dailyRandom(`${date}|spot`, DAILY_SECRET) : Math.random;
   const spot = await pickSpot(dataset, round.hider, spotRandom);
   if (spot) round = placeHider(round, spot, idx);
+  // The view outside one of its exits, for "photo from your station's exit".
+  round = { ...round, photoExit: await pickExitPano(dataset, round.hider, spotRandom) };
   const log = new MatchLog();
   log.write("round_start", {
     mode,
@@ -80,6 +82,7 @@ async function newRound(
     hub: dataset.stations[hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
     spot: spot ? { lat: spot.lat, lon: spot.lon } : null,
+    photoExit: round.photoExit !== null,
     reachable: round.reachable.length,
     seekStart: round.seekStart,
   });

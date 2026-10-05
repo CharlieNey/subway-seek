@@ -3,9 +3,9 @@
  * displaying a panorama is billed per StreetViewPanorama created, so the game creates
  * one and reuses it (StreetView.tsx).
  */
-import { resolve, type SoloView } from "@stand-clear/engine";
+import { type Photo, resolve, type SoloView } from "@stand-clear/engine";
 import { nowGameTime, useGame, type World } from "./game.ts";
-import { loadGoogleMaps } from "./map/loadGoogle.ts";
+import { GOOGLE_MAPS_KEY, loadGoogleMaps } from "./map/loadGoogle.ts";
 
 export interface PanoPoint {
   pano: string;
@@ -87,3 +87,21 @@ export async function walkToward(lat: number, lon: number): Promise<void> {
 
 if (import.meta.env.DEV)
   (window as unknown as { __walkToward: typeof walkToward }).__walkToward = walkToward;
+
+/**
+ * A photo answer as a Street View Static image, loaded straight from Google with the
+ * browser key (billed per image; capped at 300/day). 640×400 is the free-tier max width;
+ * the same URL serves the thumbnail and the full view, so the browser fetches it once.
+ */
+export function photoUrl(p: Photo): string {
+  const q = new URLSearchParams({
+    size: "640x400",
+    pano: p.pano,
+    heading: String(p.heading),
+    pitch: String(p.pitch),
+    fov: String(p.fov),
+    source: "outdoor",
+    key: GOOGLE_MAPS_KEY ?? "",
+  });
+  return `https://maps.googleapis.com/maps/api/streetview?${q}`;
+}

@@ -6,6 +6,7 @@ import { Geometry } from "./geometry.ts";
 import {
   advanceSolo,
   applySoloIntent,
+  bonusSeconds,
   createSoloRound,
   type HidingSpot,
   placeHider,
@@ -147,5 +148,37 @@ describe("the Street View endgame", () => {
       },
     };
     expect(applySoloIntent(walking, { type: "catch" }, t, idx).ok).toBe(false);
+  });
+});
+
+describe("photo questions", () => {
+  const ask = (round: SoloRound, from: "exit" | "spot", t: number) =>
+    applySoloIntent(round, { type: "ask", question: { kind: "photo", from, look: "N" } }, t, idx);
+
+  it("answers from the station exit with a camera looking the asked way, without narrowing", () => {
+    const base = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
+    const round: SoloRound = { ...base, photoExit: "exit-pano" };
+    const r = ask(round, "exit", round.seekStart);
+    if (!r.ok) throw new Error(r.error);
+    const a = r.round.asked[0];
+    expect(a?.answer).toEqual({ photo: { pano: "exit-pano", heading: 0, pitch: 5, fov: 90 } });
+    expect(a?.remaining).toBe(round.reachable.length);
+    expect(bonusSeconds(r.round)).toBe(15 * 60);
+  });
+
+  it("opens photos from the hiding spot 15 minutes into the round", () => {
+    const base = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
+    const c = ds.complexes[base.hider];
+    if (!c) throw new Error("complex");
+    const round = placeHider(base, { ...east(c.lat, c.lon, 100), pano: "spot-pano" }, idx);
+    expect(ask(round, "spot", round.seekStart + 60).ok).toBe(false);
+    const r = ask(round, "spot", round.seekStart + 15 * 60);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.round.asked[0]?.answer).toMatchObject({ photo: { pano: "spot-pano" } });
+  });
+
+  it("has no photo when the round has no exit panorama", () => {
+    const round = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
+    expect(ask(round, "exit", round.seekStart).ok).toBe(false);
   });
 });

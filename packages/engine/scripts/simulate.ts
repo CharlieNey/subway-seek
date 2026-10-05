@@ -18,9 +18,9 @@ import {
   distanceMeters,
   evaluate,
   HIDE_SECONDS,
+  type MapQuestion,
   type Place,
   QUESTION_BONUS_SECONDS,
-  type Question,
   questionError,
   RADAR_MILES,
   reachableComplexes,
@@ -40,15 +40,15 @@ const hubPlace = placeOf(ds.stations[hub]?.complex as number);
 const letters = [...new Set(reach.flatMap((c) => ds.complexes[c]?.routes ?? []))].sort();
 const MAX_QUESTIONS = 15;
 
-function pool(origin: Place, baseline: Place | null): { q: Question; ctx: Asked["ctx"] }[] {
-  const plain: Question[] = [
+function pool(origin: Place, baseline: Place | null): { q: MapQuestion; ctx: Asked["ctx"] }[] {
+  const plain: MapQuestion[] = [
     ...RADAR_MILES.map((miles) => ({ kind: "radar" as const, miles })),
     ...letters.map((letter) => ({ kind: "route" as const, letter })),
     { kind: "borough" },
     { kind: "express" },
     { kind: "moreRoutes" },
   ];
-  const out: { q: Question; ctx: Asked["ctx"] }[] = plain.map((q) => ({
+  const out: { q: MapQuestion; ctx: Asked["ctx"] }[] = plain.map((q) => ({
     q,
     ctx: { origin, baseline: null },
   }));
@@ -89,7 +89,7 @@ function play(hider: number, moving: boolean): Run {
   const curve: number[] = [];
   let toThree: number | null = cands.length <= 3 ? 0 : null;
   for (let n = 1; n <= MAX_QUESTIONS && cands.length > 1; n++) {
-    let best: { q: Question; ctx: Asked["ctx"]; score: number } | null = null;
+    let best: { q: MapQuestion; ctx: Asked["ctx"]; score: number } | null = null;
     for (const { q, ctx } of pool(origin, baseline)) {
       const parts = new Map<string, number>();
       for (const c of cands) {

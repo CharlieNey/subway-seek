@@ -296,7 +296,7 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 | M2 ✅ | **Questions vs a bot hider** | Single-player: a bot hides at a random reachable station; the six MVP questions are answered automatically; the map shades ruled-out stations. **Simulate question partitions over the reachable set** (average questions to find the station) and set prices from it. *Finding the station is fun on its own.* *Done 2026-10-05: `pnpm sim`; 46 tests; a played round found Borough Hall in 32 min with 2 questions.* |
 | M3 | **Two-player round, map endgame** | Room with hider + seeker; Phase 1 → 2 → 3; the hider watches the seeker; Hide here + auto-freeze; the hider drops a map pin in the zone, catch = seeker's pin within 25 m; minimal cards (time bonuses + Veto); reconnects; score + swap |
 | M4 ◐ | **Street View endgame** | 15–30 curated hide-eligible zones with connected panorama graphs; "walk to"; catch along the graph; fallback to the map endgame on load failure. *Solo version done 2026-10-05: the bot hides at a real Street View spot (server-side metadata lookup) within 400 m of its station; finding the station starts the endgame (recorded, not revealed); you walk by direction buttons or map clicks at 1.4 m/s; the marker appears within 40 m; catch within 25 m. Verified end to end on Daily #1 (station at 27 min, caught at 35). Simplifications for solo: moves are speed-checked rather than validated against a curated panorama graph, and the catch is straight-line. The multiplayer version still needs the curated zones.* |
-| M5 | **Photos** | Station photos (any exit, any time) and spot photos (fixed open time), server-rendered with no metadata; answer timer |
+| M5 ◐ | **Photos** | Station photos (any exit, any time) and spot photos (fixed open time), server-rendered with no metadata; answer timer. *Solo version done 2026-10-05: "photo from their station exit" (any time) and "from where they're hiding" (from 15 min in), looking N/E/S/W/up — directional prompts a bot can answer fairly. +15 min each, shared cooldown; photos don't narrow the map. Shown as Google Street View Static images loaded from Google (allowed by the terms; the URL contains the panorama ID, so photos run on trust — fine vs a bot). Multiplayer adds human-framed prompts ("tallest building you can see").* |
 | M6 | **Full card deck** | Draw-on-answer, hand of 6, powerups, digital curses (see below) |
 | M7 | **Polish** | Animated end-of-round replay of both routes; spectator view; room-code matchmaking; more formats (1v2, 2v2) |
 
@@ -428,14 +428,55 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
   - **What it shows:** glazed-white land, slightly darker blocks at street zoom, the lightest tile for roads with grout-colored edges, and a faint buff on highways. Water is muted grey-green and parks are faint sage, so neither can be mistaken for Radar blue or Matching green. Street, neighborhood and city names stay, in the Mosaic ink tones, because the endgame needs street names.
   - **What it hides:** points of interest and their labels, Google's transit lines and stations, rail tracks, every icon, and administrative boundaries. POI pins are circles, which the language reserves for trains, so park names go too. Parks stay as shapes.
   - **Google setup, in `stand-clear-nyc`:**
-    - Map ID `d52ea7715ab571c4d1dc8ae7`, "Stand Clear Mosaic". It's raster, to keep deck.gl's non-interleaved overlay working on Safari.
-    - Its roadmap variant uses the cloud style "Stand Clear Mosaic", style ID `a45edf63b9a210393eb6e2eb`.
+    - **Vector Map ID `d52ea7715ab571c4cf3a43db`** ("Stand Clear Mosaic (vector)"). This is the one to use: it draws the whole design.
+    - Raster Map ID `d52ea7715ab571c4d1dc8ae7` ("Stand Clear Mosaic"). On raster maps Google applies only part of a cloud style, so land, urban areas and commercial strips keep Google's greys and creams. It's kept only for comparison.
+    - Both use the cloud style "Stand Clear Mosaic", style ID `a45edf63b9a210393eb6e2eb`, on their roadmap variant.
+    - **Before switching the game to the vector ID:** check Safari. The game's deck.gl overlay is non-interleaved, and only the interleaved mode failed on Safari, but that's unverified on a vector map.
+    - **Still showing:** one-way arrows and a few bike lanes at street zoom. No style rule has removed them yet.
   - **Sources:**
     - `apps/web/src/map/mosaicCloudStyle.json` is the cloud-styling JSON the Map ID uses.
     - `mosaicStyle.json` is the same design as a legacy style array, for a map created without a Map ID. A Map ID ignores the `styles` option.
     - Change both files together.
     - Push the cloud style with the Map Management API: PATCH `styleConfigs/a45edf63b9a210393eb6e2eb`. It takes OAuth, an `X-Goog-User-Project: stand-clear-nyc` header, and the project number `75066973119` in resource paths.
 - Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817). Both are private artifacts.
+
+### Sidebar
+
+The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private artifact).
+
+- **Top bar:** "Stand Clear" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with "6× real time" under it.
+- **The round:** stations possible, time left and hider bonus, as three numbers on a 2 px ink rule with grout dividers. Tabular figures. "Give up" is a quiet underlined link.
+- **Tabs:** square tiles, with the active one in ink. "Following you" is a light caption, because it's a state, not an action.
+- **Where you are:** the station's mosaic name tablet, with its bullets, on a tile field.
+  - On a train: the route bullet, headsign and "next: Canal St in 2 min".
+  - On the street: the exit ("Exit 4 · E 14 St & Union Sq E").
+- **Boards and lists:**
+  - Direction headings are black captions ("↑ Uptown & Queens").
+  - Rows are a bullet, headsign and time, with a small ink button.
+  - A row you can't use is dimmed, with the reason in words ("too soon to change platforms").
+  - The stop you're getting off at is the one express band in the list.
+- **Ask:**
+  - Each question family is headed by a local band in its color.
+  - Radar distances are square tiles, and route choices stay MTA circles.
+  - The cooldown is a tile timer, and every control waits it out together.
+  - The log shows each question's family square, its time and origin, and how many stations were left.
+- **Wainscot:** the one main action for the state, on buff brick. Up to the street, Get off at the next stop, or Back down.
+- **Result:** a gold "Found" tablet (or "Time's up"), the hider's station as its own tablet, the three numbers, and the score tally bar. Then Watch replay in ink, with Share and Practice round in white.
+- **Rules:** ink for the default action, white for the alternative, terra cotta only for actions that can't be undone. No rounded corners, no shadows. Notices are a light row with a terra cotta square, dismissed by clicking.
+
+### Street endgame
+
+Street View takes the top three fifths of the main column and the map the bottom two fifths, with a buff trim band between them, as the game now lays it out. Mock on a real panorama: the Deck page, part five.
+
+- **Walk tiles:** one square tile per street you can take, with an arrow and its compass point ("↑ N"), bottom center. They sit above Google's attribution and never cover it.
+- **Walking:** a local band fills along the bottom of Street View at walking speed (linear, rule 1), captioned "Walking north · 14 s". The walk tiles dim until you arrive.
+- **Facing:** a black caption in the top-left corner ("Facing N"). It's the only text on the photo, because addresses and road labels stay off.
+- **Someone's here:**
+  - The catch prompt is the screen's one express band, in ink with gold trim, at the top center: "Someone's here · Click them to catch".
+  - The hider's marker is a gold square tile with a deep-gold border. It replaces Google's red pin, because squares are game information.
+- **Curses:** Fog and Black & white are CSS filters on the panorama (motion spec: Curse lands). Their chip and tile timer sit in the panel, never over the photo.
+- **Map strip:** the Mosaic base map at street zoom, with your dot. Hovering shows a square target and "Walk here · 40 s", so a click is never a surprise.
+- **Panel:** where you are is the exit. Back down is the white wainscot action, because staying up is usually the point.
 
 ### Motion
 
@@ -481,6 +522,8 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | **Frozen / locked in** | hider only | "Set in grout": four grout bars close around your dot (300 ms). The Hide-here button presses in and becomes a caption: "Frozen at E 13 St & 3 Av". | frame appears |
 | **Card draw** | hider only | After an answer, N face-down cards rise 24 px into place (band, staggered 120 ms). They flip about their centers (rotateY 350 ms, decelerate, faces swap at 90°). The card you pick lifts 8 px. The rest drop (band), and the kept card shrinks into its hand slot (400 ms). Photo (draw 1, keep 1) skips the choice. | cards appear face up |
 | **Curse lands** | seeker; the hider sees it played | The card rises 24 px into place at center (band), holds 1.6 s, then shrinks into a status chip with a tile timer (400 ms). Then the effect: **Signal loss:** glazed tiles set across the map in a diagonal sweep (900 ms), leaving the departure boards, and lift in reverse when it ends. **Fog:** Street View blur ramps in over 600 ms. **Black & white:** it desaturates over 800 ms. Both decelerate, and ramp back out the same way when the curse ends. Glazed tiles sit on a grout bed, so nothing of the map shows between them. **Local only, Wrong way:** the affected departure rows dim and strike through. **Signal problems:** the held train's dot simply stops at the platform with a "Held" caption. By rule 1 it stops; it doesn't slow down. | effect applies at once |
+| **Walk a street step** | the walker | The band at the foot of Street View fills tile by tile at walking speed (timetable, linear). The walk tiles dim, then step back to ready on arrival (step). | progress bar fills; no tiles |
+| **Someone's here** | the seeker | The catch prompt unrolls from the top of Street View as an express band (band). The hider's gold marker sets (set). | prompt and marker appear |
 | **Found** | both | The hider's spot sets gold. A "Found 11:52" tablet sets tile by tile, left to right (set, 900 ms). | tablet appears |
 | **Score tally** | both | The score is drawn as a bar of tiles, one tile per 5 game-min. Ink for elapsed time, the question's family color for each question bonus (+10 min = 2 tiles), gold for time-bonus cards held. Tiles set left to right at 40 ms each while the total counts up. Both rounds' bars stack, and the winner's gets an express trim. The bar shows where the score came from, not just the number. | bars appear full |
 | **Replay (S2)** | both | Game time is compressed uniformly. That is linear, never eased, per rule 1. Dots travel their real routes and leave trails of square tesserae: terra cotta for the hider, ink for the seeker. Each question pops as a family-colored square at its origin with its answer. At the end, the hider's station tablet sets and the zone ring draws. | trails drawn in full; scrubber only |
@@ -505,6 +548,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 ## Open questions & risks
 
 - [x] **Google Maps base map (decision B) — done 2026-10-05.** The game runs on Google Maps with deck.gl's `GoogleMapsOverlay` (non-interleaved) and a quiet JSON style (no POIs or Google transit icons). MapLibre remains a fallback (`VITE_MAP_PROVIDER=maplibre`, or no key) to save map loads in dev. Billing, a $10/month budget alert and daily quota caps are set on `stand-clear-nyc`. Still to do before anything public: a cloud map style + map ID (design agent), Google attribution/terms links in our own terms, and switching the throwaway Street View spike's MapLibre minimap to Google.
+- [ ] **Sign Street View Static URLs.** The browser key's localhost referrer restriction is enforced against a wrong referrer (403), but requests with *no* referrer are served, so the key alone could fetch images. Today the 300/day cap bounds it. Fix: a URL signing secret on `stand-clear-nyc`, the server signs each photo URL, and the unsigned quota drops to 0.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
 - [ ] **Station-photo framing.** The hider picks any exit and aims; they can choose the least recognisable view. Accepted for v1; playtest whether it needs a rule.
 - [ ] **Balance knobs:** hiding time, zone radius, question costs, cooldown, catch distance, clock speed. Set the first prices from the M2 simulation.
@@ -579,9 +623,10 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | Date | Decision | Why |
 |---|---|---|
 | 2026-10-05 | No "Stand clear of the closing doors" caption on departure; the tablet simply accelerates away | Charlie, reviewing the motion demo |
-| 2026-10-05 | Base map: Map ID `d52ea7715ab571c4d1dc8ae7` with the "Stand Clear Mosaic" cloud style (raster). It's managed through the Map Management API, with the style JSON kept in the repo | Charlie asked for a proper cloud style and Map ID. Cloud styling allows zoom-dependent rules, which inline styles can't do, and raster keeps the deck.gl overlay working on Safari |
+| 2026-10-05 | Base map: the "Stand Clear Mosaic" cloud style on vector Map ID `d52ea7715ab571c4cf3a43db`. It's managed through the Map Management API, with the style JSON kept in the repo | Charlie asked for a proper cloud style and Map ID. A raster Map ID was tried first, but Google applies only part of a cloud style on raster maps (verified by render) |
 | 2026-10-05 | Visual direction: **Mosaic**, built on the subway's own tile (IRT tile for identity, IND tile for information). Motion rules and card faces are written up under Cards and Look and motion as proposals | Charlie picked it from four directions (Wayfinding, Service Change, Night Service, Mosaic) and asked for it to be grounded in real subway design history |
 | 2026-10-05 | **B: the whole game moves to Google Maps JS.** Step 1: all game drawing is deck.gl layers over a swappable base map; step 2 (swap the base map) after billing is enabled | Google's terms forbid Street View beside a non-Google map; Mapillary's NYC coverage is too thin. Cost: one Dynamic Maps load per session, 10k free/month |
+| 2026-10-05 | Photos (solo): directional prompts (N/E/S/W/up) from one exit of the hider's station or from the hiding spot; Street View Static images loaded by the browser | A bot can't judge "tallest building"; directions are fair and still very readable. Static images straight from Google are within the terms; server relay isn't |
 | 2026-10-05 | M4 solo: finding the station starts the endgame but isn't revealed to the seeker; the server records it for metrics (station-finding vs spot-finding time) | Design: the seeker gets no zone confirmation |
 | 2026-10-05 | M4 solo: the hiding spot is picked server-side from Street View metadata (free, no quota) with a separate server key; Google's own click-to-move is off and stray panorama moves snap back | Keep the spot secret and every step timed by the server |
 | 2026-10-05 | Google base map: deck.gl draws on its own canvas (not interleaved), raster map + JSON styles | Interleaved rendering into Google's vector map drew nothing on WebKit/Safari; JSON styles hide POIs and Google's transit icons without needing a cloud style |
