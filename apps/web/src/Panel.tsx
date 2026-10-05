@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AskPanel, QuestionLog } from "./AskPanel.tsx";
 import { cn } from "./cn.ts";
-import { useGame, type World } from "./game.ts";
+import { hubName, useGame, type World } from "./game.ts";
 import { dailyStats } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { formatMinutes, shareText } from "./share.ts";
@@ -65,19 +65,19 @@ function useNewRound() {
 }
 
 function ShareButton() {
-  const view = useGame((s) => s.view);
+  const { view, world } = useGame();
   const [copied, setCopied] = useState(false);
   if (!view?.result) return null;
   return (
     <ActionButton
       onClick={() => {
         navigator.clipboard
-          .writeText(shareText(view))
+          .writeText(shareText(view, hubName(world, view)))
           .then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           })
-          .catch(() => window.prompt("Copy your result:", shareText(view)));
+          .catch(() => window.prompt("Copy your result:", shareText(view, hubName(world, view))));
       }}
     >
       {copied ? "Copied!" : "Share result"}
@@ -170,7 +170,8 @@ function Tabs() {
 }
 
 function ModeLine() {
-  const { view, busy, alreadyPlayed } = useGame();
+  const { view, busy, alreadyPlayed, world } = useGame();
+  const startName = hubName(world, view);
   const newRound = useNewRound();
   if (!view) return <div className="text-xs text-stone-500">Find the hider's station</div>;
   return (
@@ -179,6 +180,7 @@ function ModeLine() {
         {view.daily
           ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
           : "Practice round"}
+        {startName ? ` · from ${startName}` : ""}
       </span>
       {!view.result && (
         <button

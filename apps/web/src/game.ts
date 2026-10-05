@@ -86,12 +86,19 @@ export function nowGameTime(): number | null {
   return sync ? syncedGameTime(sync, Date.now()) : null;
 }
 
+/** The name of the station a round started from. */
+export function hubName(world: World | null, view: SoloView | null): string | undefined {
+  if (!world || !view) return undefined;
+  return world.ds.complexes[world.ds.stations[view.hub]?.complex ?? -1]?.name;
+}
+
 /** Bookkeeping when a round's view arrives: already-played flag at the start, history at the end. */
 function onView(view: SoloView): Partial<GameStore> {
   if (!view.result) {
     return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
-  if (view.daily && !useGame.getState().alreadyPlayed) saveResult(view, shareText(view));
+  const { alreadyPlayed, world } = useGame.getState();
+  if (view.daily && !alreadyPlayed) saveResult(view, shareText(view, hubName(world, view)));
   return { results: loadResults() };
 }
 

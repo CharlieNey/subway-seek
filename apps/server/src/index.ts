@@ -20,6 +20,7 @@ import {
   type GameClock,
   gameTime,
   nyDate,
+  pickHubId,
   placeHider,
   type RoundMode,
   type ServerMessage,
@@ -34,7 +35,6 @@ import { pickExitPano, pickSpot } from "./spot.ts";
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
 const SPEED = 6;
-const HUB_STATION_ID = "127"; // Times Sq-42 St (1/2/3)
 // Mixed into the daily seed so players can't compute today's answer from the client code.
 const DAILY_SECRET = process.env.DAILY_SECRET ?? "dev-only-daily-secret";
 if (!process.env.DAILY_SECRET) console.warn("DAILY_SECRET not set — using a dev secret");
@@ -42,8 +42,11 @@ if (!process.env.DAILY_SECRET) console.warn("DAILY_SECRET not set — using a de
 const t0 = performance.now();
 const dataset = loadDataset();
 const idx = buildIndex(dataset);
-const hub = dataset.stations.findIndex((s) => s.id === HUB_STATION_ID);
-if (hub < 0) throw new Error(`Hub ${HUB_STATION_ID} missing from dataset`);
+const stationIndex = (id: string) => {
+  const i = dataset.stations.findIndex((s) => s.id === id);
+  if (i < 0) throw new Error(`Station ${id} missing from dataset`);
+  return i;
+};
 console.log(
   `dataset ${dataset.meta.serviceDate}: ${dataset.complexes.length} complexes, ` +
     `${dataset.trips.length} trips (ready in ${Math.round(performance.now() - t0)} ms)`,
@@ -60,6 +63,10 @@ async function newRound(
   mode: RoundMode,
 ): Promise<{ round: SoloRound; clock: GameClock; log: MatchLog }> {
   const date = nyDate(new Date());
+  // Each daily starts somewhere different (same for everyone that day); practice is random.
+  const hub = stationIndex(
+    pickHubId(mode === "daily" ? dailyRandom(`${date}|hub`, DAILY_SECRET) : Math.random),
+  );
   let round =
     mode === "daily"
       ? createSoloRound(idx, {
@@ -229,5 +236,5 @@ wss.on("connection", async (socket) => {
 });
 
 console.log(
-  `listening on ws://localhost:${PORT} · daily #${dailyNumber(nyDate(new Date()))} + practice rounds from Times Sq, ${SPEED}×`,
+  `listening on ws://localhost:${PORT} · daily #${dailyNumber(nyDate(new Date()))} + practice rounds, ${SPEED}×`,
 );

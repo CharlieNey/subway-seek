@@ -61,6 +61,14 @@ describe("shareText", () => {
     expect(text).toBe("Stand Clear #1 🚇\nGave up after 10 min · 0 questions\nHider score: 10 min");
   });
 
+  it("names the start hub when given", () => {
+    const text = shareText(
+      view({ result: { kind: "found", at: 37_200 + 60 }, hider: 5 }),
+      "Grand Central",
+    );
+    expect(text.split("\n")[0]).toBe("Stand Clear #1 · from Grand Central 🚇");
+  });
+
   it("is empty while the round is running", () => {
     expect(shareText(view({}))).toBe("");
   });
