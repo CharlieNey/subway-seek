@@ -300,7 +300,19 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 | M6 | **Full card deck** | Draw-on-answer, hand of 6, powerups, digital curses (see below) |
 | M7 | **Polish** | Animated end-of-round replay of both routes; spectator view; room-code matchmaking; more formats (1v2, 2v2) |
 
-**Street View spike (parallel to M1–M2):** walk one zone in Street View at 6×, count panorama loads per round, and settle the pricing/terms question. Street View is the hook, so confirm early that it feels right and is affordable — but don't build on it until M4.
+**Street View spike (now, before the solo track):** walk one zone in Street View at 6×, count panorama loads per round, and settle the pricing/terms question. Street View is the hook, so confirm early that it feels right and is affordable — but don't build on it until M4. *Done 2026-10-05 — findings in `docs/street-view-spike.md`: Google works and is cheap, but its terms block our side-by-side layout and server-relayed photos; provider decision pending a Mapillary check.*
+
+### Solo track (no playtesters needed)
+
+Charlie is holding off on live playtests, so these come before M3. They make solo play worth returning to, and the bots stand in for playtesters.
+
+| # | Item | Done when |
+|---|---|---|
+| S1 | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result line ("Stand Clear #12 · found in 41 min · 3 questions"); practice rounds stay random; results history kept in the browser |
+| S2 | **End-of-round replay** | After a round, an animated map replays the bot's hidden route and your route side by side, like the show's map graphics; makes the daily share worth clicking. *Charlie wants this — schedule it soon after S1.* |
+| S3 | **You hide, a bot seeks** | The hider half of the game solo: the 20-min hiding phase, watching the seeker close in, the freeze rule, the map-pin endgame. The bot seeker plans journeys toward the remaining stations and asks questions with the M2 simulation's strategy |
+| S4 | **Bot vs bot balance sim** | The S3 seeker vs a bot hider at full speed, with real travel time: distributions of station-finding time, endgame share and hider score, to tune the hide time, cooldown and prices without playtests |
+| S5 | **Smarter bot hider** | Difficulty levels: Hard picks stations the questions struggle to tell apart |
 
 ### M2 results: how many questions find the station (`pnpm sim`)
 
@@ -362,12 +374,14 @@ Hand limit: 6.
 
 ## Open questions & risks
 
-- [ ] **Google Street View pricing + terms.** Unchecked; settled by the Street View spike. Need:
-  - cost per panorama load and per metadata call / free tier
-  - whether an overlay marker in Street View is allowed
-  - whether a server-rendered static view can be sent to another player as a "photo"
-  - restricting to Google's outdoor imagery (no user photospheres)
-  - Fallbacks: Mapillary, Panoramax (open, patchier coverage).
+- [ ] **Street View provider: Google or Mapillary?** Pricing and terms are settled (see `docs/street-view-spike.md`). Google is cheap: metadata and lookups are free, Dynamic Street View has 5k free loads a month. Its terms forbid two things we planned:
+  - Street View on the same screen as our MapLibre/OSM map.
+  - Relaying Street View images as server-side "photos".
+  - Options:
+    - **A.** A separate Google street screen (grey area).
+    - **B.** The whole game on Google Maps JS.
+    - **C.** Mapillary open imagery (coverage unknown).
+  - Next: a Mapillary coverage check (needs a free token), then decide. Finishing the Google measurements needs billing enabled on the key's project.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
 - [ ] **Station-photo framing.** The hider picks any exit and aims; they can choose the least recognisable view. Accepted for v1; playtest whether it needs a rule.
 - [ ] **Balance knobs:** hiding time, zone radius, question costs, cooldown, catch distance, clock speed. Set the first prices from the M2 simulation.
@@ -441,6 +455,7 @@ Hand limit: 6.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | Street View can't share a screen with the MapLibre map, and photos can't be server-relayed Google images | Street View spike: Google ToS 3.2.3(e) and 3.2.3(a) + geo guidelines; provider decision pending a Mapillary check |
 | 2026-10-05 | Keep +10 min per question and the 5-min cooldown | M2 simulation: ~5.5 questions narrow 97 stations to ≤ 3, ~7 pin it; past that, visiting is cheaper than asking |
 | 2026-10-05 | The hider must leave the start complex | M2: otherwise "stay put" is a free hide; the seeker's first look rules it out anyway |
 | 2026-10-05 | Solo rounds start at 10:20 (the bot already hid) | M2: no human hider, so the 20-min hiding phase would be pure waiting |
