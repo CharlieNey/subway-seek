@@ -1,0 +1,19 @@
+{
+  "name": "@stand-clear/data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./dataset.json": "./dataset/nyc-subway.json"
+  },
+  "scripts": {
+    "build-dataset": "tsx scripts/build-dataset.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "fflate": "^0.8.3"
+  }
+}

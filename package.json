@@ -1,0 +1,25 @@
+{
+  "name": "stand-clear",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "data:build": "pnpm --filter @stand-clear/data build-dataset",
+    "dev:server": "pnpm --filter @stand-clear/server dev",
+    "dev:web": "pnpm --filter @stand-clear/web dev",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
