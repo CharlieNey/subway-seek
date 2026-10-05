@@ -292,7 +292,7 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 | # | Milestone | Done when |
 |---|---|---|
 | M0 ✅ | **Data prep** | Script turns MTA GTFS for the pinned date into a compact dataset (complexes, exits, trips, stop_times, transfers, shapes, boroughs, express flags); it loads in < 1 s. *Done 2026-10-05: 5.1 MB, loads in 12 ms, 23 tests.* |
-| M1 | **Transit sandbox** | One player, 6× clock: departure boards, board, choose exit stop, timed transfers and exits, moving dot on the map. *Riding the subway at 6× feels good.* |
+| M1 ✅ | **Transit sandbox** | One player, 6× clock: departure boards, board, choose exit stop, timed transfers and exits, moving dot on the map. *Riding the subway at 6× feels good.* *Done 2026-10-05: every running train animates along its real track; 35 tests.* |
 | M2 | **Questions vs a bot hider** | Single-player: a bot hides at a random reachable station; the six MVP questions are answered automatically; the map shades ruled-out stations. **Simulate question partitions over the reachable set** (average questions to find the station) and set prices from it. *Finding the station is fun on its own.* |
 | M3 | **Two-player round, map endgame** | Room with hider + seeker; Phase 1 → 2 → 3; the hider watches the seeker; Hide here + auto-freeze; the hider drops a map pin in the zone, catch = seeker's pin within 25 m; minimal cards (time bonuses + Veto); reconnects; score + swap |
 | M4 | **Street View endgame** | 15–30 curated hide-eligible zones with connected panorama graphs; "walk to"; catch along the graph; fallback to the map endgame on load failure |
@@ -426,6 +426,9 @@ Hand limit: 6.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | Changing platforms within a station takes at least 90 s | M1: MTA lists 0 s at 57 big stations (Times Sq, Grand Central), which allowed instant direction reversals |
+| 2026-10-05 | Transit state is lazy: a ride is (trip, board stop, alight stop), resolved against the clock | M1: no timers; server and clients derive the same position from the shared clock + public timetable |
+| 2026-10-05 | Your dot is a DOM marker moved every frame; other trains are a map layer refreshed 10×/s | M1: re-tiling map data every frame flooded MapLibre's worker |
 | 2026-10-05 | Express stop = ≥ 6 express trains calling 10:00–13:00, computed from the timetable | M0: the single-train rule flagged one-off reroutes and rush-hour tails |
 | 2026-10-05 | Exits live on complexes, not stations | M0: MTA files entrances under one constituent station |
 | 2026-10-05 | Client is Vite + React, not Next.js | The game screen is all client-side; SSR adds friction (MapLibre, `window`) for no benefit |
