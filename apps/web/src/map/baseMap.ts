@@ -1,7 +1,8 @@
 /**
  * The base map behind the game's deck.gl layers, behind a small interface so it can
- * be swapped. Today: MapLibre + OpenFreeMap tiles. Next (needs Google billing on):
- * Google Maps JS, which Google's terms require once Street View is on screen.
+ * be swapped. Default: Google Maps (googleBase.ts), which Google's terms require once
+ * Street View is on screen. Fallback: MapLibre + OpenFreeMap tiles — used when no
+ * Google key is set, or with VITE_MAP_PROVIDER=maplibre (saves Google map loads in dev).
  */
 import type { Layer } from "@deck.gl/core";
 import { MapboxOverlay } from "@deck.gl/mapbox";
@@ -57,4 +58,12 @@ export function createMapLibreBase(
     onUserDrag: (cb) => map.on("dragstart", cb),
     remove: () => map.remove(),
   };
+}
+
+export type MapProvider = "google" | "maplibre";
+
+export function chooseProvider(): MapProvider {
+  const forced = import.meta.env.VITE_MAP_PROVIDER as string | undefined;
+  if (forced === "maplibre" || forced === "google") return forced;
+  return import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? "google" : "maplibre";
 }

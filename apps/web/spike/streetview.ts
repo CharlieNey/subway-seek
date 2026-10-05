@@ -6,6 +6,9 @@
  *  - "walk to" by jumping straight to the arrival panorama vs stepping through each one.
  *
  * Open http://localhost:5173/spike/streetview.html (?zone=<complex name>).
+ *
+ * Dev-only and throwaway: its MapLibre minimap beside Street View predates decision B
+ * (Google's terms forbid that pairing in a real app; the game itself uses Google Maps).
  */
 import type { Dataset } from "@stand-clear/data";
 import datasetUrl from "@stand-clear/data/dataset.json?url";

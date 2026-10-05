@@ -1,7 +1,8 @@
 import type { LonLat } from "@stand-clear/engine";
 import { useEffect, useRef } from "react";
 import { nowGameTime, useGame, type World } from "./game.ts";
-import { type BaseMap, createMapLibreBase } from "./map/baseMap.ts";
+import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
+import { createGoogleBase } from "./map/googleBase.ts";
 import {
   buildLayers,
   buildRound,
@@ -48,10 +49,14 @@ export function MapView() {
     let lastFrame = performance.now();
     let raf = 0;
 
-    const base: BaseMap = createMapLibreBase(container.current, TIMES_SQ, ({ object }) => {
+    const tooltip = ({ object }: { object?: unknown }) => {
       const s = object as { complex?: number } | undefined;
       return s?.complex === undefined ? null : { html: stationTooltip(world, s.complex) };
-    });
+    };
+    const base: BaseMap =
+      chooseProvider() === "google"
+        ? createGoogleBase(container.current, TIMES_SQ, tooltip)
+        : createMapLibreBase(container.current, TIMES_SQ, tooltip);
     base.onUserDrag(() => useGame.getState().setFollow(false));
 
     // Re-shade stations and question overlays when the round changes; reveal the hider.
@@ -123,9 +128,13 @@ export function MapView() {
         buildLayers({ data, round, zoom: base.getZoom(), trains, me, replay: replayScene }),
       );
     };
-    void base.ready.then(tick);
+    let disposed = false;
+    void base.ready.then(() => {
+      if (!disposed) tick();
+    });
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       unsubscribeGame();
       unsubscribeReplay();
