@@ -53,6 +53,11 @@ describe("shareText", () => {
     );
   });
 
+  it("says when you gave up", () => {
+    const text = shareText(view({ result: { kind: "gaveUp", at: 37_200 + 600 }, hider: 5 }));
+    expect(text).toBe("Stand Clear #1 🚇\nGave up after 10 min · 0 questions\nHider score: 10 min");
+  });
+
   it("is empty while the round is running", () => {
     expect(shareText(view({}))).toBe("");
   });
