@@ -80,6 +80,8 @@ interface Run {
   toThree: number | null;
   /** Candidates left after each question. */
   curve: number[];
+  /** Kind of each question asked, to spot one kind crowding out the rest. */
+  kinds: string[];
 }
 
 function play(hider: number, moving: boolean): Run {
@@ -87,6 +89,7 @@ function play(hider: number, moving: boolean): Run {
   let origin = hubPlace;
   let baseline: Place | null = null;
   const curve: number[] = [];
+  const kinds: string[] = [];
   let toThree: number | null = cands.length <= 3 ? 0 : null;
   for (let n = 1; n <= MAX_QUESTIONS && cands.length > 1; n++) {
     let best: { q: MapQuestion; ctx: Asked["ctx"]; score: number } | null = null;
@@ -104,13 +107,14 @@ function play(hider: number, moving: boolean): Run {
     const answer = evaluate(ds, best.q, hider, best.ctx);
     cands = cands.filter((c) => evaluate(ds, best.q, c, best.ctx) === answer);
     curve.push(cands.length);
+    kinds.push(best.q.kind);
     if (toThree === null && cands.length <= 3) toThree = n;
     if (moving) {
       baseline = best.q.kind === "thermometer" || baseline === null ? origin : baseline;
       origin = nearestToCentre(cands);
     }
   }
-  return { toOne: cands.length === 1 ? curve.length : null, toThree, curve };
+  return { toOne: cands.length === 1 ? curve.length : null, toThree, curve, kinds };
 }
 
 const stats = (xs: number[]) => {
@@ -148,6 +152,15 @@ for (const moving of [false, true]) {
   );
   console.log(
     `  stations left after 1–8 questions: ${[1, 2, 3, 4, 5, 6, 7, 8].map(left).join(" → ")}`,
+  );
+  const asked = runs.flatMap((r) => r.kinds);
+  const mix = new Map<string, number>();
+  for (const k of asked) mix.set(k, (mix.get(k) ?? 0) + 1);
+  console.log(
+    `  question mix: ${[...mix]
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, n]) => `${k} ${Math.round((n / asked.length) * 100)}%`)
+      .join(", ")}`,
   );
   console.log(
     `  bonus to pin it at +${QUESTION_BONUS_SECONDS / 60} min each: ~${Math.round(Number(s1.mean) * (QUESTION_BONUS_SECONDS / 60))} min\n`,
