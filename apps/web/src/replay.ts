@@ -38,7 +38,10 @@ const QUESTION_NAME: Record<string, string> = {
   route: "Route",
   borough: "Borough",
   express: "Express",
-  moreRoutes: "More routes",
+  moreRoutes: "More lines",
+  matching: "Matching",
+  measuring: "Measuring",
+  tentacles: "Tentacles",
   photo: "Photo",
 };
 
@@ -66,7 +69,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       events: view.asked.map((a) => ({
         t: a.at,
         p: [a.ctx.origin.lon, a.ctx.origin.lat] as LonLat,
-        label: `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer)}`,
+        label: `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer, a.q, world.ds)}`,
       })),
     });
   },

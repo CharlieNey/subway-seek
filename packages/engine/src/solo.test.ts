@@ -14,9 +14,11 @@ import { earliestArrivals, reachableComplexes } from "./reach.ts";
 import {
   advanceSolo,
   applySoloIntent,
+  askReadyAt,
   createSoloRound,
   HIDE_SECONDS,
-  QUESTION_COOLDOWN_SECONDS,
+  QUESTION_GAP_SECONDS,
+  QUESTION_RULES,
   type SoloRound,
   soloView,
 } from "./solo.ts";
@@ -110,6 +112,16 @@ describe("questions", () => {
       { kind: "borough" },
       { kind: "express" },
       { kind: "moreRoutes" },
+      ...(["park", "museum", "library", "hospital", "zoo", "airport"] as const).flatMap(
+        (landmark) => [
+          { kind: "matching" as const, landmark },
+          { kind: "measuring" as const, landmark },
+        ],
+      ),
+      ...(["museum", "library", "hospital", "park"] as const).map((landmark) => ({
+        kind: "tentacles" as const,
+        landmark,
+      })),
     ];
     const origins = ["127", "132", "A24", "631", "R20"];
     for (const hider of reach.slice(0, 40)) {
@@ -130,7 +142,7 @@ describe("solo round", () => {
     expect(soloView(r, idx).hider).toBeNull(); // secret while playing
   });
 
-  it("answers questions, adds the cooldown, and narrows the candidates", () => {
+  it("answers questions, adds the cooldowns, and narrows the candidates", () => {
     const r = round();
     const t = r.seekStart;
     const res = applySoloIntent(r, { type: "ask", question: { kind: "radar", miles: 1 } }, t, idx);
@@ -147,13 +159,30 @@ describe("solo round", () => {
       idx,
     );
     expect(again.ok).toBe(false);
+    // Another category is open after the short gap; radar again only after its cooldown.
     const later = applySoloIntent(
       res.round,
       { type: "ask", question: { kind: "express" } },
-      t + QUESTION_COOLDOWN_SECONDS,
+      t + QUESTION_GAP_SECONDS,
       idx,
     );
     expect(later.ok).toBe(true);
+    const radarAgain = { type: "ask" as const, question: { kind: "radar" as const, miles: 2 } };
+    expect(applySoloIntent(res.round, radarAgain, t + QUESTION_GAP_SECONDS, idx).ok).toBe(false);
+    const cooled = t + QUESTION_RULES.radar.cooldownSeconds;
+    expect(askReadyAt(res.round.asked, "radar")).toBe(cooled);
+    expect(applySoloIntent(res.round, radarAgain, cooled, idx).ok).toBe(true);
+  });
+
+  it("only lets you ask about a line that stops where you are", () => {
+    const r = round();
+    const ask = (letter: string) =>
+      applySoloIntent(r, { type: "ask", question: { kind: "route", letter } }, r.seekStart, idx);
+    expect(ask("7").ok).toBe(true); // Times Sq
+    expect(ask("G")).toEqual({
+      ok: false,
+      error: "You can only ask about a line that stops where you are.",
+    });
   });
 
   it("is found by getting off at the hider's station", () => {

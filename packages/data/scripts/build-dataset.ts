@@ -26,11 +26,11 @@ import {
 import type {
   Borough,
   Complex,
-  Dataset,
   LatLon,
   Route,
   Shape,
   Station,
+  SubwayData,
   Transfer,
   Trip,
 } from "../src/types.ts";
@@ -329,7 +329,7 @@ async function main() {
   });
 
   // --- Write -----------------------------------------------------------------------
-  const dataset: Dataset = {
+  const dataset: SubwayData = {
     meta: {
       version: 1,
       serviceDate: SERVICE_DATE,

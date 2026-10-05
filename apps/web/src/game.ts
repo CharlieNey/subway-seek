@@ -3,8 +3,15 @@
  * seeker's view of the round. The server is authoritative (and alone knows where the
  * hider is); the client derives positions and boards from the shared clock + timetable.
  */
-import type { Dataset } from "@stand-clear/data";
+import {
+  type Dataset,
+  type LandmarkData,
+  type LandmarkKind,
+  type SubwayData,
+  withLandmarks,
+} from "@stand-clear/data";
 import datasetUrl from "@stand-clear/data/dataset.json?url";
+import landmarksUrl from "@stand-clear/data/landmarks.json?url";
 import {
   buildIndex,
   type ClientIntent,
@@ -43,10 +50,19 @@ interface GameStore {
   /** An intent is in flight (disable buttons until the server answers). */
   busy: boolean;
   follow: boolean;
+  /** Landmarks to show on the map while choosing a question about them. */
+  preview: LandmarkPreview | null;
   send: (intent: ClientIntent) => void;
   dismissNotice: () => void;
   setFollow: (follow: boolean) => void;
   setTab: (tab: "travel" | "ask") => void;
+  setPreview: (preview: LandmarkPreview | null) => void;
+}
+
+/** Which landmarks to pin, and for tentacles the range around you (miles). */
+export interface LandmarkPreview {
+  kind: LandmarkKind;
+  rangeMiles?: number;
 }
 
 let socket: WebSocket | null = null;
@@ -66,6 +82,7 @@ export const useGame = create<GameStore>((set) => ({
   notice: null,
   busy: false,
   follow: true,
+  preview: null,
   send: (intent) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     seq += 1;
@@ -76,6 +93,7 @@ export const useGame = create<GameStore>((set) => ({
   dismissNotice: () => set({ notice: null }),
   setFollow: (follow) => set({ follow }),
   setTab: (tab) => set({ tab }),
+  setPreview: (preview) => set({ preview }),
 }));
 
 if (import.meta.env.DEV) (window as unknown as { __game: typeof useGame }).__game = useGame;
@@ -139,7 +157,11 @@ export async function startGame() {
   if (started) return;
   started = true;
   try {
-    const ds = (await (await fetch(datasetUrl)).json()) as Dataset;
+    const [subway, landmarks] = await Promise.all([
+      fetch(datasetUrl).then((r) => r.json() as Promise<SubwayData>),
+      fetch(landmarksUrl).then((r) => r.json() as Promise<LandmarkData>),
+    ]);
+    const ds = withLandmarks(subway, landmarks);
     const idx = buildIndex(ds);
     useGame.setState({ world: { ds, idx, geo: new Geometry(idx) }, status: "connecting" });
   } catch (err) {

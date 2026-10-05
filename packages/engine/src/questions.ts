@@ -6,15 +6,28 @@
  *
  * Questions are about the hider's station (the zone center), asked from the seeker's
  * origin — the last station their train called at, or where they stand on the street.
+ *
+ * They come in six categories, after Jet Lag's Hide + Seek (Japan): matching ("same as
+ * mine?"), measuring ("closer than me?"), radar, thermometer, tentacles ("which of
+ * these is nearest you?") and photos. Each category has its own price and cooldown
+ * (see QUESTION_RULES in solo.ts), so no single kind of question can carry a round.
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset, LandmarkKind } from "@stand-clear/data";
+import { distanceMeters, METERS_PER_MILE } from "./geo.ts";
+import {
+  complexNearest,
+  LANDMARK_KINDS,
+  LANDMARK_WORDS,
+  landmarksWithin,
+  nearestLandmark,
+  TENTACLE_MILES,
+} from "./landmarks.ts";
 import type { TimetableIndex } from "./timetable.ts";
 import { lastStation, resolve, streetPoint, type Transit } from "./transit.ts";
 
 export const RADAR_MILES = [0.25, 0.5, 1, 2, 5] as const;
 /** A thermometer needs you to have moved at least this far since you started it. */
 export const THERMOMETER_MIN_METERS = 400;
-const METERS_PER_MILE = 1609.344;
 
 export type PhotoLook = "N" | "E" | "S" | "W" | "up";
 export const PHOTO_LOOKS: readonly PhotoLook[] = ["N", "E", "S", "W", "up"];
@@ -22,12 +35,52 @@ export const PHOTO_LOOKS: readonly PhotoLook[] = ["N", "E", "S", "W", "up"];
 export type Question =
   | { kind: "radar"; miles: number }
   | { kind: "thermometer" }
+  /** Does this line stop at your station? Only lines that stop where you are. */
   | { kind: "route"; letter: string }
   | { kind: "borough" }
+  /** Is your station the same kind of stop (express or local) as mine? */
   | { kind: "express" }
   | { kind: "moreRoutes" }
+  /** Is the ___ nearest your station the same one that's nearest me? */
+  | { kind: "matching"; landmark: LandmarkKind }
+  /** Is your station closer to a ___ than I am? */
+  | { kind: "measuring"; landmark: LandmarkKind }
+  /** Of the ___ within TENTACLE_MILES of me, which is nearest your station? */
+  | { kind: "tentacles"; landmark: LandmarkKind }
   /** A Street View view from the hider's station exit or their hiding spot. */
   | { kind: "photo"; from: "exit" | "spot"; look: PhotoLook };
+
+export type QuestionCategory =
+  | "matching"
+  | "measuring"
+  | "radar"
+  | "thermometer"
+  | "tentacles"
+  | "photo";
+
+export const QUESTION_CATEGORIES: readonly QuestionCategory[] = [
+  "matching",
+  "measuring",
+  "radar",
+  "thermometer",
+  "tentacles",
+  "photo",
+];
+
+export function categoryOf(q: Question): QuestionCategory {
+  switch (q.kind) {
+    case "route":
+    case "borough":
+    case "express":
+    case "matching":
+      return "matching";
+    case "moreRoutes":
+    case "measuring":
+      return "measuring";
+    default:
+      return q.kind;
+  }
+}
 
 /** A Street View view: which panorama, and where the camera points. */
 export interface Photo {
@@ -37,13 +90,23 @@ export interface Photo {
   fov: number;
 }
 
-export type Answer = boolean | "hotter" | "colder" | { photo: Photo };
+/** Tentacles: the landmark nearest the hider, or null when they're out of range. */
+export type TentacleAnswer = { landmark: number | null };
+export type MapAnswer = boolean | "hotter" | "colder" | TentacleAnswer;
+export type Answer = MapAnswer | { photo: Photo };
 
 /** Map questions narrow the candidate stations automatically; photos are for you to read. */
 export type MapQuestion = Exclude<Question, { kind: "photo" }>;
 
 export function isMapQuestion(q: Question): q is MapQuestion {
   return q.kind !== "photo";
+}
+
+export function sameAnswer(a: Answer, b: Answer): boolean {
+  if (typeof a === "object" && typeof b === "object" && "landmark" in a && "landmark" in b) {
+    return a.landmark === b.landmark;
+  }
+  return a === b;
 }
 
 /** The camera for a photo: a compass direction at eye level, or straight up-ish. */
@@ -65,16 +128,19 @@ export interface AskContext {
   baseline: Place | null;
 }
 
-export function distanceMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
-  const R = 6_371_000;
-  const toRad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * toRad;
-  const dLon = (b.lon - a.lon) * toRad;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+/** Per-origin lookups, cached: `evaluate` runs once per candidate with the same context. */
+const fromOrigin = new WeakMap<Place, Map<string, unknown>>();
+function cachedFor<T>(origin: Place, key: string, make: () => T): T {
+  let m = fromOrigin.get(origin);
+  if (!m) {
+    m = new Map();
+    fromOrigin.set(origin, m);
+  }
+  if (!m.has(key)) m.set(key, make());
+  return m.get(key) as T;
 }
+const nearestTo = (ds: Dataset, kind: LandmarkKind, origin: Place) =>
+  cachedFor(origin, `nearest:${kind}`, () => nearestLandmark(ds, kind, origin));
 
 /** The answer if the hider were at complex `candidate`. */
 export function evaluate(
@@ -82,7 +148,7 @@ export function evaluate(
   q: MapQuestion,
   candidate: number,
   ctx: AskContext,
-): boolean | "hotter" | "colder" {
+): MapAnswer {
   const c = ds.complexes[candidate];
   const mine = ds.complexes[ctx.origin.complex];
   if (!c || !mine) throw new Error("unknown complex");
@@ -98,9 +164,37 @@ export function evaluate(
     case "borough":
       return c.borough === mine.borough;
     case "express":
-      return c.express;
+      return c.express === mine.express;
     case "moreRoutes":
       return c.routes.length > mine.routes.length;
+    case "matching":
+      return (
+        complexNearest(ds, q.landmark, candidate).index ===
+        nearestTo(ds, q.landmark, ctx.origin).index
+      );
+    case "measuring":
+      return (
+        complexNearest(ds, q.landmark, candidate).meters <
+        nearestTo(ds, q.landmark, ctx.origin).meters
+      );
+    case "tentacles": {
+      const miles = TENTACLE_MILES[q.landmark] ?? 0;
+      if (distanceMeters(c, ctx.origin) > miles * METERS_PER_MILE) return { landmark: null };
+      const options = cachedFor(ctx.origin, `within:${q.landmark}`, () =>
+        landmarksWithin(ds, q.landmark, ctx.origin, miles),
+      );
+      let best: number | null = null;
+      let bestD = Number.POSITIVE_INFINITY;
+      for (const i of options) {
+        const l = ds.landmarks[q.landmark][i];
+        const d = l ? distanceMeters(c, l) : Number.POSITIVE_INFINITY;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return { landmark: best };
+    }
   }
 }
 
@@ -109,8 +203,13 @@ export function questionError(ds: Dataset, q: Question, ctx: AskContext): string
   switch (q.kind) {
     case "radar":
       return (RADAR_MILES as readonly number[]).includes(q.miles) ? null : "Pick a radar distance.";
-    case "route":
-      return ds.routes.some((r) => r.letter === q.letter) ? null : "No such route.";
+    case "route": {
+      if (!ds.routes.some((r) => r.letter === q.letter)) return "No such route.";
+      const here = ds.complexes[ctx.origin.complex];
+      return here?.routes.includes(q.letter)
+        ? null
+        : "You can only ask about a line that stops where you are.";
+    }
     case "thermometer":
       if (!ctx.baseline) return "Start a thermometer first, then move.";
       if (
@@ -120,6 +219,18 @@ export function questionError(ds: Dataset, q: Question, ctx: AskContext): string
         return "Move to another station before reading the thermometer.";
       }
       return null;
+    case "matching":
+    case "measuring":
+      return LANDMARK_KINDS.includes(q.landmark) && ds.landmarks[q.landmark].length > 0
+        ? null
+        : "No such landmark.";
+    case "tentacles": {
+      const miles = TENTACLE_MILES[q.landmark];
+      if (miles === undefined) return "No such landmark.";
+      return landmarksWithin(ds, q.landmark, ctx.origin, miles).length > 0
+        ? null
+        : `There are no ${LANDMARK_WORDS[q.landmark].many} within ${milesText(miles)} of you.`;
+    }
     default:
       return null;
   }
@@ -139,7 +250,7 @@ export function filterCandidates(
 ) {
   // Photos don't narrow anything automatically: they're for you to read.
   return candidates.filter((c) =>
-    asked.every((a) => !isMapQuestion(a.q) || evaluate(ds, a.q, c, a.ctx) === a.answer),
+    asked.every((a) => !isMapQuestion(a.q) || sameAnswer(evaluate(ds, a.q, c, a.ctx), a.answer)),
   );
 }
 
@@ -170,13 +281,24 @@ export function questionOrigin(state: Transit, t: number, idx: TimetableIndex): 
   }
 }
 
-const miles = (m: number) =>
-  m === 0.25 ? "¼ mile" : m === 0.5 ? "½ mile" : m === 1 ? "1 mile" : `${m} miles`;
+export function milesText(m: number) {
+  return m === 0.25 ? "¼ mile" : m === 0.5 ? "½ mile" : m === 1 ? "1 mile" : `${m} miles`;
+}
 
-export function describeQuestion(q: Question, ds?: Dataset): string {
+/** Short distance for question text: "0.3 mi", "800 ft". */
+function shortDistance(meters: number) {
+  const mi = meters / METERS_PER_MILE;
+  return mi < 0.2 ? `${Math.round((meters * 3.28084) / 50) * 50} ft` : `${mi.toFixed(1)} mi`;
+}
+
+/**
+ * The question as the seeker asked it. With the dataset and the context it was asked
+ * in, it names the landmark that's nearest the seeker ("…the Met, like mine?").
+ */
+export function describeQuestion(q: Question, ds?: Dataset, ctx?: AskContext): string {
   switch (q.kind) {
     case "radar":
-      return `Is your station within ${miles(q.miles)} of me?`;
+      return `Is your station within ${milesText(q.miles)} of me?`;
     case "thermometer":
       return "Am I closer than where I started the thermometer?";
     case "route": {
@@ -185,10 +307,36 @@ export function describeQuestion(q: Question, ds?: Dataset): string {
     }
     case "borough":
       return "Is your station in the same borough as me?";
-    case "express":
-      return "Do express trains stop at your station?";
+    case "express": {
+      const mine = ctx && ds?.complexes[ctx.origin.complex];
+      if (!mine) return "Is your station the same kind of stop (express or local) as mine?";
+      return mine.express
+        ? "Is your station an express stop, like mine?"
+        : "Is your station a local-only stop, like mine?";
+    }
     case "moreRoutes":
-      return "Do more routes stop at your station than at mine?";
+      return "Do more lines stop at your station than at mine?";
+    case "matching": {
+      const words = LANDMARK_WORDS[q.landmark];
+      const mine = ds && ctx ? nearestLandmark(ds, q.landmark, ctx.origin) : null;
+      const name = mine && ds?.landmarks[q.landmark][mine.index]?.name;
+      return name
+        ? `Is your nearest ${words.one} ${name}, like mine?`
+        : `Is your nearest ${words.one} the same as mine?`;
+    }
+    case "measuring": {
+      const words = LANDMARK_WORDS[q.landmark];
+      const mine = ds && ctx ? nearestLandmark(ds, q.landmark, ctx.origin) : null;
+      const article = /^[aeiou]/.test(words.one) ? "an" : "a";
+      const base = `Are you closer to ${article} ${words.one} than me?`;
+      return mine ? `${base} I'm ${shortDistance(mine.meters)} from one.` : base;
+    }
+    case "tentacles": {
+      const words = LANDMARK_WORDS[q.landmark];
+      const miles = TENTACLE_MILES[q.landmark] ?? 0;
+      const n = ds && ctx ? landmarksWithin(ds, q.landmark, ctx.origin, miles).length : null;
+      return `Of the ${n ?? ""}${n === null ? "" : " "}${words.many} within ${milesText(miles)} of me, which is nearest you?`;
+    }
     case "photo": {
       const where = q.from === "exit" ? "your station's exit" : "where you're hiding";
       const dir = { N: "north", E: "east", S: "south", W: "west", up: "up" }[q.look];
@@ -197,9 +345,18 @@ export function describeQuestion(q: Question, ds?: Dataset): string {
   }
 }
 
-export function describeAnswer(a: Answer): string {
-  if (typeof a === "object") return "Photo";
+export function describeAnswer(a: Answer, q?: Question, ds?: Dataset): string {
+  if (typeof a === "object") {
+    if ("photo" in a) return "Photo";
+    if (a.landmark === null) {
+      const miles = q?.kind === "tentacles" ? TENTACLE_MILES[q.landmark] : undefined;
+      return miles === undefined ? "Out of range" : `Not within ${milesText(miles)}`;
+    }
+    const name = q?.kind === "tentacles" ? ds?.landmarks[q.landmark][a.landmark]?.name : null;
+    return name ?? "Answered";
+  }
   if (a === "hotter") return "Hotter";
   if (a === "colder") return "Colder";
+  if (q?.kind === "measuring" || q?.kind === "moreRoutes") return a ? "Closer" : "No";
   return a ? "Yes" : "No";
 }

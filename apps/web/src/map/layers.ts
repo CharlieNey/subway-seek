@@ -61,7 +61,7 @@ export interface RoundData {
   thermometer: LonLat | null;
 }
 
-function circle(lat: number, lon: number, meters: number): [number, number][] {
+export function circle(lat: number, lon: number, meters: number): [number, number][] {
   const dLat = meters / 110_540;
   const dLon = meters / (111_320 * Math.cos((lat * Math.PI) / 180));
   return Array.from({ length: 65 }, (_, i) => {
@@ -106,8 +106,16 @@ export interface ReplayScene {
   events: { position: LonLat; label: string }[];
 }
 
+/** Landmarks pinned while choosing a question about them; `nearest` is yours. */
+export interface LandmarkScene {
+  pins: { position: LonLat; name: string; nearest: boolean }[];
+  /** Tentacles: the range around you. */
+  range: [number, number][] | null;
+}
+
 export interface Scene {
   data: StaticData;
+  landmarks: LandmarkScene | null;
   round: RoundData;
   zoom: number;
   trains: Train[];
@@ -233,6 +241,49 @@ export function buildLayers(scene: Scene): Layer[] {
       lineWidthUnits: "pixels",
     }),
   ];
+
+  if (scene.landmarks) {
+    const { pins, range } = scene.landmarks;
+    type Pin = LandmarkScene["pins"][number];
+    layers.push(
+      new PathLayer<[number, number][]>({
+        id: "landmark-range",
+        data: range ? [range] : [],
+        getPath: (p) => p,
+        getColor: rgb("0f766e"),
+        getWidth: 1.5,
+        widthUnits: "pixels",
+      }),
+      new ScatterplotLayer<Pin>({
+        id: "landmarks",
+        data: pins,
+        getPosition: (p) => p.position,
+        getRadius: (p) => (p.nearest ? 7 : 5),
+        radiusUnits: "pixels",
+        getFillColor: (p) => (p.nearest ? rgb("0f766e") : rgb("14b8a6", 200)),
+        stroked: true,
+        getLineColor: WHITE,
+        getLineWidth: 1.5,
+        lineWidthUnits: "pixels",
+        updateTriggers: { getRadius: pins, getFillColor: pins },
+      }),
+      new TextLayer<Pin>({
+        id: "landmark-labels",
+        // Few kinds have many pins: name them all only when zoomed in.
+        data: scene.zoom >= 13 || pins.length <= 12 ? pins : pins.filter((p) => p.nearest),
+        getPosition: (p) => p.position,
+        getText: (p) => p.name,
+        getSize: 11,
+        getColor: rgb("134e4a"),
+        getPixelOffset: [0, -14],
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        characterSet: "auto",
+        fontSettings: { sdf: true },
+        outlineWidth: 3,
+        outlineColor: WHITE,
+      }),
+    );
+  }
 
   if (replay) {
     layers.push(

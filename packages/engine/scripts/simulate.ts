@@ -1,61 +1,90 @@
 /**
- * How many questions does it take to find the station? (M2 balance check)
+ * Question balance check.
  *
- *   pnpm sim
+ *   pnpm sim                 # a question every 5 game minutes
+ *   pnpm sim --pace 8        # ...or every 8
+ *   SIM_RULES='{"radar":{"bonusSeconds":480,"cooldownSeconds":900}}' pnpm sim   # try other rules
  *
- * For every complex the hider could reach from Times Sq in 20 minutes, a greedy seeker
- * asks whichever question best splits the remaining candidates (lowest expected number
- * left, assuming the hider is equally likely to be at any of them). Two seekers:
- *   - static: asks everything from Times Sq (pessimistic: no movement)
- *   - moving: after each answer, jumps to the candidate nearest the centre of the
- *     remaining ones (optimistic: travel is free), which also unlocks the thermometer
- * Real play sits between the two, and costs travel time the simulation ignores.
+ * For every start station (hub) and every complex the hider could reach from it in 20
+ * minutes, a simulated seeker asks questions until only the hider's station is left.
+ * It asks one question every `pace` game minutes, obeying each category's cooldown.
+ * Three seekers:
+ *   - greedy:  always the question that tells it the most (expected bits), whatever the price
+ *   - thrifty: the most bits per minute, counting the hider's bonus plus the time slot
+ *   - static:  thrifty, but asks everything from the start station (a pessimistic bound)
+ * Greedy and thrifty move after each answer: they jump to the remaining candidate nearest
+ * the middle (free travel, so optimistic), which also changes what they can ask.
+ *
+ * Balance goals: no category is more than ~35% of either moving seeker's questions,
+ * every category gets used, and pinning a station costs the hider ~60–80 bonus minutes.
  */
+import type { LandmarkKind } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
-  type Asked,
+  type AskContext,
+  askReadyAt,
   buildIndex,
+  categoryOf,
   distanceMeters,
   evaluate,
   HIDE_SECONDS,
+  HUB_STATION_IDS,
+  LANDMARK_KINDS,
   type MapQuestion,
   type Place,
-  QUESTION_BONUS_SECONDS,
+  QUESTION_CATEGORIES,
+  QUESTION_GAP_SECONDS,
+  QUESTION_RULES,
+  type Question,
+  type QuestionCategory,
   questionError,
   RADAR_MILES,
   reachableComplexes,
+  TENTACLE_MILES,
 } from "../src/index.ts";
+
+const paceArg = process.argv.indexOf("--pace");
+const PACE = Math.max(
+  QUESTION_GAP_SECONDS,
+  (paceArg >= 0 ? Number(process.argv[paceArg + 1]) : 5) * 60,
+);
+const PACE_MIN = PACE / 60;
+const MAX_SLOTS = 40;
+
+// Try other prices/cooldowns without editing the game's rules.
+if (process.env.SIM_RULES) Object.assign(QUESTION_RULES, JSON.parse(process.env.SIM_RULES));
 
 const ds = loadDataset();
 const idx = buildIndex(ds);
-const hub = ds.stations.findIndex((s) => s.id === "127");
 const TEN = 10 * 3600;
-const reach = reachableComplexes(idx, hub, TEN, TEN + HIDE_SECONDS);
 const placeOf = (complex: number): Place => {
   const c = ds.complexes[complex];
   if (!c) throw new Error("complex");
   return { lat: c.lat, lon: c.lon, complex };
 };
-const hubPlace = placeOf(ds.stations[hub]?.complex as number);
-const letters = [...new Set(reach.flatMap((c) => ds.complexes[c]?.routes ?? []))].sort();
-const MAX_QUESTIONS = 15;
+const tentacleKinds = LANDMARK_KINDS.filter((k) => TENTACLE_MILES[k] !== undefined);
 
-function pool(origin: Place, baseline: Place | null): { q: MapQuestion; ctx: Asked["ctx"] }[] {
-  const plain: MapQuestion[] = [
+function pool(origin: Place, baseline: Place | null): { q: MapQuestion; ctx: AskContext }[] {
+  const qs: MapQuestion[] = [
     ...RADAR_MILES.map((miles) => ({ kind: "radar" as const, miles })),
-    ...letters.map((letter) => ({ kind: "route" as const, letter })),
+    ...(ds.complexes[origin.complex]?.routes ?? []).map((letter) => ({
+      kind: "route" as const,
+      letter,
+    })),
     { kind: "borough" },
     { kind: "express" },
     { kind: "moreRoutes" },
+    ...LANDMARK_KINDS.flatMap((landmark: LandmarkKind) => [
+      { kind: "matching" as const, landmark },
+      { kind: "measuring" as const, landmark },
+    ]),
+    ...tentacleKinds.map((landmark) => ({ kind: "tentacles" as const, landmark })),
+    { kind: "thermometer" },
   ];
-  const out: { q: MapQuestion; ctx: Asked["ctx"] }[] = plain.map((q) => ({
-    q,
-    ctx: { origin, baseline: null },
-  }));
-  const thermo = { origin, baseline };
-  if (!questionError(ds, { kind: "thermometer" }, thermo))
-    out.push({ q: { kind: "thermometer" }, ctx: thermo });
-  return out;
+  return qs.flatMap((q) => {
+    const ctx = { origin, baseline: q.kind === "thermometer" ? baseline : null };
+    return questionError(ds, q, ctx) ? [] : [{ q, ctx }];
+  });
 }
 
 function nearestToCentre(cands: number[]): Place {
@@ -73,96 +102,129 @@ function nearestToCentre(cands: number[]): Place {
   return placeOf(best);
 }
 
+type Policy = "greedy" | "thrifty" | "static";
+
 interface Run {
-  /** Questions until only one station is left (null if questions ran dry first). */
+  /** Questions until only one station is left (null if it never got there). */
   toOne: number | null;
   /** Questions until three or fewer are left. */
   toThree: number | null;
-  /** Candidates left after each question. */
-  curve: number[];
-  /** Kind of each question asked, to spot one kind crowding out the rest. */
+  /** Bonus minutes the hider earned by the time the station was pinned (or the end). */
+  bonus: number;
+  /** Game minutes until pinned. */
+  minutes: number | null;
+  categories: QuestionCategory[];
   kinds: string[];
 }
 
-function play(hider: number, moving: boolean): Run {
+function play(hub: number, hider: number, reach: number[], policy: Policy): Run {
   let cands = [...reach];
-  let origin = hubPlace;
-  let baseline: Place | null = null;
-  const curve: number[] = [];
-  const kinds: string[] = [];
-  let toThree: number | null = cands.length <= 3 ? 0 : null;
-  for (let n = 1; n <= MAX_QUESTIONS && cands.length > 1; n++) {
-    let best: { q: MapQuestion; ctx: Asked["ctx"]; score: number } | null = null;
+  let origin = placeOf(ds.stations[hub]?.complex as number);
+  let baseline: Place | null = policy === "static" ? null : origin;
+  const asked: { q: Question; at: number }[] = [];
+  const run: Run = {
+    toOne: null,
+    toThree: null,
+    bonus: 0,
+    minutes: null,
+    categories: [],
+    kinds: [],
+  };
+  for (let slot = 0; slot < MAX_SLOTS && cands.length > 1; slot++) {
+    const t = slot * PACE;
+    let best: { q: MapQuestion; ctx: AskContext; score: number } | null = null;
     for (const { q, ctx } of pool(origin, baseline)) {
+      const category = categoryOf(q);
+      if (t < askReadyAt(asked, category)) continue;
       const parts = new Map<string, number>();
       for (const c of cands) {
-        const key = String(evaluate(ds, q, c, ctx));
+        const key = JSON.stringify(evaluate(ds, q, c, ctx));
         parts.set(key, (parts.get(key) ?? 0) + 1);
       }
       if (parts.size < 2) continue;
-      const score = [...parts.values()].reduce((s, k) => s + k * k, 0) / cands.length;
-      if (!best || score < best.score) best = { q, ctx, score };
+      let bits = 0;
+      for (const k of parts.values()) bits += (k / cands.length) * Math.log2(cands.length / k);
+      const price = QUESTION_RULES[category].bonusSeconds / 60;
+      const score = policy === "greedy" ? bits : bits / (price + PACE_MIN);
+      if (!best || score > best.score) best = { q, ctx, score };
     }
-    if (!best) break;
-    const answer = evaluate(ds, best.q, hider, best.ctx);
-    cands = cands.filter((c) => evaluate(ds, best.q, c, best.ctx) === answer);
-    curve.push(cands.length);
-    kinds.push(best.q.kind);
-    if (toThree === null && cands.length <= 3) toThree = n;
-    if (moving) {
-      baseline = best.q.kind === "thermometer" || baseline === null ? origin : baseline;
+    if (!best) continue; // nothing useful is off cooldown: wait for the next slot
+    const { q, ctx } = best;
+    const answer = JSON.stringify(evaluate(ds, q, hider, ctx));
+    cands = cands.filter((c) => JSON.stringify(evaluate(ds, q, c, ctx)) === answer);
+    asked.push({ q, at: t });
+    run.categories.push(categoryOf(q));
+    run.kinds.push(
+      q.kind === "matching" || q.kind === "measuring" || q.kind === "tentacles"
+        ? `${q.kind}:${q.landmark}`
+        : q.kind,
+    );
+    run.bonus += QUESTION_RULES[categoryOf(q)].bonusSeconds / 60;
+    if (run.toThree === null && cands.length <= 3) run.toThree = asked.length;
+    if (cands.length === 1) {
+      run.toOne = asked.length;
+      run.minutes = t / 60;
+    }
+    if (policy !== "static") {
+      baseline = origin;
       origin = nearestToCentre(cands);
     }
   }
-  return { toOne: cands.length === 1 ? curve.length : null, toThree, curve, kinds };
+  return run;
 }
 
-const stats = (xs: number[]) => {
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : Number.NaN);
+const pct = (xs: number[], p: number) => {
   const s = [...xs].sort((a, b) => a - b);
-  const pick = (p: number) => s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? Number.NaN;
-  const mean = s.reduce((a, b) => a + b, 0) / Math.max(1, s.length);
-  return { mean: mean.toFixed(1), median: pick(0.5), p90: pick(0.9), max: s.at(-1) ?? Number.NaN };
+  return s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? Number.NaN;
+};
+const share = (items: string[]) => {
+  const m = new Map<string, number>();
+  for (const k of items) m.set(k, (m.get(k) ?? 0) + 1);
+  return [...m].sort((a, b) => b[1] - a[1]).map(([k, n]) => [k, n / items.length] as const);
 };
 
-console.log(
-  `Hider leaves Times Sq at 10:00 with ${HIDE_SECONDS / 60} min: ${reach.length} possible stations ` +
-    `(log2 = ${Math.log2(reach.length).toFixed(1)} perfect yes/no questions).\n`,
+const games: { hub: number; hider: number; reach: number[] }[] = [];
+for (const id of HUB_STATION_IDS) {
+  const hub = ds.stations.findIndex((s) => s.id === id);
+  const reach = reachableComplexes(idx, hub, TEN, TEN + HIDE_SECONDS);
+  for (const hider of reach) games.push({ hub, hider, reach });
+}
+const avgReach = mean(
+  HUB_STATION_IDS.map(
+    (id) => games.filter((g) => ds.stations[g.hub]?.id === id)[0]?.reach.length ?? 0,
+  ),
 );
-for (const moving of [false, true]) {
-  const runs = reach.map((h) => play(h, moving));
-  const one = runs.flatMap((r) => (r.toOne === null ? [] : [r.toOne]));
-  const three = runs.flatMap((r) => (r.toThree === null ? [] : [r.toThree]));
-  const left = (k: number) =>
-    (
-      runs.reduce((s, r) => s + (r.curve[k - 1] ?? r.curve.at(-1) ?? reach.length), 0) / runs.length
-    ).toFixed(1);
-  const s1 = stats(one);
-  const s3 = stats(three);
+console.log(
+  `${HUB_STATION_IDS.length} start stations, ~${Math.round(avgReach)} possible hiding stations each ` +
+    `(${games.length} games per seeker). A question every ${PACE_MIN} min.\n`,
+);
+const rules = QUESTION_CATEGORIES.map(
+  (c) => `${c} +${QUESTION_RULES[c].bonusSeconds / 60}/${QUESTION_RULES[c].cooldownSeconds / 60}m`,
+).join(", ");
+console.log(`Rules (bonus/cooldown): ${rules}\n`);
+
+for (const policy of ["greedy", "thrifty", "static"] as Policy[]) {
+  const runs = games.map((g) => play(g.hub, g.hider, g.reach, policy));
+  const pinned = runs.filter((r) => r.toOne !== null);
+  console.log(`${policy.toUpperCase()} seeker`);
   console.log(
-    moving
-      ? "MOVING seeker (free travel toward the candidates)"
-      : "STATIC seeker (asks everything from Times Sq)",
+    `  pins the station in ${pinned.length}/${runs.length} games: ` +
+      `mean ${mean(pinned.map((r) => r.toOne as number)).toFixed(1)} questions ` +
+      `(p90 ${pct(
+        pinned.map((r) => r.toOne as number),
+        0.9,
+      )}), ` +
+      `${Math.round(mean(pinned.map((r) => r.minutes as number)))} game min, ` +
+      `hider bonus ~${Math.round(mean(pinned.map((r) => r.bonus)))} min`,
   );
   console.log(
-    `  to pin the station:  mean ${s1.mean}, median ${s1.median}, p90 ${s1.p90}, max ${s1.max} questions ` +
-      `(${one.length}/${runs.length} solvable)`,
+    `  narrows to ≤ 3 in mean ${mean(runs.flatMap((r) => (r.toThree === null ? [] : [r.toThree]))).toFixed(1)} questions`,
   );
+  const cats = share(runs.flatMap((r) => r.categories));
+  console.log(`  categories: ${cats.map(([k, f]) => `${k} ${Math.round(f * 100)}%`).join(", ")}`);
+  const top = share(runs.flatMap((r) => r.kinds)).slice(0, 6);
   console.log(
-    `  to narrow to ≤ 3:   mean ${s3.mean}, median ${s3.median}, p90 ${s3.p90}, max ${s3.max} questions`,
-  );
-  console.log(
-    `  stations left after 1–8 questions: ${[1, 2, 3, 4, 5, 6, 7, 8].map(left).join(" → ")}`,
-  );
-  const asked = runs.flatMap((r) => r.kinds);
-  const mix = new Map<string, number>();
-  for (const k of asked) mix.set(k, (mix.get(k) ?? 0) + 1);
-  console.log(
-    `  question mix: ${[...mix]
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, n]) => `${k} ${Math.round((n / asked.length) * 100)}%`)
-      .join(", ")}`,
-  );
-  console.log(
-    `  bonus to pin it at +${QUESTION_BONUS_SECONDS / 60} min each: ~${Math.round(Number(s1.mean) * (QUESTION_BONUS_SECONDS / 60))} min\n`,
+    `  top questions: ${top.map(([k, f]) => `${k} ${Math.round(f * 100)}%`).join(", ")}\n`,
   );
 }

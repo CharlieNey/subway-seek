@@ -6,10 +6,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./node": "./src/node.ts",
-    "./dataset.json": "./dataset/nyc-subway.json"
+    "./dataset.json": "./dataset/nyc-subway.json",
+    "./landmarks.json": "./dataset/nyc-landmarks.json"
   },
   "scripts": {
     "build-dataset": "tsx scripts/build-dataset.ts",
+    "build-landmarks": "tsx scripts/build-landmarks.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {

@@ -14,7 +14,6 @@ const view = (over: Partial<SoloView>): SoloView => ({
   seeker: { kind: "platform", station: 0, since: 37_200, arrivedDir: null },
   asked: [],
   thermometer: null,
-  cooldownUntil: 37_200,
   bonusSeconds: 0,
   result: null,
   hider: null,

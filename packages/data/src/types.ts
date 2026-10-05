@@ -110,7 +110,8 @@ export interface Shape {
   points: [number, number][];
 }
 
-export interface Dataset {
+/** The subway part of the dataset, as `build-dataset` writes it (dataset/nyc-subway.json). */
+export interface SubwayData {
   meta: DatasetMeta;
   routes: Route[];
   stations: Station[];
@@ -118,4 +119,27 @@ export interface Dataset {
   transfers: Transfer[];
   trips: Trip[];
   shapes: Shape[];
+}
+
+/** Places that questions can be about ("Is your nearest museum the same as mine?"). */
+export type LandmarkKind = "park" | "museum" | "library" | "hospital" | "zoo" | "airport";
+
+/** One place, at its pin: distances are measured to this point. */
+export interface Landmark {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+/** dataset/nyc-landmarks.json, as `build-landmarks` writes it. */
+export interface LandmarkData {
+  meta: { generatedAt: string; sources: string[]; attribution: string };
+  kinds: Record<LandmarkKind, Landmark[]>;
+}
+
+/** Everything the game runs on: the subway plus the landmarks. */
+export interface Dataset extends SubwayData {
+  landmarks: Record<LandmarkKind, Landmark[]>;
+  /** Credit line for the landmark data (OpenStreetMap is ODbL: it must be shown). */
+  landmarkAttribution: string;
 }

@@ -9,11 +9,13 @@ import {
   type Answer,
   type AskContext,
   type Asked,
+  categoryOf,
   evaluate,
   filterCandidates,
   type Place,
   photoCamera,
   type Question,
+  type QuestionCategory,
   questionError,
   questionOrigin,
 } from "./questions.ts";
@@ -33,10 +35,29 @@ import {
 
 export const HIDE_SECONDS = 20 * 60;
 export const SEEK_LIMIT_SECONDS = 2 * 3600;
-export const QUESTION_COOLDOWN_SECONDS = 5 * 60;
-export const QUESTION_BONUS_SECONDS = 10 * 60;
-/** Photos can give away a lot, so they cost more. */
-export const PHOTO_BONUS_SECONDS = 15 * 60;
+/**
+ * What each category of question costs: minutes added to the hider's score, and how
+ * long before you can ask that category again. Tuned with `pnpm sim` (2026-10-05):
+ * before, radar and "does the ___ stop there" were 91–94% of a strong seeker's
+ * questions; with these, no category is more than ~29% at any pace, and pinning the
+ * station still earns the hider ~64 min (it was ~68). Equal prices for the yes/no
+ * categories matter: when matching and measuring were cheaper, a price-aware seeker
+ * stopped using radar entirely; a cheaper thermometer took over a third of the questions.
+ */
+export const QUESTION_RULES: Record<
+  QuestionCategory,
+  { bonusSeconds: number; cooldownSeconds: number }
+> = {
+  matching: { bonusSeconds: 10 * 60, cooldownSeconds: 15 * 60 },
+  measuring: { bonusSeconds: 10 * 60, cooldownSeconds: 15 * 60 },
+  radar: { bonusSeconds: 10 * 60, cooldownSeconds: 15 * 60 },
+  thermometer: { bonusSeconds: 10 * 60, cooldownSeconds: 10 * 60 },
+  // Answers name a landmark, so it splits the map many ways: the dearest question.
+  tentacles: { bonusSeconds: 20 * 60, cooldownSeconds: 40 * 60 },
+  photo: { bonusSeconds: 15 * 60, cooldownSeconds: 15 * 60 },
+};
+/** Least time between any two questions (the old single cooldown). */
+export const QUESTION_GAP_SECONDS = 5 * 60;
 /** Photos from the hiding spot open this long into the round. */
 export const SPOT_PHOTOS_OPEN_SECONDS = 15 * 60;
 /** Zone radius around the hider's station; the hiding spot is inside it. */
@@ -82,7 +103,6 @@ export interface SoloRound {
   seeker: Transit;
   asked: AskedQuestion[];
   thermometer: Place | null;
-  cooldownUntil: number;
   result: RoundResult | null;
   /** The bot's route to its hiding station (secret until the round ends). */
   hiderTrail: TrailEntry[];
@@ -140,7 +160,6 @@ export function createSoloRound(
     seeker: { kind: "platform", station: hub, since: seekStart, arrivedDir: null },
     asked: [],
     thermometer: null,
-    cooldownUntil: seekStart,
     result: null,
     hiderTrail: trailFromLegs(idx, hub, hideStart, legs),
     // The seeker waits at the start while the bot hides.
@@ -251,9 +270,10 @@ export function applySoloIntent(
 
   switch (intent.type) {
     case "ask": {
-      if (t < round.cooldownUntil) {
-        const min = Math.ceil((round.cooldownUntil - t) / 60);
-        return { ok: false, error: `You can ask again in ${min} min.` };
+      const ready = askReadyAt(round.asked, categoryOf(intent.question));
+      if (t < ready) {
+        const min = Math.ceil((ready - t) / 60);
+        return { ok: false, error: `You can ask that again in ${min} min.` };
       }
       const ctx: AskContext = {
         origin: questionOrigin(round.seeker, t, idx),
@@ -280,7 +300,6 @@ export function applySoloIntent(
         round: {
           ...round,
           asked: [...round.asked, { ...entry, at: t, remaining }],
-          cooldownUntil: t + QUESTION_COOLDOWN_SECONDS,
           // A thermometer reading restarts it from here, so you can keep chaining.
           thermometer: intent.question.kind === "thermometer" ? ctx.origin : round.thermometer,
         },
@@ -312,11 +331,26 @@ export function candidates(round: SoloRound, idx: TimetableIndex): number[] {
   return filterCandidates(idx.ds, round.reachable, round.asked);
 }
 
-export function bonusSeconds(round: SoloRound): number {
-  return round.asked.reduce(
-    (sum, a) => sum + (a.q.kind === "photo" ? PHOTO_BONUS_SECONDS : QUESTION_BONUS_SECONDS),
-    0,
-  );
+export function bonusSeconds(round: { asked: readonly { q: Question }[] }): number {
+  return round.asked.reduce((sum, a) => sum + QUESTION_RULES[categoryOf(a.q)].bonusSeconds, 0);
+}
+
+/**
+ * When a question of this category can next be asked: its own cooldown since the last
+ * one of the category, and the short gap since any question. 0 = right away.
+ */
+export function askReadyAt(
+  asked: readonly { q: Question; at: number }[],
+  category: QuestionCategory,
+): number {
+  let ready = 0;
+  for (const a of asked) {
+    ready = Math.max(ready, a.at + QUESTION_GAP_SECONDS);
+    if (categoryOf(a.q) === category) {
+      ready = Math.max(ready, a.at + QUESTION_RULES[category].cooldownSeconds);
+    }
+  }
+  return ready;
 }
 
 /** What the seeker may see: everything except the hider, until the round ends. */
@@ -332,7 +366,6 @@ export interface SoloView {
   seeker: Transit;
   asked: AskedQuestion[];
   thermometer: Place | null;
-  cooldownUntil: number;
   bonusSeconds: number;
   result: RoundResult | null;
   /** Only once the round is over. */
@@ -360,7 +393,6 @@ export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
     seeker: round.seeker,
     asked: round.asked,
     thermometer: round.thermometer,
-    cooldownUntil: round.cooldownUntil,
     bonusSeconds: bonusSeconds(round),
     result: round.result,
     hider: round.result ? round.hider : null,

@@ -23,14 +23,15 @@ Optional env:
 | Command | What it does |
 |---|---|
 | `pnpm data:build` | Rebuild `packages/data/dataset/nyc-subway.json` from cached MTA downloads (`--refresh` re-downloads) |
+| `pnpm --filter @stand-clear/data build-landmarks` | Rebuild `nyc-landmarks.json` (parks, museums, libraries, hospitals, zoos, airports) from OpenStreetMap + NYC Open Data |
 | `pnpm test` | Vitest across all packages |
-| `pnpm sim` | Balance check: how many questions it takes to find the hider's station |
+| `pnpm sim` | Balance check: questions to find the hider's station, and which kinds a strong seeker uses (`--pace 8`, `SIM_RULES=…`; see `docs/question-balance.md`) |
 | `pnpm typecheck` | `tsc --noEmit` in every package |
 | `pnpm lint` / `pnpm format` | Biome check / fix |
 
 ## Layout
 
-- `packages/data`: MTA open data → the game's dataset (one pinned weekday)
+- `packages/data`: MTA open data → the game's dataset (one pinned weekday), plus landmarks for questions
 - `packages/engine`: pure game rules (no I/O)
 - `apps/server`: authoritative WebSocket game server
 - `apps/web`: Vite + React client

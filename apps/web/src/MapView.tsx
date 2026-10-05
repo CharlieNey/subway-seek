@@ -1,12 +1,14 @@
-import type { LonLat } from "@stand-clear/engine";
+import { type LonLat, milesToMeters, nearestLandmark, questionOrigin } from "@stand-clear/engine";
 import { useEffect, useRef } from "react";
-import { nowGameTime, useGame, type World } from "./game.ts";
+import { type LandmarkPreview, nowGameTime, useGame, type World } from "./game.ts";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
 import { createGoogleBase } from "./map/googleBase.ts";
 import {
   buildLayers,
   buildRound,
   buildStatic,
+  circle,
+  type LandmarkScene,
   type ReplayScene,
   type RoundData,
   type Train,
@@ -30,6 +32,30 @@ function stationTooltip({ ds }: World, complex: number): string {
     )
     .join("");
   return `<div style="font:600 12px system-ui;margin-bottom:4px">${escapeHtml(c.name)}</div><div>${bullets}</div>`;
+}
+
+/** Pins for the landmarks being previewed, built once per kind and origin. */
+let landmarkCache: { key: string; scene: LandmarkScene } | null = null;
+function landmarkScene(
+  { ds }: World,
+  preview: LandmarkPreview,
+  origin: { lat: number; lon: number },
+): LandmarkScene {
+  const key = `${preview.kind}|${preview.rangeMiles ?? ""}|${origin.lat},${origin.lon}`;
+  if (landmarkCache?.key === key) return landmarkCache.scene;
+  const mine = nearestLandmark(ds, preview.kind, origin).index;
+  const scene: LandmarkScene = {
+    pins: ds.landmarks[preview.kind].map((l, i) => ({
+      position: [l.lon, l.lat] as LonLat,
+      name: l.name,
+      nearest: i === mine,
+    })),
+    range: preview.rangeMiles
+      ? circle(origin.lat, origin.lon, milesToMeters(preview.rangeMiles))
+      : null,
+  };
+  landmarkCache = { key, scene };
+  return scene;
 }
 
 /**
@@ -110,6 +136,7 @@ export function MapView() {
 
       let me: LonLat | null = null;
       let replayScene: ReplayScene | null = null;
+      let landmarks: LandmarkScene | null = null;
       if (replay.active) {
         const seekerPath = pathUntil(replay.seeker, t);
         replayScene = {
@@ -121,14 +148,24 @@ export function MapView() {
         };
         me = seekerPath.at(-1) ?? null;
       } else {
-        const { view, follow } = useGame.getState();
+        const { view, follow, preview } = useGame.getState();
         if (view) {
           me = world.geo.playerPosition(view.seeker, t);
           if (follow) base.setCenter(me);
+          if (preview)
+            landmarks = landmarkScene(world, preview, questionOrigin(view.seeker, t, world.idx));
         }
       }
       base.setLayers(
-        buildLayers({ data, round, zoom: base.getZoom(), trains, me, replay: replayScene }),
+        buildLayers({
+          data,
+          landmarks,
+          round,
+          zoom: base.getZoom(),
+          trains,
+          me,
+          replay: replayScene,
+        }),
       );
     };
     let disposed = false;

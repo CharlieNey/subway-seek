@@ -7,6 +7,7 @@ import type { RoundMode, SoloIntent, SoloView } from "./solo.ts";
 import type { TransitIntent } from "./transit.ts";
 
 const index = z.number().int().nonnegative();
+const landmark = z.enum(["park", "museum", "library", "hospital", "zoo", "airport"]);
 
 export const transitIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("board"), trip: index, stop: index }),
@@ -30,6 +31,9 @@ export const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("borough") }),
   z.object({ kind: z.literal("express") }),
   z.object({ kind: z.literal("moreRoutes") }),
+  z.object({ kind: z.literal("matching"), landmark }),
+  z.object({ kind: z.literal("measuring"), landmark }),
+  z.object({ kind: z.literal("tentacles"), landmark }),
   z.object({
     kind: z.literal("photo"),
     from: z.enum(["exit", "spot"]),
