@@ -4,3 +4,4 @@ dist/
 *.log
 .env*
 packages/data/raw/
+apps/server/logs/

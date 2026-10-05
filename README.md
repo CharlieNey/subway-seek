@@ -2,6 +2,8 @@
 
 Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. Design, rules and build plan: [DESIGN.md](DESIGN.md).
 
+**Playable now (M2):** solo rounds against a bot hider. Ride the real subway at 6×, ask map questions (radar, thermometer, routes, borough, express, more routes) and watch the possible stations shrink, then get off at the hider's station to win.
+
 ## Quickstart
 
 ```sh
@@ -16,6 +18,7 @@ pnpm dev:web        # client on http://localhost:5173
 |---|---|
 | `pnpm data:build` | Rebuild `packages/data/dataset/nyc-subway.json` from cached MTA downloads (`--refresh` re-downloads) |
 | `pnpm test` | Vitest across all packages |
+| `pnpm sim` | Balance check: how many questions it takes to find the hider's station |
 | `pnpm typecheck` | `tsc --noEmit` in every package |
 | `pnpm lint` / `pnpm format` | Biome check / fix |
 

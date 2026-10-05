@@ -1,19 +1,19 @@
 /**
  * Client game state: the dataset (loaded once), the server connection, and the
- * player's transit state. The server is authoritative; the client only derives
- * positions and boards from the shared clock + public timetable.
+ * seeker's view of the round. The server is authoritative (and alone knows where the
+ * hider is); the client derives positions and boards from the shared clock + timetable.
  */
 import type { Dataset } from "@stand-clear/data";
 import datasetUrl from "@stand-clear/data/dataset.json?url";
 import {
   buildIndex,
+  type ClientIntent,
   type ClockSync,
   Geometry,
   type ServerMessage,
+  type SoloView,
   syncedGameTime,
   type TimetableIndex,
-  type Transit,
-  type TransitIntent,
 } from "@stand-clear/engine";
 import { create } from "zustand";
 
@@ -30,15 +30,17 @@ interface GameStore {
   error: string | null;
   world: World | null;
   sync: ClockSync | null;
-  state: Transit | null;
+  view: SoloView | null;
+  tab: "travel" | "ask";
   /** Last rejection, shown as a toast. */
   notice: string | null;
   /** An intent is in flight (disable buttons until the server answers). */
   busy: boolean;
   follow: boolean;
-  send: (intent: TransitIntent) => void;
+  send: (intent: ClientIntent) => void;
   dismissNotice: () => void;
   setFollow: (follow: boolean) => void;
+  setTab: (tab: "travel" | "ask") => void;
 }
 
 let socket: WebSocket | null = null;
@@ -49,7 +51,8 @@ export const useGame = create<GameStore>((set) => ({
   error: null,
   world: null,
   sync: null,
-  state: null,
+  view: null,
+  tab: "travel",
   notice: null,
   busy: false,
   follow: true,
@@ -61,6 +64,7 @@ export const useGame = create<GameStore>((set) => ({
   },
   dismissNotice: () => set({ notice: null }),
   setFollow: (follow) => set({ follow }),
+  setTab: (tab) => set({ tab }),
 }));
 
 /** Current game time from the last clock sync. */
@@ -72,13 +76,21 @@ export function nowGameTime(): number | null {
 function handle(msg: ServerMessage) {
   switch (msg.type) {
     case "hello":
-      useGame.setState({ status: "ready", sync: msg.clock, state: msg.state });
+      useGame.setState({ status: "ready", sync: msg.clock, view: msg.view });
       break;
-    case "state":
-      useGame.setState({ sync: msg.clock, state: msg.state, busy: false });
+    case "state": {
+      // A fresh round (after "Play again"): follow the seeker again.
+      const fresh = useGame.getState().view?.result != null && msg.view.result === null;
+      useGame.setState({
+        sync: msg.clock,
+        view: msg.view,
+        busy: false,
+        ...(fresh ? { follow: true, tab: "travel" as const } : {}),
+      });
       break;
+    }
     case "rejected":
-      useGame.setState({ sync: msg.clock, state: msg.state, busy: false, notice: msg.error });
+      useGame.setState({ sync: msg.clock, view: msg.view, busy: false, notice: msg.error });
       break;
   }
 }

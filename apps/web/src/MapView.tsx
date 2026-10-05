@@ -1,4 +1,5 @@
-import type { Feature, FeatureCollection, LineString, Point } from "geojson";
+import type { SoloView } from "@stand-clear/engine";
+import type { Feature, FeatureCollection, LineString, Point, Polygon } from "geojson";
 import * as maplibregl from "maplibre-gl";
 // MapLibre runs tile parsing in an ES-module worker that imports a sibling chunk
 // (see vite.config.ts for how the build keeps them together).
@@ -23,14 +24,71 @@ function linesGeoJSON({ ds }: World): FeatureCollection<LineString> {
   };
 }
 
-function stationsGeoJSON({ ds }: World): FeatureCollection<Point> {
+type StationStatus = "candidate" | "out" | "hider" | "start";
+
+function stationsGeoJSON({ ds }: World, view: SoloView | null): FeatureCollection<Point> {
+  const candidates = new Set(view?.candidates ?? []);
+  const hubComplex = view ? ds.stations[view.hub]?.complex : undefined;
+  const status = (i: number): StationStatus => {
+    if (view?.hider === i) return "hider";
+    if (i === hubComplex) return "start";
+    if (!view || candidates.has(i)) return "candidate";
+    return "out";
+  };
   return {
     type: "FeatureCollection",
     features: ds.complexes.map((c, i) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [c.lon, c.lat] },
-      properties: { complex: i, name: c.name },
+      properties: { complex: i, name: c.name, status: status(i) },
     })),
+  };
+}
+
+/** A circle as a polygon ring (fine at city scale). */
+function circle(lat: number, lon: number, meters: number): [number, number][] {
+  const dLat = meters / 110_540;
+  const dLon = meters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return Array.from({ length: 65 }, (_, i) => {
+    const a = (i / 64) * 2 * Math.PI;
+    return [lon + dLon * Math.cos(a), lat + dLat * Math.sin(a)];
+  });
+}
+
+/** Radar questions as circles around where they were asked from. */
+function radarGeoJSON(view: SoloView | null): FeatureCollection<Polygon> {
+  return {
+    type: "FeatureCollection",
+    features: (view?.asked ?? []).flatMap((a) =>
+      a.q.kind === "radar"
+        ? [
+            {
+              type: "Feature" as const,
+              geometry: {
+                type: "Polygon" as const,
+                coordinates: [circle(a.ctx.origin.lat, a.ctx.origin.lon, a.q.miles * 1609.344)],
+              },
+              properties: { yes: a.answer === true },
+            },
+          ]
+        : [],
+    ),
+  };
+}
+
+function thermometerGeoJSON(view: SoloView | null): FeatureCollection<Point> {
+  const b = view?.thermometer;
+  return {
+    type: "FeatureCollection",
+    features: b
+      ? [
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [b.lon, b.lat] },
+            properties: {},
+          },
+        ]
+      : [],
   };
 }
 
@@ -69,6 +127,7 @@ export function MapView() {
     if (import.meta.env.DEV) (window as unknown as { __map: maplibregl.Map }).__map = map;
     let raf = 0;
     let lastTrains = 0;
+    let unsubscribe = () => {};
     // You: a DOM marker, moved every frame without re-tiling any map data.
     const meEl = document.createElement("div");
     meEl.className =
@@ -88,16 +147,76 @@ export function MapView() {
           "line-opacity": 0.8,
         },
       });
-      map.addSource("stations", { type: "geojson", data: stationsGeoJSON(world) });
+      const view0 = useGame.getState().view;
+      map.addSource("radar", { type: "geojson", data: radarGeoJSON(view0) });
+      map.addLayer({
+        id: "radar-fill",
+        type: "fill",
+        source: "radar",
+        filter: ["==", ["get", "yes"], true],
+        paint: { "fill-color": "#f59e0b", "fill-opacity": 0.06 },
+      });
+      map.addLayer({
+        id: "radar-line",
+        type: "line",
+        source: "radar",
+        paint: {
+          "line-color": ["case", ["get", "yes"], "#d97706", "#78716c"],
+          "line-width": 1.5,
+          "line-dasharray": [3, 2],
+        },
+      });
+      map.addSource("stations", { type: "geojson", data: stationsGeoJSON(world, view0) });
       map.addLayer({
         id: "stations",
         type: "circle",
         source: "stations",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 15, 5],
-          "circle-color": "#ffffff",
-          "circle-stroke-color": "#1f2937",
-          "circle-stroke-width": 1.2,
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10,
+            ["match", ["get", "status"], "out", 1.2, "hider", 5, 2.5],
+            15,
+            ["match", ["get", "status"], "out", 3, "hider", 10, 6.5],
+          ],
+          "circle-color": [
+            "match",
+            ["get", "status"],
+            "candidate",
+            "#fbbf24",
+            "hider",
+            "#dc2626",
+            "start",
+            "#ffffff",
+            "#e7e5e4",
+          ],
+          "circle-stroke-color": [
+            "match",
+            ["get", "status"],
+            "candidate",
+            "#92400e",
+            "hider",
+            "#7f1d1d",
+            "start",
+            "#1f2937",
+            "#a8a29e",
+          ],
+          "circle-stroke-width": ["match", ["get", "status"], "out", 0.8, 1.5],
+        },
+      });
+      map.addSource("thermometer", { type: "geojson", data: thermometerGeoJSON(view0) });
+      map.addLayer({
+        id: "thermometer",
+        type: "circle",
+        source: "thermometer",
+        paint: {
+          "circle-radius": 7,
+          "circle-color": "#7c3aed",
+          "circle-opacity": 0.25,
+          "circle-stroke-color": "#7c3aed",
+          "circle-stroke-width": 2,
         },
       });
       map.addLayer({
@@ -149,14 +268,32 @@ export function MapView() {
           }
           trainsSource.setData({ type: "FeatureCollection", features });
         }
-        const { state, follow } = useGame.getState();
-        if (state) {
-          const p = world.geo.playerPosition(state, t);
+        const { view, follow } = useGame.getState();
+        if (view) {
+          const p = world.geo.playerPosition(view.seeker, t);
           me.setLngLat(p);
           if (follow) map.setCenter(p);
         }
       };
       tick();
+
+      // Re-shade stations and redraw question overlays when the round changes.
+      unsubscribe = useGame.subscribe((st, prev) => {
+        if (st.view === prev.view) return;
+        (map.getSource("stations") as maplibregl.GeoJSONSource).setData(
+          stationsGeoJSON(world, st.view),
+        );
+        (map.getSource("radar") as maplibregl.GeoJSONSource).setData(radarGeoJSON(st.view));
+        (map.getSource("thermometer") as maplibregl.GeoJSONSource).setData(
+          thermometerGeoJSON(st.view),
+        );
+        const hider = st.view?.hider;
+        const c = hider !== null && hider !== undefined ? world.ds.complexes[hider] : undefined;
+        if (c && prev.view?.hider == null) {
+          useGame.getState().setFollow(false);
+          map.flyTo({ center: [c.lon, c.lat], zoom: 14 });
+        }
+      });
     });
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
@@ -177,6 +314,7 @@ export function MapView() {
 
     return () => {
       cancelAnimationFrame(raf);
+      unsubscribe();
       me.remove();
       popup.remove();
       map.remove();

@@ -3,7 +3,8 @@
  * the engine sees them; server messages are plain types (the server is trusted).
  */
 import { z } from "zod";
-import type { Transit, TransitIntent } from "./transit.ts";
+import type { SoloIntent, SoloView } from "./solo.ts";
+import type { TransitIntent } from "./transit.ts";
 
 const index = z.number().int().nonnegative();
 
@@ -16,16 +17,37 @@ export const transitIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("enter"), station: index }),
 ]);
 
-// Keep the schema and the engine's intent type in lockstep.
+export const questionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("radar"), miles: z.number() }),
+  z.object({ kind: z.literal("thermometer") }),
+  z.object({ kind: z.literal("route"), letter: z.string().max(4) }),
+  z.object({ kind: z.literal("borough") }),
+  z.object({ kind: z.literal("express") }),
+  z.object({ kind: z.literal("moreRoutes") }),
+]);
+
+export type NewRoundIntent = { type: "newRound" };
+export type ClientIntent = SoloIntent | NewRoundIntent;
+
+export const clientIntentSchema = z.discriminatedUnion("type", [
+  ...transitIntentSchema.options,
+  z.object({ type: z.literal("ask"), question: questionSchema }),
+  z.object({ type: z.literal("startThermometer") }),
+  z.object({ type: z.literal("newRound") }),
+]);
+
+// Keep the schemas and the engine's types in lockstep.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
-const _intentsMatch: Same<z.infer<typeof transitIntentSchema>, TransitIntent> = true;
+const _transitMatches: Same<z.infer<typeof transitIntentSchema>, TransitIntent> = true;
+const _intentsMatch: Same<z.infer<typeof clientIntentSchema>, ClientIntent> = true;
+void _transitMatches;
 void _intentsMatch;
 
 /** `seq` increases per client; a repeated seq is ignored, so retries can't double-apply. */
 export const clientMessageSchema = z.object({
   type: z.literal("intent"),
   seq: index,
-  intent: transitIntentSchema,
+  intent: clientIntentSchema,
 });
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -38,9 +60,9 @@ export interface ClockSync {
 }
 
 export type ServerMessage =
-  | { type: "hello"; serviceDate: string; clock: ClockSync; state: Transit }
-  | { type: "state"; seq: number; clock: ClockSync; state: Transit }
-  | { type: "rejected"; seq: number; error: string; clock: ClockSync; state: Transit };
+  | { type: "hello"; serviceDate: string; clock: ClockSync; view: SoloView }
+  | { type: "state"; seq: number; clock: ClockSync; view: SoloView }
+  | { type: "rejected"; seq: number; error: string; clock: ClockSync; view: SoloView };
 
 /** Game time now, from the last sync. */
 export function syncedGameTime(sync: ClockSync, nowMs: number): number {

@@ -293,7 +293,7 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 |---|---|---|
 | M0 ✅ | **Data prep** | Script turns MTA GTFS for the pinned date into a compact dataset (complexes, exits, trips, stop_times, transfers, shapes, boroughs, express flags); it loads in < 1 s. *Done 2026-10-05: 5.1 MB, loads in 12 ms, 23 tests.* |
 | M1 ✅ | **Transit sandbox** | One player, 6× clock: departure boards, board, choose exit stop, timed transfers and exits, moving dot on the map. *Riding the subway at 6× feels good.* *Done 2026-10-05: every running train animates along its real track; 35 tests.* |
-| M2 | **Questions vs a bot hider** | Single-player: a bot hides at a random reachable station; the six MVP questions are answered automatically; the map shades ruled-out stations. **Simulate question partitions over the reachable set** (average questions to find the station) and set prices from it. *Finding the station is fun on its own.* |
+| M2 ✅ | **Questions vs a bot hider** | Single-player: a bot hides at a random reachable station; the six MVP questions are answered automatically; the map shades ruled-out stations. **Simulate question partitions over the reachable set** (average questions to find the station) and set prices from it. *Finding the station is fun on its own.* *Done 2026-10-05: `pnpm sim`; 46 tests; a played round found Borough Hall in 32 min with 2 questions.* |
 | M3 | **Two-player round, map endgame** | Room with hider + seeker; Phase 1 → 2 → 3; the hider watches the seeker; Hide here + auto-freeze; the hider drops a map pin in the zone, catch = seeker's pin within 25 m; minimal cards (time bonuses + Veto); reconnects; score + swap |
 | M4 | **Street View endgame** | 15–30 curated hide-eligible zones with connected panorama graphs; "walk to"; catch along the graph; fallback to the map endgame on load failure |
 | M5 | **Photos** | Station photos (any exit, any time) and spot photos (fixed open time), server-rendered with no metadata; answer timer |
@@ -302,7 +302,22 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 
 **Street View spike (parallel to M1–M2):** walk one zone in Street View at 6×, count panorama loads per round, and settle the pricing/terms question. Street View is the hook, so confirm early that it feels right and is affordable — but don't build on it until M4.
 
+### M2 results: how many questions find the station (`pnpm sim`)
+
+Hider leaves Times Sq at 10:00 with 20 min → **97 possible stations** (log₂ = 6.6 perfect yes/no questions). A greedy seeker always asks the question that best splits what's left:
+
+| Seeker | To narrow to ≤ 3 | To pin the station | Solvable by questions alone |
+|---|---|---|---|
+| Static (asks everything from Times Sq) | mean 5.8 (max 8) | mean 7.0 (max 9) | 49 / 97 |
+| Moving (free travel toward the candidates) | mean 5.4 (max 7) | mean 6.8 (max 9) | 91 / 97 |
+
+Stations left after 1–8 questions (moving): 49 → 25 → 14 → 7 → 3.7 → 2.0 → 1.3 → 1.1.
+
+**Pricing decision: keep +10 min per question and the 5-min cooldown.** Pinning the station by questions alone costs the seeker ~70 min of hider bonus and ≥ 30 game-min of cooldown, so questions pay early, but with 2–3 stations left it's cheaper to go and look. That crossover is the decision we want players making. Revisit once real playtests log station-finding times.
+
 ### Playtest metrics (log from M2 on)
+
+Logged now: one JSONL file per round in `apps/server/logs/` (round start with the hider, every intent and question with candidates remaining, round end with time, questions and score).
 - Candidate stations remaining over time
 - Questions spent, by type, and their bonus cost
 - **Time between meaningful decisions, per player** — the real measure of dead time
@@ -426,6 +441,11 @@ Hand limit: 6.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | Keep +10 min per question and the 5-min cooldown | M2 simulation: ~5.5 questions narrow 97 stations to ≤ 3, ~7 pin it; past that, visiting is cheaper than asking |
+| 2026-10-05 | The hider must leave the start complex | M2: otherwise "stay put" is a free hide; the seeker's first look rules it out anyway |
+| 2026-10-05 | Solo rounds start at 10:20 (the bot already hid) | M2: no human hider, so the 20-min hiding phase would be pure waiting |
+| 2026-10-05 | Thermometer: start it anywhere for free; each reading restarts it from where you read it | M2: makes chained readings possible without a wasted question |
+| 2026-10-05 | Radar distances: ¼, ½, 1, 2, 5 miles | M2: covers walking-zone scale up to borough scale |
 | 2026-10-05 | Changing platforms within a station takes at least 90 s | M1: MTA lists 0 s at 57 big stations (Times Sq, Grand Central), which allowed instant direction reversals |
 | 2026-10-05 | Transit state is lazy: a ride is (trip, board stop, alight stop), resolved against the clock | M1: no timers; server and clients derive the same position from the shared clock + public timetable |
 | 2026-10-05 | Your dot is a DOM marker moved every frame; other trains are a map layer refreshed 10×/s | M1: re-tiling map data every frame flooded MapLibre's worker |
