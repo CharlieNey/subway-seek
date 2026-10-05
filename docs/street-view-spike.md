@@ -1,6 +1,6 @@
 # Street View spike — 2026-10-05
 
-**Bottom line:** Google Street View is technically excellent and cheap for this game, but its terms rule out two things the design assumed. You can't show Street View on the same screen as our MapLibre/OpenStreetMap map. And you can't relay Street View images from the server as "photos" that hide their location. Decide between **Google with a separate street screen and honor-system photos** and **Mapillary (open imagery) everywhere** before M4. A Mapillary coverage check for NYC is the cheapest next step.
+**Bottom line:** Google Street View is technically excellent and cheap for this game, but its terms rule out two things the design assumed: Street View on the same screen as our MapLibre/OpenStreetMap map, and server-relayed Street View "photos" that hide their location. **Mapillary is ruled out on coverage** (see the update at the end), so the decision is between a separate Google street screen (A) and moving the whole game to Google Maps JS (B), before M4. Photos run on trust either way.
 
 Test page: `apps/web/spike/streetview.html` (`?zone=<complex name>`, `?auto=1` maps the zone, places a marker and does two walks).
 
