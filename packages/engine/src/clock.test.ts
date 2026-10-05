@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gameTime, pauseClock, realMsUntil, resumeClock, startClock } from "./clock.ts";
+import { gameTime, jumpClock, pauseClock, realMsUntil, resumeClock, startClock } from "./clock.ts";
 
 const TEN_AM = 10 * 3600;
 
@@ -34,5 +34,18 @@ describe("game clock", () => {
 
   it("rejects a non-positive speed", () => {
     expect(() => startClock(TEN_AM, 0, 0)).toThrow();
+  });
+});
+
+describe("fast-forward", () => {
+  it("jumps forward and keeps running from there", () => {
+    const c = jumpClock(startClock(TEN_AM, 6, 0), TEN_AM + 600, 1_000);
+    expect(gameTime(c, 1_000)).toBe(TEN_AM + 600);
+    expect(gameTime(c, 11_000)).toBe(TEN_AM + 660);
+  });
+
+  it("never goes back", () => {
+    const c = startClock(TEN_AM, 6, 0);
+    expect(gameTime(jumpClock(c, TEN_AM - 100, 10_000), 10_000)).toBe(TEN_AM + 60);
   });
 });

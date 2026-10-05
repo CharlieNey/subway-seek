@@ -38,3 +38,14 @@ export function realMsUntil(clock: GameClock, target: number, nowMs: number): nu
   if (clock.pausedAt !== null) return Number.POSITIVE_INFINITY;
   return Math.max(0, ((target - gameTime(clock, nowMs)) / clock.speed) * 1000);
 }
+
+/** Jump the clock forward to game time `target` (solo fast-forward). Never goes back. */
+export function jumpClock(clock: GameClock, target: number, nowMs: number): GameClock {
+  const t = Math.max(target, gameTime(clock, nowMs));
+  return {
+    ...clock,
+    anchorGame: t,
+    anchorReal: nowMs,
+    pausedAt: clock.pausedAt === null ? null : nowMs,
+  };
+}

@@ -16,6 +16,16 @@ import { RouteBullet } from "./RouteBullet.tsx";
 import { ActionButton, Section, StationName } from "./ui.tsx";
 import { formatClock, formatIn } from "./useGameTime.ts";
 
+/** Fast-forward to the next thing that happens. Score is game time, so it never helps or hurts. */
+function SkipButton({ to, children }: { to: "next" | "end"; children: React.ReactNode }) {
+  const { send, busy } = useGame();
+  return (
+    <ActionButton quiet disabled={busy} onClick={() => send({ type: "skip", to })}>
+      ⏩ {children}
+    </ActionButton>
+  );
+}
+
 // --- Platform -------------------------------------------------------------------
 
 function PlatformView({ world, state, t }: { world: World; state: OnPlatform; t: number }) {
@@ -167,6 +177,10 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
           </ActionButton>
         )}
       </div>
+      <div className="flex gap-2 px-4 pb-3">
+        <SkipButton to="next">{waiting ? "Until it leaves" : "Next stop"}</SkipButton>
+        {(waiting || next < state.to) && <SkipButton to="end">My stop</SkipButton>}
+      </div>
       <Section title="Stops">
         <ol className="space-y-1">
           {trip.stops.map((s, k) => {
@@ -237,7 +251,10 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
       <div className="mt-2 h-1.5 overflow-hidden rounded bg-stone-200">
         <div className="h-full bg-stone-900" style={{ width: `${pct}%` }} />
       </div>
-      <div className="mt-1 text-xs text-stone-500">{Math.ceil(left / 60)} game min left</div>
+      <div className="mt-1 flex items-center justify-between text-xs text-stone-500">
+        {Math.ceil(left / 60)} game min left
+        <SkipButton to="end">Skip</SkipButton>
+      </div>
     </div>
   );
 }

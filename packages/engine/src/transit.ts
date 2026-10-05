@@ -318,3 +318,30 @@ export function lastStation(state: Transit, t: number, idx: TimetableIndex): num
   }
   return null;
 }
+
+/**
+ * The next moment something happens for this player, for fast-forward:
+ * - "next": the train leaving or reaching its next stop, or the end of a walk
+ * - "end": arriving where you're headed (your stop, or the end of a walk)
+ * Null when nothing is pending (standing on a platform or the street).
+ */
+export function nextEventTime(
+  state: Transit,
+  t: number,
+  idx: TimetableIndex,
+  scope: "next" | "end",
+): number | null {
+  const s = resolve(state, t, idx);
+  if (s.kind === "walking") return s.end;
+  if (s.kind !== "train") return null;
+  const trip = idx.ds.trips[s.trip];
+  if (!trip) return null;
+  if (scope === "end") return trip.arr[s.to] ?? null;
+  const dep = trip.dep[s.from] as number;
+  if (t < dep) return dep;
+  for (let j = s.from + 1; j <= s.to; j++) {
+    const a = trip.arr[j] as number;
+    if (a > t) return a;
+  }
+  return null;
+}

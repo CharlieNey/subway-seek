@@ -19,10 +19,14 @@ import {
   dailyRandom,
   type GameClock,
   gameTime,
+  jumpClock,
+  nextEventTime,
   nyDate,
+  pauseClock,
   pickHubId,
   placeHider,
   type RoundMode,
+  resumeClock,
   type ServerMessage,
   type SoloRound,
   soloViewAt,
@@ -206,6 +210,38 @@ wss.on("connection", async (socket) => {
     }
 
     const t = gameTime(session.clock, now);
+    const reject = (error: string) => {
+      session.log.write("rejected", { t, type: intent.type, error });
+      send(socket, {
+        type: "rejected",
+        seq,
+        error,
+        clock: sync(session.clock, now),
+        view: viewNow(now),
+      });
+    };
+
+    // Clock controls. Score is game time, so skipping ahead never helps — it just saves
+    // waiting. Pausing would give free thinking time, so it's practice-only.
+    if (intent.type === "pause" || intent.type === "resume" || intent.type === "skip") {
+      if (session.round.result) return reject("This round is over.");
+      if (intent.type === "skip") {
+        const target = nextEventTime(session.round.seeker, t, idx, intent.to);
+        if (target === null) return reject("Nothing to skip to.");
+        session.clock = jumpClock(session.clock, Math.min(target, session.round.seekEnd), now);
+      } else if (session.round.mode !== "practice") {
+        return reject("Pausing is for practice rounds.");
+      } else {
+        session.clock = (intent.type === "pause" ? pauseClock : resumeClock)(session.clock, now);
+      }
+      session.log.write("clock", { t, type: intent.type, to: gameTime(session.clock, now) });
+      session.round = advanceSolo(session.round, gameTime(session.clock, now), idx);
+      logEnd(session);
+      sendState(seq, now);
+      return;
+    }
+    if (session.clock.pausedAt !== null) return reject("Paused — resume first.");
+
     const result = applySoloIntent(session.round, intent, t, idx);
     if (result.ok) {
       const before = session.round.asked.length;
@@ -220,14 +256,7 @@ wss.on("connection", async (socket) => {
       logEnd(session);
       sendState(seq, now);
     } else {
-      session.log.write("rejected", { t, type: intent.type, error: result.error });
-      send(socket, {
-        type: "rejected",
-        seq,
-        error: result.error,
-        clock: sync(session.clock, now),
-        view: viewNow(now),
-      });
+      reject(result.error);
     }
     console.log(
       `${formatServiceTime(t)} ${intent.type} → ${result.ok ? "ok" : `rejected: ${result.error}`}`,

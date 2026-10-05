@@ -231,3 +231,18 @@ describe("geometry", () => {
     expect(n).toBeLessThan(800);
   });
 });
+
+describe("fast-forward targets", () => {
+  it("skips to departure, then each next stop, then the alight stop", async () => {
+    const { nextEventTime } = await import("./transit.ts");
+    const d = nextDeparture("127", TEN, "1", 1);
+    const s = ok(
+      applyIntent(platform("127"), { type: "board", trip: d.trip, stop: d.stop }, TEN, idx),
+    );
+    const t = trip(d.trip);
+    expect(nextEventTime(s, TEN, idx, "next")).toBe(d.dep);
+    expect(nextEventTime(s, d.dep + 1, idx, "next")).toBe(t.arr[d.stop + 1]);
+    expect(nextEventTime(s, d.dep + 1, idx, "end")).toBe(t.arr.at(-1));
+    expect(nextEventTime(platform("127"), TEN, idx, "next")).toBeNull();
+  });
+});

@@ -38,7 +38,12 @@ export const questionSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type NewRoundIntent = { type: "newRound"; mode: RoundMode };
-export type ClientIntent = SoloIntent | NewRoundIntent;
+/** Solo-only clock controls, handled by the server's session rather than the round. */
+export type ClockIntent =
+  | { type: "pause" }
+  | { type: "resume" }
+  | { type: "skip"; to: "next" | "end" };
+export type ClientIntent = SoloIntent | NewRoundIntent | ClockIntent;
 
 export const clientIntentSchema = z.discriminatedUnion("type", [
   ...transitIntentSchema.options,
@@ -47,6 +52,9 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("giveUp") }),
   z.object({ type: z.literal("catch") }),
   z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),
+  z.object({ type: z.literal("pause") }),
+  z.object({ type: z.literal("resume") }),
+  z.object({ type: z.literal("skip"), to: z.enum(["next", "end"]) }),
 ]);
 
 // Keep the schemas and the engine's types in lockstep.
