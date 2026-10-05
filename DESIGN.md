@@ -372,12 +372,87 @@ Hand limit: 6.
   - **Tourist:** seeker must get off at the next stop and walk 200 m before going back in
   - **Black & white:** seeker's Street View turns greyscale
 
+## Look and motion
+
+### Look: Mosaic
+
+The look comes from the subway's own tile, in two layers that never swap jobs:
+
+- **IRT tile (Heins & LaFarge, 1904) carries identity:** name tablets, faience plaques, borders. It's used for where you are, photos, cards and the brand. It never carries game data.
+- **IND tile (Squire Vickers, 1932) carries information:** the color bands that changed at every express stop, and white-on-black captions. It's used for questions, importance and time.
+- Rules that follow:
+  - **Five IND color families = the five question types:** Radar blue, Thermometer red, Matching green, Measuring yellow, Photo purple. A family color never decorates.
+  - **Band width = importance**, after the IND's wider express bands. A 3-tile "express" band marks the one thing that matters now. Everything else gets a 2-tile "local" band or a plain rule.
+  - **Circles are trains, squares are game information.** Route bullets and train dots stay MTA circles. Candidate stations and question chips are square tiles, so a green Matching chip can't be mistaken for the 4.
+  - **Type:** Josefin Sans for tablets, captions and buttons. Libre Franklin for anything read. Tabular figures for every time.
+- Rationale, palette and mocks: the "Stand Clear Mosaic" design page (artifact).
+
+### Motion
+
+**Motion is presentation, never state.** The engine's state applies the moment it arrives. Animation only catches the screen up, can always be skipped to its end, and a refresh shows the end state, never a replay. This matches "events, not ticks": the client animates events the server has already settled.
+
+**Rules**
+
+1. **Timetable truth.** Anything that stands for transit time moves linearly at the clock's rate: trains, your dot, walking, the clock, the replay. It is never eased or sped up for drama. Players read position as time, and easing would put a train somewhere the timetable says it isn't.
+2. **Nothing animates on hidden information.** The seeker's screen moves only on seeker-visible events. The hider freezing, drawing cards or holding a Veto changes nothing on the seeker's screen, not even timing. This is the same principle as fixed-time spot photos.
+3. **A question draws its boundary, then the boundary clears the stations.** Ruled-out stations don't vanish at once. They clear in an order that shows the question's geometry, so watching an answer teaches what the question does (see Elimination below).
+4. **Width is importance, and it animates.** The thing that matters now arrives as an express band. When it stops mattering, it collapses into a local row in the log.
+5. **Tiles set and lift.** New information is set like tiles: staggered and decelerating. Information that leaves lifts off. Only transit moves things in from off-screen (tablets arriving and departing).
+6. **Nothing bounces or overshoots.** Tile and trains don't. Every curve is linear, decelerating or accelerating.
+7. **One choreography at a time per screen.** A second event queues behind the first, and the longest sequence is under 2 s. The clock, trains and dots never wait, because they are the timetable.
+8. **Ambient motion is data.** During waits, what moves is the city: other trains, the clock, countdowns. There's no decorative idle animation, because waiting is when a player is watching hardest.
+
+**Timing tokens**
+
+| Token | Duration | Curve | Used for |
+|---|---|---|---|
+| timetable | real | linear | trains, dots, walking, clock, replay |
+| press | 100 ms | none | buttons sink 2 px |
+| step | 160 ms (about 1 game-second) | decelerate | digit flips, chip states, hovers |
+| band | 280 ms | decelerate | bands entering or collapsing, panels |
+| set | 160 ms per tile, stagger spread ≤ 900 ms | decelerate | answers, eliminations, timers, tablets |
+| brake | 900 ms | ease-out quad (constant deceleration) | a name tablet arriving |
+| depart | 600 ms | ease-in quad (constant acceleration) | a name tablet leaving |
+| doors | 420 ms | ease-in quad, hard stop | the "Stand clear" caption closing |
+
+Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0.25, 0.46, 0.45, 0.94)`. Ease-in quad is `cubic-bezier(0.55, 0.085, 0.68, 0.53)`. No control point goes above 1, which is what keeps rule 6.
+
+**Catalog**
+
+| Moment | Who sees it | Motion | Reduced motion |
+|---|---|---|---|
+| **Arrive at a station** | the rider | The name tablet brakes in from the right (brake), as if the platform wall slid into the window. | 160 ms crossfade |
+| **Depart** | the rider | "Stand clear of the closing doors" closes from both edges to the middle like doors (doors). Then the tablet accelerates out to the left (depart). Optional two-note chime. | caption appears; tablet crossfades |
+| **Up to the street / back down** | the walker | Exiting takes 2 game-min (20 s real). The progress is drawn as stair treads that fill one per 10 game-s. On arrival the street view brightens from the top down, like daylight at the top of the stairs. Depends on the Street View A/B decision. Under A this is also the switch into the full-screen street mode. | progress bar; view cuts |
+| **Ask → answer** | seeker; the hider watches it live | The question enters as an express band in its family color (band). The answer word sets (set). The boundary draws and stations clear (Elimination). The candidate count counts down one per cleared station. The band collapses into the log (band). Under 2 s in total. | answer and count appear together |
+| **Elimination** | both | **Radar:** the ring grows from where you asked to its radius (400 ms). Then the ruled-out side clears starting at the ring: inward for No, outward for Yes. **Thermometer:** the line halfway between your last reading and this one draws out from its midpoint (300 ms). The colder side clears away from the line. **Route, borough, express, more routes:** no geometry, so stations clear outward from where you asked. Each station's square lifts from ink to outline (160 ms). The stagger is by distance, spread 600–900 ms by count. Boundaries stay on the map, faint. | all clear at once; boundary drawn |
+| **Clock and cooldown** | seeker | The clock's minutes flip (step) once per game minute, every 10 s real. The 5-min cooldown shows as 5 tiles, one per game minute, lifting right to left. At zero the question chips step to ready. | digits change; tiles vanish |
+| **Timers** (photo answer, veto window) | hider | A row of tiles, one per unit shown in its label, lifting as time runs out. The last tile turns terra cotta. | tiles vanish |
+| **Seeker is in your zone** | hider only | A terra cotta express band drops in from the top (band). No bounce. The zone ring turns from dashed to solid. The seeker's screen does nothing (rule 2). | band appears |
+| **Frozen / locked in** | hider only | "Set in grout": four grout bars close around your dot (300 ms). The Hide-here button presses in and becomes a caption: "Frozen at E 13 St & 3 Av". | frame appears |
+| **Card draw** | hider only | After an answer, N face-down cards rise (band, staggered 120 ms). They flip (rotateY 350 ms, faces swap at 90°). The card you pick lifts 8 px. The rest drop (band), and the kept card shrinks into its hand slot (400 ms). Photo (draw 1, keep 1) skips the choice. | cards appear face up |
+| **Curse lands** | seeker; the hider sees it played | The card rises to center (band), holds 1.6 s, then shrinks into a status chip with a tile timer (400 ms). Then the effect: **Signal loss:** glazed tiles set across the map in a diagonal sweep (900 ms), leaving the departure boards, and lift in reverse when it ends. **Fog:** Street View blur ramps in over 600 ms. **Black & white:** it desaturates over 800 ms. **Local only, Wrong way:** the affected departure rows dim and strike through. **Signal problems:** the held train's dot simply stops at the platform with a "Held" caption. By rule 1 it stops; it doesn't slow down. | effect applies at once |
+| **Found** | both | The hider's spot sets gold. A "Found 11:52" tablet sets tile by tile, left to right (set, 900 ms). | tablet appears |
+| **Score tally** | both | The score is drawn as a bar of tiles, one tile per 5 game-min. Ink for elapsed time, the question's family color for each question bonus (+10 min = 2 tiles), gold for time-bonus cards held. Tiles set left to right at 40 ms each while the total counts up. Both rounds' bars stack, and the winner's gets an express trim. The bar shows where the score came from, not just the number. | bars appear full |
+| **Replay (S2)** | both | Game time is compressed uniformly. That is linear, never eased, per rule 1. Dots travel their real routes and leave trails of square tesserae: terra cotta for the hider, ink for the seeker. Each question pops as a family-colored square at its origin with its answer. At the end, the hider's station tablet sets and the zone ring draws. | trails drawn in full; scrubber only |
+
+**Implementation notes**
+
+- **Eliminations on the map:** drive a per-station feature-state value from one `requestAnimationFrame` loop for up to 2 s. Don't re-upload the stations source each frame (M1: re-tiling every frame flooded MapLibre's worker).
+- **Square station marks** need a symbol layer with a generated square icon, because circle layers can't draw squares.
+- **Name tablets** are rendered once per complex to an image and cached. There are 424 complexes.
+- **Reduced motion:** `prefers-reduced-motion` switches each moment to the fallback column. Trains, dots and the clock keep moving, because they are data and slow.
+- **Sound** is optional and off by default. It covers only the two-note chime on your own departure and a soft tile "tock" when an answer lands.
+
+**Open questions (motion)**
+
+- [ ] **Veto needs a window, and the window must not leak the hand.** Map answers are instant, but Veto and Randomize need a moment to decide. If the window appears only when the hider holds one of those cards, its presence tells the seeker what's in the hand. **Proposal:** every map question gets the same short answer window, about 1 game-min (10 s real), whether or not the hider can use it. Decide before M3.
+- [ ] **Replay pace.** Uniform compression keeps rule 1, but 2 hours in 25 s moves trains about 290× faster than real. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
+- [ ] **Does the seeker see the hider's hand size?** Default: no. It would leak the same way as the veto window.
+
 ## Open questions & risks
 
-- [ ] **Street View: separate Google street screen (A) or all-Google (B)?** Mapillary is ruled out: 6.7% of NYC streets have 360° imagery vs Google's 97.8%, and 172 of 411 station complexes have none within 400 m (see `docs/street-view-spike.md`). Google's terms forbid Street View on the same screen as our MapLibre map:
-  - **A:** switch to a full-screen Google street mode in the endgame. A grey area under "with or near".
-  - **B:** move the whole game to Google Maps JS, e.g. deck.gl for the trains. Fully compliant.
-  - Either way: enable billing with a budget cap; photos run on trust. Decide before M4.
+- [ ] **Street View on Google Maps (decision B):** the whole game moves to Google Maps JS so Street View can share the screen (Google's terms). Step 1 is done: everything the game draws is now deck.gl layers over a swappable base map (`apps/web/src/map/`). **Step 2 needs billing enabled (with a budget cap) on the key's Cloud project:** swap MapLibre for Google Maps + deck.gl's GoogleMapsOverlay. Photos run on trust.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
 - [ ] **Station-photo framing.** The hider picks any exit and aims; they can choose the least recognisable view. Accepted for v1; playtest whether it needs a rule.
 - [ ] **Balance knobs:** hiding time, zone radius, question costs, cooldown, catch distance, clock speed. Set the first prices from the M2 simulation.
@@ -451,6 +526,8 @@ Hand limit: 6.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | **B: the whole game moves to Google Maps JS.** Step 1: all game drawing is deck.gl layers over a swappable base map; step 2 (swap the base map) after billing is enabled | Google's terms forbid Street View beside a non-Google map; Mapillary's NYC coverage is too thin. Cost: one Dynamic Maps load per session, 10k free/month |
+| 2026-10-05 | Station labels skip deck.gl's collision filtering; they're shown for in-play stations from z13.5 and for all stations from z15 | Step 1: the collision shader fails on WebKit/Safari, so no labels rendered at all |
 | 2026-10-05 | The bot hider takes the fastest route to its station (connection scan with journey extraction), so the replay shows a real trip | S2: before, the bot just appeared at its station |
 | 2026-10-05 | "Give up" ends a round at once and reveals the station + replay; on a daily it counts as not found | S2: lets practice players see the answer, and makes the replay testable without riding to the end |
 | 2026-10-05 | The daily follows New York time; #1 = 2026-10-05; its seed mixes in a server secret (`DAILY_SECRET`) | S1: the engine ships to the browser, so a date-only seed would let anyone compute the answer |

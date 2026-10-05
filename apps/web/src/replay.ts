@@ -5,7 +5,7 @@
  * time too, so the whole city rewinds.
  */
 import type { LonLat, SoloView } from "@stand-clear/engine";
-import { sampleTrail } from "@stand-clear/engine";
+import { describeAnswer, sampleTrail } from "@stand-clear/engine";
 import { create } from "zustand";
 import type { World } from "./game.ts";
 
@@ -32,13 +32,13 @@ interface ReplayStore {
   seek: (t: number) => void;
 }
 
-const QUESTION_EMOJI: Record<string, string> = {
-  radar: "📡",
-  thermometer: "🌡️",
-  route: "🚇",
-  borough: "🗽",
-  express: "⚡",
-  moreRoutes: "➕",
+const QUESTION_NAME: Record<string, string> = {
+  radar: "Radar",
+  thermometer: "Thermometer",
+  route: "Route",
+  borough: "Borough",
+  express: "Express",
+  moreRoutes: "More routes",
 };
 
 export const useReplay = create<ReplayStore>((set, get) => ({
@@ -65,7 +65,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       events: view.asked.map((a) => ({
         t: a.at,
         p: [a.ctx.origin.lon, a.ctx.origin.lat] as LonLat,
-        label: `${QUESTION_EMOJI[a.q.kind] ?? "?"} ${a.answer === true ? "Yes" : a.answer === false ? "No" : a.answer === "hotter" ? "Hotter" : "Colder"}`,
+        label: `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer)}`,
       })),
     });
   },
