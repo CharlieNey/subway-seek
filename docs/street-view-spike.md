@@ -83,3 +83,19 @@ From third-party measurements (UW Makeability Lab's [streetscape-tracker](https:
 - Other open sources are thinner still. KartaView has a few photos, mostly flat. Panoramax has essentially no NYC coverage. Apple Look Around has full coverage but no public API.
 
 **Conclusion: Google is the only workable provider.** The decision narrows to **A** (a separate full-screen Google street mode, a grey area under "with or near a non-Google map") or **B** (move the whole game to Google Maps JS, fully compliant). Either way, the Cloud project needs billing enabled and a budget cap.
+
+## Update: what's billed when you walk (measured, 2026-10-05)
+
+Controlled test (`apps/web/spike/billing.html`) on `stand-clear-nyc`. One page creates **one** Street View panorama, then phases ~2.5 min apart:
+
+| Phase | What happened | Billable Maps JS usage (Cloud Monitoring, per minute) |
+|---|---|---|
+| A | create one `StreetViewPanorama` (page load) | 2 in that minute |
+| B | ~10 `StreetViewService.getPanorama` lookups | **0** |
+| C | 20 × `setPano` on the same panorama | **0** |
+
+Usage metric: `serviceruntime.googleapis.com/quota/rate/net_usage`, `maps-backend.googleapis.com/billable_default`, method `loadMap`. Checked 10+ minutes after phase C.
+
+**Walking in Street View costs nothing per step.** Only loading/creating counts: about 2 loads for a page that creates a panorama, plus 1 per Google map.
+- So the endgame's cost is flat per session, provided the game keeps reusing one panorama (it does).
+- Dev hot reloads that recreate the map or panorama do count, which is why 160/day can feel tight while developing.

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Street View billing test</title>
+    <style>
+      html, body { height: 100%; margin: 0; font: 13px system-ui, sans-serif; }
+      body { display: grid; grid-template-columns: 1fr 360px; }
+      #pano { height: 100%; }
+      #log { padding: 10px; white-space: pre-wrap; border-left: 1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <div id="pano"></div>
+    <div id="log"></div>
+    <script type="module" src="./billing.ts"></script>
+  </body>
+</html>
