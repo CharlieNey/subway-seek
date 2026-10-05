@@ -372,6 +372,45 @@ Hand limit: 6.
   - **Tourist:** seeker must get off at the next stop and walk 200 m before going back in
   - **Black & white:** seeker's Street View turns greyscale
 
+### Card faces (proposed)
+
+Every card is a small plaque in the Mosaic look (see Look and motion). Art and layout: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) (private artifact).
+
+- **Anatomy, the same on every card:** a tile frame naming the kind, a kind caption, the value or cost in the corner, a 28 × 28 mosaic emblem, a typeset title, the exact rule, a line in the conductor's voice, and when it can be played.
+- **The kind is told by pattern as well as color**, so it survives color blindness and the 52 px hand size:
+  - time bonus: gold checker
+  - powerup: cobalt double rule
+  - curse: terra cotta teeth
+- **Three sizes:**
+  - full, 264 × 372: drawing, inspecting, and a curse landing on the seeker
+  - hand, 52 × 73: six fit across the 380 px panel
+  - chip: an active curse on the seeker's screen, with a tile timer
+- **Emblems are real things from the subway and the street above,** drawn with squares, 45° triangles and circles. Other angles break up on the tile grid. No logos, no copies of historic plaques, nothing from the show.
+
+| Card | Emblem | Rule on the card | Conductor's line | Proposed cost |
+|---|---|---|---|---|
+| Running late (+5) | platform clock at 10:05 | Adds 5 min to your score if you're still holding it when you're caught. | "Next train in 5 minutes." | — |
+| Delays (+10) | the clock at 10:10 | Adds 10 min, same terms. | "We are delayed because of train traffic ahead." | — |
+| Planned work (+15) | the clock at 10:15 | Adds 15 min, same terms. | "Trains are running with delays because of planned work." | — |
+| Veto | brass folding gate | Refuse a question. The seeker has still spent it. | "This entrance is closed." | — |
+| Randomize | the old Y-cut subway token | Swap the seeker's question for a random one of the same type. | "Good for one fare." | — |
+| Discard 2, draw 3 | three cards | Discard two cards, then draw three. | "Transfer is available." | — |
+| Move | station stair, arrow up | Unfreeze and choose a new spot in your zone. The seeker is frozen for 5 min while you move. Playable once frozen or locked in. | "Step lively." | — |
+| Fog | street steam stack | The seeker's Street View is blurred for 10 min. | "Visibility is limited in the area." | discard 1 |
+| Signal loss | a subway map torn in two | The seeker's map is hidden for 10 min. Departure boards still work. | "Please listen for announcements." | discard 2 |
+| Local only | a pigeon | The seeker can't board express trains for 20 min. | "This train is now running local." | discard 1 |
+| Signal problems | a track signal at red | Holds the seeker's train for 5 min at its next stop, or the next train they board. | "We are being held momentarily by the train dispatcher." | discard 1 |
+| Wrong way | a U-turn | The seeker's next train must run the opposite way to their last one. | "Change here for trains in the other direction." | discard 2 |
+| Tourist | the Statue of Liberty | At the next stop, the seeker gets off and walks 200 m before going back in. | "Excuse me, which way is uptown?" | discard 2 |
+| Black & white | a morning tabloid | The seeker's Street View turns black and white for 10 min. | "Read all about it." | discard 1 |
+
+- **Curse costs (proposed):** about one card per 5 game-min the curse is expected to cost the seeker, minimum one. Signal problems is a certain 5 min, so it costs 1. Tourist (exit, 200 m, entry, a wait) and Wrong way (a stop out, a stop back, two waits) cost about 8–12 min, so they cost 2. Signal loss takes the shaded map, which is where the deduction lives, so it costs 2. Set the real prices with the S4 bot-vs-bot simulation, like question prices.
+- **Open questions (cards):**
+  - [ ] Signal loss and Black & white had no duration. The cards propose 10 min, to match Fog.
+  - [ ] Randomize on a thermometer has nothing of the same type to swap to. Either block it, or roll any type.
+  - [ ] Move is limited to "once frozen or locked in". Played any earlier, it would be a free 5-min freeze on the seeker.
+  - [ ] Deck composition: how many of each card. Set with the curse prices in S4.
+
 ## Look and motion
 
 ### Look: Mosaic
@@ -385,7 +424,7 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
   - **Band width = importance**, after the IND's wider express bands. A 3-tile "express" band marks the one thing that matters now. Everything else gets a 2-tile "local" band or a plain rule.
   - **Circles are trains, squares are game information.** Route bullets and train dots stay MTA circles. Candidate stations and question chips are square tiles, so a green Matching chip can't be mistaken for the 4.
   - **Type:** Josefin Sans for tablets, captions and buttons. Libre Franklin for anything read. Tabular figures for every time.
-- Rationale, palette and mocks: the "Stand Clear Mosaic" design page (artifact).
+- Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817). Both are private artifacts.
 
 ### Motion
 
@@ -423,7 +462,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 |---|---|---|---|
 | **Arrive at a station** | the rider | The name tablet brakes in from the right (brake), as if the platform wall slid into the window. | 160 ms crossfade |
 | **Depart** | the rider | "Stand clear of the closing doors" closes from both edges to the middle like doors (doors). Then the tablet accelerates out to the left (depart). Optional two-note chime. | caption appears; tablet crossfades |
-| **Up to the street / back down** | the walker | Exiting takes 2 game-min (20 s real). The progress is drawn as stair treads that fill one per 10 game-s. On arrival the street view brightens from the top down, like daylight at the top of the stairs. Depends on the Street View A/B decision. Under A this is also the switch into the full-screen street mode. | progress bar; view cuts |
+| **Up to the street / back down** | the walker | Exiting takes 2 game-min (20 s real). The progress is drawn as stair treads that fill one per 10 game-s. On arrival the Street View pane, which shares the screen with the map under decision B, brightens from the top down, like daylight at the top of the stairs. Going back down reverses it. | progress bar; view cuts |
 | **Ask → answer** | seeker; the hider watches it live | The question enters as an express band in its family color (band). The answer word sets (set). The boundary draws and stations clear (Elimination). The candidate count counts down one per cleared station. The band collapses into the log (band). Under 2 s in total. | answer and count appear together |
 | **Elimination** | both | **Radar:** the ring grows from where you asked to its radius (400 ms). Then the ruled-out side clears starting at the ring: inward for No, outward for Yes. **Thermometer:** the line halfway between your last reading and this one draws out from its midpoint (300 ms). The colder side clears away from the line. **Route, borough, express, more routes:** no geometry, so stations clear outward from where you asked. Each station's square lifts from ink to outline (160 ms). The stagger is by distance, spread 600–900 ms by count. Boundaries stay on the map, faint. | all clear at once; boundary drawn |
 | **Clock and cooldown** | seeker | The clock's minutes flip (step) once per game minute, every 10 s real. The 5-min cooldown shows as 5 tiles, one per game minute, lifting right to left. At zero the question chips step to ready. | digits change; tiles vanish |
@@ -438,8 +477,9 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 **Implementation notes**
 
-- **Eliminations on the map:** drive a per-station feature-state value from one `requestAnimationFrame` loop for up to 2 s. Don't re-upload the stations source each frame (M1: re-tiling every frame flooded MapLibre's worker).
-- **Square station marks** need a symbol layer with a generated square icon, because circle layers can't draw squares.
+- **Eliminations on the map** fit the deck.gl scene as it stands. The round data stores each cleared station's clear time (answer time + its stagger delay). Color and size accessors read progress from the clock, and an `updateTriggers` frame counter runs only while a clearance is in flight (up to 2 s), so accessors don't re-run every frame forever.
+- **Growing boundaries:** rebuild the radar ring at the animated radius each frame for its 400 ms (65 points). The thermometer line is the perpendicular bisector of the two readings, clipped to the view.
+- **Square station marks:** deck.gl's `ScatterplotLayer` only draws circles. Draw squares as a polygon layer of per-station squares in meters, which keeps today's meter-based sizes, or as an `IconLayer` if they should hold a fixed pixel size.
 - **Name tablets** are rendered once per complex to an image and cached. There are 424 complexes.
 - **Reduced motion:** `prefers-reduced-motion` switches each moment to the fallback column. Trains, dots and the clock keep moving, because they are data and slow.
 - **Sound** is optional and off by default. It covers only the two-note chime on your own departure and a soft tile "tock" when an answer lands.
@@ -447,12 +487,12 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 **Open questions (motion)**
 
 - [ ] **Veto needs a window, and the window must not leak the hand.** Map answers are instant, but Veto and Randomize need a moment to decide. If the window appears only when the hider holds one of those cards, its presence tells the seeker what's in the hand. **Proposal:** every map question gets the same short answer window, about 1 game-min (10 s real), whether or not the hider can use it. Decide before M3.
-- [ ] **Replay pace.** Uniform compression keeps rule 1, but 2 hours in 25 s moves trains about 290× faster than real. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
+- [ ] **Replay pace.** Uniform compression keeps rule 1, but squeezing a 2-hour round into 25 s runs trains at about 290× real-world speed. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
 - [ ] **Does the seeker see the hider's hand size?** Default: no. It would leak the same way as the veto window.
 
 ## Open questions & risks
 
-- [ ] **Street View on Google Maps (decision B):** the whole game moves to Google Maps JS so Street View can share the screen (Google's terms). Step 1 is done: everything the game draws is now deck.gl layers over a swappable base map (`apps/web/src/map/`). **Step 2 needs billing enabled (with a budget cap) on the key's Cloud project:** swap MapLibre for Google Maps + deck.gl's GoogleMapsOverlay. Photos run on trust.
+- [ ] **Street View on Google Maps (decision B):** the whole game moves to Google Maps JS so Street View can share the screen (Google's terms). Step 1 is done: everything the game draws is now deck.gl layers over a swappable base map (`apps/web/src/map/`). **Step 2 needs billing on the `stand-clear-nyc` Cloud project** (Charlie creates a billing account; then link it, add a $10/month budget alert, and set daily quotas at ~300 map loads / ~160 Street View loads to stay in the free tier; budgets only alert, quotas actually cap): swap MapLibre for Google Maps + deck.gl's GoogleMapsOverlay. Photos run on trust.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
 - [ ] **Station-photo framing.** The hider picks any exit and aims; they can choose the least recognisable view. Accepted for v1; playtest whether it needs a rule.
 - [ ] **Balance knobs:** hiding time, zone radius, question costs, cooldown, catch distance, clock speed. Set the first prices from the M2 simulation.
@@ -526,6 +566,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-05 | Visual direction: **Mosaic**, built on the subway's own tile (IRT tile for identity, IND tile for information). Motion rules and card faces are written up under Cards and Look and motion as proposals | Charlie picked it from four directions (Wayfinding, Service Change, Night Service, Mosaic) and asked for it to be grounded in real subway design history |
 | 2026-10-05 | **B: the whole game moves to Google Maps JS.** Step 1: all game drawing is deck.gl layers over a swappable base map; step 2 (swap the base map) after billing is enabled | Google's terms forbid Street View beside a non-Google map; Mapillary's NYC coverage is too thin. Cost: one Dynamic Maps load per session, 10k free/month |
 | 2026-10-05 | Station labels skip deck.gl's collision filtering; they're shown for in-play stations from z13.5 and for all stations from z15 | Step 1: the collision shader fails on WebKit/Safari, so no labels rendered at all |
 | 2026-10-05 | The bot hider takes the fastest route to its station (connection scan with journey extraction), so the replay shows a real trip | S2: before, the bot just appeared at its station |
