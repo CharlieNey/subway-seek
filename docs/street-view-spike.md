@@ -62,3 +62,24 @@ Not measured yet: the panorama itself didn't render, because **the key's Cloud p
 1. **Mapillary check** (needs a free Mapillary access token from mapillary.com/developer): run the same zone test with Mapillary imagery. Count images, connectivity, capture dates and look at quality around a few stations.
 2. If Mapillary is too thin, pick **A** (cheapest) or **B** (cleanest), and enable billing plus a budget cap to finish the Google measurements (navigation billing, the in-panorama marker).
 3. Either way, add Google's/Mapillary's attribution and terms links before anything is public.
+
+## Update: Mapillary is not a viable replacement (research, 2026-10-05)
+
+From third-party measurements (UW Makeability Lab's [streetscape-tracker](https://github.com/jonfroehlich/streetscape-tracker), full Mapillary coverage-tile count for a 40×40 km NYC box, snapshot 2026-09-03), joined to MTA stations:
+
+| | Google Street View | Mapillary 360° | Mapillary incl. flat photos |
+|---|---|---|---|
+| Drivable streets within 25 m of imagery | 97.8% | 6.7% | 42.9% |
+| Median imagery age | 2.1 years | 5.9 years | — |
+| Median station: share of streets within 400 m with imagery | 99% | 3.7% | 59% |
+
+- Only ~7% of NYC Mapillary images are 360° panoramas. All the 360° imagery in the box came from 32 contributors, and half of it is from one 2020 capture, mostly in Hoboken, NJ.
+- **172 of 411 station complexes have no 360° panorama within 400 m.** Queens and the Bronx have a median of zero. Manhattan's median is 12.9%. No station reaches 80%, and only ~3% reach 50%. The best are Nassau Av (73%), 34 St–Penn (72%) and Marcy Av (69%).
+- Structural issues:
+  - Navigation follows capture sequences, plus spatial links within ~20 m between overlapping sequences, so walking between streets breaks wherever sequences don't overlap.
+  - Users report auto-blurring of street signs.
+  - Image URLs expire after about 30 days.
+  - The terms require apps to "materially supplement", not replicate, Mapillary.
+- Other open sources are thinner still. KartaView has a few photos, mostly flat. Panoramax has essentially no NYC coverage. Apple Look Around has full coverage but no public API.
+
+**Conclusion: Google is the only workable provider.** The decision narrows to **A** (a separate full-screen Google street mode, a grey area under "with or near a non-Google map") or **B** (move the whole game to Google Maps JS, fully compliant). Either way, the Cloud project needs billing enabled and a budget cap.

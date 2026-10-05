@@ -374,14 +374,10 @@ Hand limit: 6.
 
 ## Open questions & risks
 
-- [ ] **Street View provider: Google or Mapillary?** Pricing and terms are settled (see `docs/street-view-spike.md`). Google is cheap: metadata and lookups are free, Dynamic Street View has 5k free loads a month. Its terms forbid two things we planned:
-  - Street View on the same screen as our MapLibre/OSM map.
-  - Relaying Street View images as server-side "photos".
-  - Options:
-    - **A.** A separate Google street screen (grey area).
-    - **B.** The whole game on Google Maps JS.
-    - **C.** Mapillary open imagery (coverage unknown).
-  - Next: a Mapillary coverage check (needs a free token), then decide. Finishing the Google measurements needs billing enabled on the key's project.
+- [ ] **Street View: separate Google street screen (A) or all-Google (B)?** Mapillary is ruled out: 6.7% of NYC streets have 360° imagery vs Google's 97.8%, and 172 of 411 station complexes have none within 400 m (see `docs/street-view-spike.md`). Google's terms forbid Street View on the same screen as our MapLibre map:
+  - **A:** switch to a full-screen Google street mode in the endgame. A grey area under "with or near".
+  - **B:** move the whole game to Google Maps JS, e.g. deck.gl for the trains. Fully compliant.
+  - Either way: enable billing with a budget cap; photos run on trust. Decide before M4.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
 - [ ] **Station-photo framing.** The hider picks any exit and aims; they can choose the least recognisable view. Accepted for v1; playtest whether it needs a rule.
 - [ ] **Balance knobs:** hiding time, zone radius, question costs, cooldown, catch distance, clock speed. Set the first prices from the M2 simulation.
