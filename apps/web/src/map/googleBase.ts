@@ -15,18 +15,17 @@ import type { Layer } from "@deck.gl/core";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import type { LonLat } from "@stand-clear/engine";
 import type { BaseMap } from "./baseMap.ts";
+import { createVeil, eastOf } from "./baseMap.ts";
 import { loadGoogleMaps, onGoogleAuthFailure } from "./loadGoogle.ts";
+import mosaicStyle from "./mosaicStyle.json";
 import { zoomHold } from "./zoomHold.ts";
 
-/** Quiet base map: no POIs or transit icons, muted colors, so the game's layers read. */
-const STYLES: google.maps.MapTypeStyle[] = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "geometry", stylers: [{ saturation: -85 }, { lightness: 8 }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#d6dde0" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#6b6b6b" }] },
-];
+/**
+ * The Mosaic base map as a legacy style array (mosaicStyle.json, the same design as the
+ * cloud style), for this raster map with no Map ID. Switching to the vector Map ID waits on
+ * a Safari check (DESIGN.md, Look: base map).
+ */
+const STYLES = mosaicStyle as google.maps.MapTypeStyle[];
 
 export function createGoogleBase(
   container: HTMLElement,
@@ -51,10 +50,43 @@ export function createGoogleBase(
     for (const cb of failures) cb(reason);
   });
 
+  // The search area's blur, in the map pane: under deck.gl's canvas (in the overlay layer)
+  // and moving with the map as it pans.
+  let veilCircle: { lat: number; lon: number; meters: number } | null = null;
+  let veil: ReturnType<typeof createVeil> | null = null;
+  let veilView: google.maps.OverlayView = null as unknown as google.maps.OverlayView;
+  const makeVeilView = () => {
+    const v = new google.maps.OverlayView();
+    const holder = document.createElement("div");
+    Object.assign(holder.style, {
+      position: "absolute",
+      left: "-4000px",
+      top: "-4000px",
+      width: "8000px",
+      height: "8000px",
+    });
+    v.onAdd = () => {
+      v.getPanes()?.mapPane.appendChild(holder);
+      veil = createVeil(holder, (c) => {
+        const proj = v.getProjection();
+        const center = proj.fromLatLngToDivPixel(new google.maps.LatLng(c.lat, c.lon));
+        const [elon, elat] = eastOf(c);
+        const edge = proj.fromLatLngToDivPixel(new google.maps.LatLng(elat, elon));
+        if (!center || !edge) return { x: 0, y: 0, r: 0 };
+        return { x: center.x + 4000, y: center.y + 4000, r: Math.abs(edge.x - center.x) };
+      });
+      veil.set(veilCircle);
+    };
+    v.draw = () => veil?.update();
+    v.onRemove = () => holder.remove();
+    return v;
+  };
+
   const loaded = loadGoogleMaps()
     .then(() => google.maps.importLibrary("maps"))
     .then(() => {
       if (removed) return;
+      veilView = makeVeilView();
       map = new google.maps.Map(container, {
         center: { lat: center[1], lng: center[0] },
         zoom: 14,
@@ -66,6 +98,7 @@ export function createGoogleBase(
       });
       overlay.setMap(map);
       listeners.push(map.addListener("idle", zoom.release));
+      veilView.setMap(map);
       if (import.meta.env.DEV) {
         const w = window as unknown as Record<string, unknown>;
         w.__gmap = map;
@@ -84,6 +117,10 @@ export function createGoogleBase(
   return {
     ready,
     onFailure: (cb) => failures.push(cb),
+    setVeil: (c) => {
+      veilCircle = c;
+      veil?.set(c);
+    },
     setLayers: (layers: Layer[]) => overlay.setProps({ layers }),
     setCenter: (p) =>
       whenMap((m) => {
@@ -109,6 +146,7 @@ export function createGoogleBase(
     remove: () => {
       removed = true;
       stopAuth();
+      veilView?.setMap?.(null);
       for (const l of listeners) l.remove();
       zoom.remove();
       overlay.finalize();

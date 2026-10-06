@@ -155,7 +155,7 @@ describe("the wainscot and the hints", () => {
       expect(text).not.toMatch(/(leave|leaves|left)\s+\d/);
     }
     expect(questionHint(radar1, v, T0, idx, places).lead).toBe(
-      "A 1 mile ring round Times Sq–42 St, drawn on the map.",
+      "A 1-mile ring round Times Sq–42 St, drawn on the map.",
     );
   });
 });

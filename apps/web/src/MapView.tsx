@@ -1,35 +1,52 @@
+/**
+ * The map: route lines, stations as squares, every running train, the question you're
+ * choosing or reading in its family's shape, the elimination when an answer lands, your
+ * search area on foot, you, and the replay. All deck.gl layers over a swappable base map,
+ * rebuilt every frame.
+ *
+ * The base map comes first, because Google loads it on its own; the game's lines and
+ * stations set onto it once the timetable is in (DESIGN.md, Loading).
+ */
 import {
+  type Answer,
+  isAnswered,
   type LonLat,
-  milesToMeters,
-  nearestLandmark,
-  offsetMeters,
-  questionOrigin,
+  type Question,
+  questionKey,
+  resolve,
+  type SoloView,
   ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
-import { type LandmarkPreview, nowGameTime, useGame, type World } from "./game.ts";
+import { liveQuestion } from "./AskPanel.tsx";
+import { askContext } from "./ask.ts";
+import { useMotion, watchClearings } from "./clearings.ts";
+import { nowGameTime, useGame, type World } from "./game.ts";
+import { MapLegend } from "./MapLegend.tsx";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
 import { createGoogleBase } from "./map/googleBase.ts";
 import {
   buildLayers,
   buildRound,
   buildStatic,
-  circle,
-  type LandmarkScene,
+  frameAround,
   type ReplayScene,
   type RoundData,
   type SearchScene,
   type Train,
 } from "./map/layers.ts";
+import { answeredShape, questionShape, type Shape } from "./map/shapes.ts";
+import { displayName } from "./names.ts";
 import { pathUntil, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
-import { Button, Plaque } from "./ui/vocab.tsx";
+import { Button, FollowToggle, Plaque } from "./ui/vocab.tsx";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
+/** A station's name and bullets, on hover. Bullets are circles: trains. */
 function stationTooltip({ ds }: World, complex: number): string {
   const c = ds.complexes[complex];
   if (!c) return "";
@@ -38,47 +55,72 @@ function stationTooltip({ ds }: World, complex: number): string {
     .filter((r) => r !== undefined)
     .map(
       (r) =>
-        `<span style="display:inline-flex;width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;font:700 10px system-ui;background:#${r.color};color:#${r.textColor};margin-right:2px">${escapeHtml(r.display)}</span>`,
+        `<span style="display:inline-flex;width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;font:700 10px 'Helvetica Neue',Arial,sans-serif;background:#${r.color};color:#${r.textColor};margin-right:2px">${escapeHtml(r.display)}</span>`,
     )
     .join("");
-  return `<div style="font:600 12px system-ui;margin-bottom:4px">${escapeHtml(c.name)}</div><div>${bullets}</div>`;
+  return `<div style="font:600 12.5px 'Libre Franklin',sans-serif;margin-bottom:5px;color:#24201B">${escapeHtml(displayName(c.name))}</div><div>${bullets}</div>`;
 }
 
-/** Pins for the landmarks being previewed, built once per kind and origin. */
-let landmarkCache: { key: string; scene: LandmarkScene } | null = null;
-function landmarkScene(
-  { ds }: World,
-  preview: LandmarkPreview,
-  origin: { lat: number; lon: number },
-): LandmarkScene {
-  const key = `${preview.kind}|${preview.rangeMiles ?? ""}|${origin.lat},${origin.lon}`;
-  if (landmarkCache?.key === key) return landmarkCache.scene;
-  const mine = nearestLandmark(ds, preview.kind, origin).index;
-  const scene: LandmarkScene = {
-    pins: ds.landmarks[preview.kind].map((l, i) => ({
-      position: [l.lon, l.lat] as LonLat,
-      name: l.name,
-      nearest: i === mine,
-    })),
-    range: preview.rangeMiles
-      ? circle(origin.lat, origin.lon, milesToMeters(preview.rangeMiles))
-      : null,
-  };
-  landmarkCache = { key, scene };
-  return scene;
+const TOOLTIP_STYLE = {
+  background: "#FBF8F1",
+  color: "#24201B",
+  boxShadow: "inset 0 0 0 1.5px #24201B",
+  borderRadius: "0",
+  padding: "8px 10px",
+};
+
+/** The question the map draws now: the one under the pointer, the armed one, or the one being read. */
+export function shapeQuestion(
+  view: SoloView,
+  t: number,
+  world: World,
+): { q: Question; answer: Answer | null; ctx: ReturnType<typeof askContext> } | null {
+  const { hovered, armed } = useGame.getState();
+  const q = hovered ?? armed;
+  if (q && !view.result) return { q, answer: null, ctx: askContext(q, view, t, world.idx) };
+  const live = liveQuestion(view, Date.now());
+  if (live) return { q: live.q, answer: isAnswered(live) ? live.answer : null, ctx: live.ctx };
+  return null;
 }
 
-/**
- * The map: route lines, stations, every running train, question overlays, you, and
- * the replay — all deck.gl layers over a swappable base map, rebuilt every frame.
- *
- * The base map comes first, because Google loads it on its own; the game's lines and
- * stations set onto it once the timetable is in (DESIGN.md, Loading).
- */
+let shapeCache: { key: string; shape: Shape } | null = null;
+
+function shapeFor(
+  world: World,
+  view: SoloView,
+  t: number,
+  search: SearchScene | null,
+): Shape | null {
+  const sq = shapeQuestion(view, t, world);
+  if (!sq) return null;
+  const { q, answer, ctx } = sq;
+  const key = `${questionKey(q)}|${ctx.origin.lat},${ctx.origin.lon}|${ctx.baseline?.lat},${ctx.baseline?.lon}|${JSON.stringify(answer)}|${search?.complex}`;
+  if (shapeCache?.key === key) return shapeCache.shape;
+  const c = search ? world.ds.complexes[search.complex] : undefined;
+  const circle = c ? { center: c, radius: ZONE_RADIUS_M } : null;
+  const shape = answer
+    ? answeredShape(world.ds, q, ctx, answer, circle)
+    : questionShape(world.ds, q, ctx, circle);
+  shapeCache = { key, shape };
+  return shape;
+}
+
+/** "You", or "You · on the Q" while you ride. */
+function meLabel(world: World, view: SoloView, t: number): string {
+  const s = resolve(view.seeker, t, world.idx);
+  if (s.kind !== "train") return "You";
+  const trip = world.ds.trips[s.trip];
+  const route = trip ? world.ds.routes[trip.route] : undefined;
+  return route ? `You · on the ${route.display}` : "You";
+}
+
 export function MapView() {
   const container = useRef<HTMLDivElement>(null);
   const world = useGame((s) => s.world);
   const mapFailed = useGame((s) => s.mapFailed);
+  const follow = useGame((s) => s.follow);
+  const setFollow = useGame((s) => s.setFollow);
+  const hasView = useGame((s) => s.view !== null);
   const [base, setBase] = useState<BaseMap | null>(null);
   /** Bumped by "Reload the map". */
   const [attempt, setAttempt] = useState(0);
@@ -93,7 +135,9 @@ export function MapView() {
     const tooltip = ({ object }: { object?: unknown }) => {
       const s = object as { complex?: number } | undefined;
       const w = worldRef.current;
-      return s?.complex === undefined || !w ? null : { html: stationTooltip(w, s.complex) };
+      return s?.complex === undefined || !w
+        ? null
+        : { html: stationTooltip(w, s.complex), style: TOOLTIP_STYLE };
     };
     const b: BaseMap =
       chooseProvider() === "google"
@@ -121,6 +165,11 @@ export function MapView() {
   }, [attempt]);
 
   useEffect(() => {
+    if (!world) return;
+    return watchClearings(() => worldRef.current);
+  }, [world]);
+
+  useEffect(() => {
     if (!base || !world) return;
     const data = buildStatic(world);
     let version = 0;
@@ -131,6 +180,7 @@ export function MapView() {
     let raf = 0;
     /** The search circle the map last framed. */
     let framed: number | null = null;
+    let veiled: number | null = null;
 
     // Re-shade stations and question overlays when the round changes; reveal the hider.
     const unsubscribeGame = useGame.subscribe((st, prev) => {
@@ -178,9 +228,9 @@ export function MapView() {
         }
       }
 
-      let me: LonLat | null = null;
+      let me: { position: LonLat; label: string } | null = null;
       let replayScene: ReplayScene | null = null;
-      let landmarks: LandmarkScene | null = null;
+      let shape: Shape | null = null;
       let search: SearchScene | null = null;
       if (replay.active) {
         const seekerPath = pathUntil(replay.seeker, t);
@@ -191,37 +241,45 @@ export function MapView() {
             .filter((e) => e.t <= t)
             .map((e) => ({ position: e.p, label: e.label })),
         };
-        me = seekerPath.at(-1) ?? null;
+        const head = seekerPath.at(-1);
+        me = head ? { position: head, label: "Seeker" } : null;
       } else {
-        const { view, follow, preview } = useGame.getState();
+        const { view, follow: following } = useGame.getState();
         if (view) {
-          me = world.geo.playerPosition(view.seeker, t);
-          if (follow) base.setCenter(me);
-          if (preview)
-            landmarks = landmarkScene(world, preview, questionOrigin(view.seeker, t, world.idx));
+          const position = world.geo.playerPosition(view.seeker, t);
+          me = { position, label: meLabel(world, view, t) };
+          if (following) base.setCenter(position);
           search = searchScene(world, view, t);
+          shape = shapeFor(world, view, t, search);
           // Coming up to the street: frame the search circle (the design's "Search area").
           if (search && search.complex !== framed) {
             const c = world.ds.complexes[search.complex];
-            if (c) {
-              const sw = offsetMeters(c, -ZONE_RADIUS_M, -ZONE_RADIUS_M);
-              const ne = offsetMeters(c, ZONE_RADIUS_M, ZONE_RADIUS_M);
-              base.fitBounds([sw.lon, sw.lat], [ne.lon, ne.lat]);
-            }
+            if (c) base.fitBounds(...frameAround(c, ZONE_RADIUS_M));
           }
           framed = search?.complex ?? null;
         }
       }
+      // The search area blurs and veils the map outside its circle.
+      const veilAt = search?.complex ?? null;
+      if (veilAt !== veiled) {
+        const c = veilAt === null ? undefined : world.ds.complexes[veilAt];
+        base.setVeil(c ? { lat: c.lat, lon: c.lon, meters: ZONE_RADIUS_M } : null);
+        veiled = veilAt;
+      }
+      const motion = useMotion.getState();
       base.setLayers(
         buildLayers({
           data,
-          landmarks,
+          shape,
           search,
           round,
           zoom: base.getZoom(),
           trains,
           me,
           replay: replayScene,
+          clearing: motion.clearing,
+          tiles: motion.tiles,
+          now,
         }),
       );
     };
@@ -232,12 +290,25 @@ export function MapView() {
       unsubscribeGame();
       unsubscribeReplay();
       base.setLayers([]);
+      base.setVeil(null);
     };
   }, [base, world]);
 
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" />
+      {world && hasView && !mapFailed && <MapLegend world={world} />}
+      {hasView && (
+        // "Following you" is a map state, so it's a toggle on the map, beside the zoom buttons.
+        <div className="absolute right-[58px] bottom-[28px] z-10">
+          <FollowToggle
+            on={follow && !mapFailed}
+            disabled={!!mapFailed}
+            label={mapFailed ? "No map" : "Following you"}
+            onToggle={() => setFollow(!follow)}
+          />
+        </div>
+      )}
       {mapFailed && <MapFailed reason={mapFailed} onReload={() => setAttempt((n) => n + 1)} />}
     </div>
   );

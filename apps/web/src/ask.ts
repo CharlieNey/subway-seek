@@ -34,6 +34,8 @@ import {
 import { FAMILY_NAME, type Family, familyOf } from "./ui/family.ts";
 
 export const radarLabel = (m: number) => (m === 0.25 ? "¼ mi" : m === 0.5 ? "½ mi" : `${m} mi`);
+/** "1-mile", "¼-mile": a distance as an adjective. */
+export const ringText = (m: number) => `${m === 0.25 ? "¼" : m === 0.5 ? "½" : m}-mile`;
 export const LOOK_WORD = { N: "north", E: "east", S: "south", W: "west", up: "up" } as const;
 
 /** "10:47" from game seconds. */
@@ -209,7 +211,7 @@ export function questionHint(
   switch (q.kind) {
     case "radar":
       return {
-        lead: `A ${milesText(q.miles)} ring round ${here}, drawn on the map.`,
+        lead: `A ${ringText(q.miles)} ring round ${here}, drawn on the map.`,
         rest: "Yes keeps the stations inside it, No clears them.",
       };
     case "thermometer": {

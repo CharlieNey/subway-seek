@@ -25,10 +25,12 @@ import {
   useLinkScreen,
   useNow,
 } from "./Connection.tsx";
+import { useMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
 import { useGame, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
 import { keyAction } from "./keys.ts";
+import { stillStanding } from "./map/eliminate.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { hm, ResultCard } from "./Result.tsx";
 import { searchScene } from "./searchArea.ts";
@@ -132,8 +134,24 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
  * share of your circle left), the time left, and the minutes the questions added to their
  * score. "Give up" is a quiet link.
  */
+/** While an elimination is in flight, re-render every frame so the count steps with it. */
+function useClearingCount(): number {
+  const clearing = useMotion((s) => s.clearing);
+  const [, setFrame] = useState(0);
+  const now = performance.now();
+  const flying = clearing !== null && now - clearing.start < clearing.end + 50;
+  useEffect(() => {
+    if (!flying) return;
+    const id = requestAnimationFrame(() => setFrame((n) => n + 1));
+    return () => cancelAnimationFrame(id);
+  });
+  return stillStanding(clearing, now);
+}
+
 function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
   const { send, alreadyPlayed, busy } = useGame();
+  // The count steps down one per square as an answer clears them (Motion: Ask → answer).
+  const standing = useClearingCount();
   const onFoot = view.hasSpot && onStreet(view, t, world);
   const search = onFoot ? searchScene(world, view, t) : null;
   const center = search ? world.ds.complexes[search.complex] : undefined;
@@ -141,7 +159,7 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
     search && center
       ? Math.round((search.possible.length / searchGrid(center).length) * 100)
       : null;
-  const n = view.candidates.length;
+  const n = view.candidates.length + standing;
   const giveUp = () => {
     const note = view.daily && !alreadyPlayed ? " It counts as not found for today." : "";
     if (window.confirm(`Give up and see where the hider was?${note}`)) send({ type: "giveUp" });

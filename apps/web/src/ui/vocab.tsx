@@ -6,6 +6,7 @@ import type { LandmarkKind, Route } from "@stand-clear/data";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../cn.ts";
 import type { Family } from "./family.ts";
+import { pictCells } from "./pict.ts";
 import { tileStates } from "./tiles.ts";
 
 /** A black tile with white tracked caps: live information. Light is for map legends only. */
@@ -321,87 +322,6 @@ export function Chip({
       {keys && !closed && <Kbd>{keys}</Kbd>}
     </button>
   );
-}
-
-/** The six landmark kinds as 9 × 9 tile pictograms (DESIGN.md, Questions: landmarks are plaques). */
-const PICT: Record<LandmarkKind, string[]> = {
-  park: [
-    "....#....",
-    "...###...",
-    "..#####..",
-    "...###...",
-    "..#####..",
-    ".#######.",
-    "....#....",
-    "....#....",
-    "...###...",
-  ],
-  museum: [
-    "....#....",
-    "..#####..",
-    ".#######.",
-    ".........",
-    ".#.#.#.#.",
-    ".#.#.#.#.",
-    ".#.#.#.#.",
-    ".........",
-    "#########",
-  ],
-  library: [
-    ".........",
-    ".###.###.",
-    "#...#...#",
-    "#.#.#.#.#",
-    "#...#...#",
-    "#.#.#.#.#",
-    "#...#...#",
-    ".###.###.",
-    "....#....",
-  ],
-  hospital: [
-    ".........",
-    ".##...##.",
-    ".##...##.",
-    ".##...##.",
-    ".#######.",
-    ".##...##.",
-    ".##...##.",
-    ".##...##.",
-    ".........",
-  ],
-  zoo: [
-    "..##.##..",
-    "..##.##..",
-    "##.....##",
-    "##.....##",
-    "...###...",
-    "..#####..",
-    ".#######.",
-    ".#######.",
-    "..##.##..",
-  ],
-  airport: [
-    "....#....",
-    "...###...",
-    "...###...",
-    ".#######.",
-    "#########",
-    "...###...",
-    "...###...",
-    "..#####..",
-    ".##.#.##.",
-  ],
-};
-
-/** The cells of a landmark's pictogram, for drawing it elsewhere (the map). */
-export function pictCells(kind: LandmarkKind): [number, number][] {
-  const out: [number, number][] = [];
-  PICT[kind].forEach((row, r) => {
-    [...row].forEach((ch, c) => {
-      if (ch === "#") out.push([c, r]);
-    });
-  });
-  return out;
 }
 
 /**

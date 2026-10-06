@@ -7,13 +7,7 @@
  * link, a refresh) brings it back and picks the same round up again, its clock paused on
  * the server while the player was away (DESIGN.md, Disconnects).
  */
-import {
-  type Dataset,
-  type LandmarkData,
-  type LandmarkKind,
-  type SubwayData,
-  withLandmarks,
-} from "@stand-clear/data";
+import { type Dataset, type LandmarkData, type SubwayData, withLandmarks } from "@stand-clear/data";
 import datasetUrl from "@stand-clear/data/dataset.json?url";
 import landmarksUrl from "@stand-clear/data/landmarks.json?url";
 import {
@@ -27,7 +21,6 @@ import {
   type ServerMessage,
   type SoloView,
   syncedGameTime,
-  TENTACLE_MILES,
   type TimetableIndex,
 } from "@stand-clear/engine";
 import { create } from "zustand";
@@ -88,8 +81,6 @@ interface GameStore {
   armed: Question | null;
   /** The question under the pointer: previewed without arming. */
   hovered: Question | null;
-  /** Landmarks to show on the map for the hovered or armed question. */
-  preview: LandmarkPreview | null;
   /** Why the base map didn't load, while it hasn't. */
   mapFailed: string | null;
   send: (intent: ClientIntent) => void;
@@ -106,25 +97,11 @@ interface GameStore {
   retryLoad: () => void;
 }
 
-/** Which landmarks to pin, and for tentacles the range around you (miles). */
-export interface LandmarkPreview {
-  kind: LandmarkKind;
-  rangeMiles?: number;
-}
-
-/** The landmarks a question is about, to pin while it's hovered or armed. */
-function previewFor(q: Question | null): LandmarkPreview | null {
-  if (!q) return null;
-  if (q.kind === "matching" || q.kind === "measuring") return { kind: q.landmark };
-  if (q.kind === "tentacles") return { kind: q.landmark, rangeMiles: TENTACLE_MILES[q.landmark] };
-  return null;
-}
-
 /** A new view keeps the armed question unless it was just asked or closed (ask.ts). */
 function armedFor(view: SoloView, fresh: boolean): Partial<GameStore> {
-  const { armed, hovered, view: prev } = useGame.getState();
+  const { armed, view: prev } = useGame.getState();
   const next = fresh ? null : keepArmed(armed, prev, view);
-  return next === armed ? {} : { armed: next, preview: previewFor(hovered ?? next) };
+  return next === armed ? {} : { armed: next };
 }
 
 let socket: WebSocket | null = null;
@@ -152,7 +129,6 @@ export const useGame = create<GameStore>((set) => ({
   follow: true,
   armed: null,
   hovered: null,
-  preview: null,
   mapFailed: null,
   send: (intent) => {
     if (!socket || useGame.getState().link.kind !== "open") return;
@@ -166,8 +142,8 @@ export const useGame = create<GameStore>((set) => ({
   dismissNotice: () => set({ notice: null }),
   setFollow: (follow) => set({ follow }),
   setTab: (tab) => set({ tab }),
-  arm: (armed) => set((s) => ({ armed, preview: previewFor(s.hovered ?? armed) })),
-  hover: (hovered) => set((s) => ({ hovered, preview: previewFor(hovered ?? s.armed) })),
+  arm: (armed) => set({ armed }),
+  hover: (hovered) => set({ hovered }),
   retryNow: () => {
     const { link } = useGame.getState();
     if (link.kind === "connecting" || link.kind === "waiting") connect();

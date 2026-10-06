@@ -8,6 +8,7 @@ import { Panel } from "./Panel.tsx";
 import { ReplayControls } from "./ReplayControls.tsx";
 import { StreetView } from "./StreetView.tsx";
 import { onStreet } from "./street.ts";
+import { Caption } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 export function App() {
@@ -43,16 +44,18 @@ export function App() {
   );
 }
 
-/** The Signal loss curse: the map is covered; the departure boards in the panel still work. */
+/**
+ * The Signal loss curse: glazed tiles over the map, leaving the departure boards. A curse
+ * is terra cotta's job; the boards in the panel still work.
+ */
 function SignalLoss({ until, t }: { until: number | undefined; t: number | null }) {
   const left = until !== undefined && t !== null ? Math.max(1, Math.ceil((until - t) / 60)) : null;
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-stone-300">
-      <div className="max-w-xs text-center text-sm text-stone-700">
-        <div className="text-base font-semibold">Signal loss</div>
-        <p className="mt-1">
-          The hider cursed your map{left ? ` for ${left} more min` : ""}. Departure boards still
-          work: "Please listen for announcements."
+    <div className="sc-tilefield absolute inset-0 z-20 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <Caption tone="terra">Signal loss{left ? ` · ${left} min` : ""}</Caption>
+        <p className="max-w-xs text-[13px] text-ink-2">
+          Your map is hidden. The departure boards still work.
         </p>
       </div>
     </div>
