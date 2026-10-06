@@ -66,7 +66,7 @@ export const CARDS: Record<CardId, CardDef> = {
   veto: {
     title: "Veto",
     kind: "powerup",
-    rule: "Refuse a question. The seeker has still spent it.",
+    rule: "Refuse a question. The seeker has still spent it, and can't ask it again this round.",
     line: "This entrance is closed.",
   },
   randomize: {

@@ -49,6 +49,10 @@ streets go around blocks), and spot photos aren't modelled.
 ² "Is your spot north or south of me? / east or west?" It halves the area for free every
 time, so it crowded out the walking thermometer. Dropped.
 
+Re-run 2026-10-06, after every distance moved to the questions' great-circle metric (the
+walking distance had been flat-earth, up to 0.6% off): unchanged. Walker 56.8 game-min,
+asker 17.9 (p25 11.2, p90 27.3), 3.3 questions (radar 64%), 37–42% of seeking.
+
 A real player sweeps less efficiently than the simulation, so real endgames should run
 longer than 17 min, toward the top of the third-to-half target. If they run past half,
 the levers are, in order: the on-foot cooldown, the reveal distance (40 m), and the price.

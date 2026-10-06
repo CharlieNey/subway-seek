@@ -2,6 +2,8 @@ import type { Dataset } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { seededRandom } from "./daily.ts";
+import { distanceMeters, offsetMeters } from "./geo.ts";
+import { filterCandidates } from "./questions.ts";
 import { possibleSpots, walkedBy } from "./search.ts";
 import {
   advanceSolo,
@@ -15,10 +17,9 @@ import {
   type SoloIntent,
   type SoloRound,
   soloView,
-  soloViewAt,
 } from "./solo.ts";
 import { buildIndex, type TimetableIndex } from "./timetable.ts";
-import { metersBetween, type OnStreet, resolve } from "./transit.ts";
+import { type OnStreet, resolve } from "./transit.ts";
 
 const TEN = 10 * 3600;
 let ds: Dataset;
@@ -27,10 +28,8 @@ let round: SoloRound;
 let spot: HidingSpot;
 
 /** A point `east` m east and `north` m north of p. */
-const offset = (p: { lat: number; lon: number }, east: number, north = 0) => ({
-  lat: p.lat + north / 110_540,
-  lon: p.lon + east / (111_320 * Math.cos((p.lat * Math.PI) / 180)),
-});
+const offset = (p: { lat: number; lon: number }, east: number, north = 0) =>
+  offsetMeters(p, east, north);
 
 beforeAll(() => {
   ds = loadDataset();
@@ -85,11 +84,24 @@ describe("walking past the hider", () => {
     const stopped = advanceSolo(walking, s.end, idx);
     const at = resolve(stopped.seeker, s.end, idx);
     if (at.kind !== "street" || !at.at) throw new Error("expected to stand on the street");
-    expect(metersBetween(at.at, spot)).toBeCloseTo(39.5, 0);
+    expect(distanceMeters(at.at, spot)).toBeCloseTo(39.5, 0);
     expect(at.since).toBeLessThan(s.end);
-    expect(soloViewAt(stopped, s.end, idx).spotNearby).not.toBeNull();
+    expect(soloView(stopped, s.end, idx).spotNearby).not.toBeNull();
     // The replay knows where you stopped.
     expect(stopped.seekerTrail.at(-1)?.state).toEqual(at);
+  });
+
+  it("lets you walk up to them once they're in sight, to catch them", () => {
+    const t = round.seekStart + 1200;
+    // Where the last walk stopped can land a rounding error outside 39.5 m.
+    const r = standingAt(offset(spot, -39.50001), t);
+    const walking = apply(r, { type: "walkTo", lat: spot.lat, lon: spot.lon }, t);
+    const s = walking.seeker;
+    if (s.kind !== "walking") throw new Error("expected a walk");
+    const there = advanceSolo(walking, s.end, idx);
+    const at = resolve(there.seeker, s.end, idx);
+    expect(at.kind === "street" && distanceMeters(at.at ?? spot, spot)).toBeCloseTo(0, 3);
+    expect(applySoloIntent(there, { type: "catch" }, s.end, idx).ok).toBe(true);
   });
 
   it("doesn't stop you walking away from a marker you can already see", () => {
@@ -103,7 +115,7 @@ describe("walking past the hider", () => {
     if (s.kind !== "walking") throw new Error("expected a walk");
     const done = advanceSolo(walking, s.end + 1, idx);
     const at = resolve(done.seeker, s.end + 1, idx);
-    expect(at.kind === "street" && metersBetween(at.at ?? spot, spot)).toBeCloseTo(220, 0);
+    expect(at.kind === "street" && distanceMeters(at.at ?? spot, spot)).toBeCloseTo(220, 0);
   });
 
   it("records walks as a footpath, cut short where they stopped", () => {
@@ -119,13 +131,14 @@ describe("walking past the hider", () => {
     const path = footpathOf(stopped.seekerTrail);
     const walk = path.find((p) => p.start === t && p.a !== p.b);
     if (!walk) throw new Error("no walk in the footpath");
-    expect(metersBetween({ lat: walk.b[0], lon: walk.b[1] }, spot)).toBeCloseTo(39.5, 0);
+    expect(distanceMeters({ lat: walk.b[0], lon: walk.b[1] }, spot)).toBeCloseTo(39.5, 0);
     // Half way through the walk, only the first half counts as walked.
     const half = walkedBy([walk], (walk.start + walk.end) / 2)[0];
     expect(
-      half && metersBetween({ lat: half.b[0], lon: half.b[1] }, { lat: walk.a[0], lon: walk.a[1] }),
+      half &&
+        distanceMeters({ lat: half.b[0], lon: half.b[1] }, { lat: walk.a[0], lon: walk.a[1] }),
     ).toBeCloseTo(
-      metersBetween({ lat: walk.b[0], lon: walk.b[1] }, { lat: walk.a[0], lon: walk.a[1] }) / 2,
+      distanceMeters({ lat: walk.b[0], lon: walk.b[1] }, { lat: walk.a[0], lon: walk.a[1] }) / 2,
       0,
     );
   });
@@ -174,13 +187,35 @@ describe("on-foot questions", () => {
       t,
     );
     expect(far.asked.at(-1)?.answer).toBe("far");
-    const view = soloView(far, idx);
+    const view = soloView(far, t, idx);
     expect(view.candidates).toContain(round.hider);
     for (const c of view.candidates) {
-      expect(metersBetween(ds.complexes[c] as { lat: number; lon: number }, hub)).toBeGreaterThan(
+      expect(distanceMeters(ds.complexes[c] as { lat: number; lon: number }, hub)).toBeGreaterThan(
         190,
       );
     }
+  });
+
+  it("answer at once, and their count doesn't give away a station answer still in its window", () => {
+    const t = round.seekStart + 1200;
+    const r = standingAt(offset(spot, -60, 20), t);
+    const radar = apply(r, { type: "ask", question: { kind: "radar", miles: 0.25 } }, t);
+    const foot = apply(
+      radar,
+      { type: "ask", question: { kind: "spotRadar", meters: 100 } },
+      t + 10,
+    );
+    const entry = foot.asked.at(-1);
+    if (!entry) throw new Error("asked");
+    expect(entry.answerAt).toBe(t + 10);
+    // Counted without the radar, whose answer lands later.
+    expect(entry.remaining).toBe(filterCandidates(ds, round.reachable, [entry]).length);
+    expect(entry.remaining).toBeGreaterThan(
+      filterCandidates(ds, round.reachable, foot.asked).length,
+    );
+    const view = soloView(foot, t + 10, idx);
+    expect(view.asked.map((a) => a.answer === null)).toEqual([true, false]);
+    expect(view.candidates).toHaveLength(entry.remaining);
   });
 
   it("walking hotter/colder: start it, walk 30 m, then read it", () => {
@@ -213,13 +248,13 @@ describe("the search area", () => {
       { type: "ask", question: { kind: "spotRadar", meters: 100 } },
       t,
     );
-    const view = soloViewAt(r, t, idx);
+    const view = soloView(r, t, idx);
     const area = possibleSpots(ds, c, view.asked, view.candidates, view.footpath, t);
     expect(area.length).toBeGreaterThan(50);
     for (const p of area) {
-      expect(metersBetween(p, from)).toBeLessThanOrEqual(101); // the radar said yes
-      expect(metersBetween(p, from)).toBeGreaterThan(38); // you'd see anything closer
+      expect(distanceMeters(p, from)).toBeLessThanOrEqual(101); // the radar said yes
+      expect(distanceMeters(p, from)).toBeGreaterThan(38); // you'd see anything closer
     }
-    expect(Math.min(...area.map((p) => metersBetween(p, spot)))).toBeLessThan(8);
+    expect(Math.min(...area.map((p) => distanceMeters(p, spot)))).toBeLessThan(8);
   });
 });

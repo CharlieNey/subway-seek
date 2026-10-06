@@ -58,6 +58,7 @@ export function trailFromLegs(
           end: now + leg.seconds,
           fromPoint: [a.lat, a.lon],
           toPoint: [b.lat, b.lon],
+          fromComplex: a.complex,
           dest,
         },
       });

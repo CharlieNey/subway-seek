@@ -7,22 +7,27 @@ import {
   filterCandidates,
   type MapQuestion,
   type Place,
+  type Question,
   questionError,
+  questionOrigin,
   RADAR_MILES,
 } from "./questions.ts";
 import { earliestArrivals, reachableComplexes } from "./reach.ts";
 import {
+  ANSWER_WINDOW_SECONDS,
   advanceSolo,
   applySoloIntent,
   askReadyAt,
   createSoloRound,
   HIDE_SECONDS,
+  nextAnswerAt,
   QUESTION_GAP_SECONDS,
   QUESTION_RULES,
   type SoloRound,
   soloView,
 } from "./solo.ts";
 import { buildIndex, departures, type TimetableIndex } from "./timetable.ts";
+import { applyIntent } from "./transit.ts";
 
 const TEN = 10 * 3600;
 let ds: Dataset;
@@ -104,6 +109,24 @@ describe("questions", () => {
     expect(questionError(ds, { kind: "thermometer" }, at("132", "127"))).toBeNull();
   });
 
+  it("asks from where a walk set off until it arrives, even between complexes", () => {
+    // Junius St (2 3) to Livonia Av (L) is a walking transfer between two complexes.
+    const from = {
+      kind: "platform" as const,
+      station: station("254"),
+      since: TEN,
+      arrivedDir: null,
+    };
+    const walk = applyIntent(from, { type: "transfer", to: station("L26") }, TEN, idx);
+    if (!walk.ok) throw new Error(walk.error);
+    const origin = questionOrigin(walk.state, TEN + 60, idx);
+    expect(origin).toEqual(place("254"));
+    const ctx = { origin, baseline: null };
+    expect(questionError(ds, { kind: "route", letter: "3" }, ctx)).toBeNull();
+    expect(questionError(ds, { kind: "route", letter: "L" }, ctx)).not.toBeNull();
+    expect(questionOrigin(walk.state, TEN + 300, idx)).toEqual(place("L26"));
+  });
+
   it("never rules out the hider, whatever is asked", () => {
     const reach = reachableComplexes(idx, station("127"), TEN, TEN + HIDE_SECONDS);
     const pool: MapQuestion[] = [
@@ -134,12 +157,51 @@ describe("questions", () => {
   });
 });
 
+describe("the answer window", () => {
+  const ask = (r: SoloRound, question: Question, t: number) => {
+    const res = applySoloIntent(r, { type: "ask", question }, t, idx);
+    if (!res.ok) throw new Error(res.error);
+    return res.round;
+  };
+
+  it("lands a station answer a minute after it's asked, and shows nothing before", () => {
+    const r = round();
+    const t = r.seekStart;
+    const asked = ask(r, { kind: "radar", miles: 1 }, t);
+    const entry = asked.asked[0];
+    expect(entry?.answerAt).toBe(t + ANSWER_WINDOW_SECONDS);
+    const during = soloView(asked, t + ANSWER_WINDOW_SECONDS - 1, idx);
+    expect(during.asked[0]).toMatchObject({
+      q: { kind: "radar", miles: 1 },
+      answer: null,
+      remaining: null,
+    });
+    expect(during.candidates).toEqual(r.reachable);
+    expect(during.bonusSeconds).toBe(600); // the price is paid on asking
+    const landed = soloView(asked, t + ANSWER_WINDOW_SECONDS, idx);
+    expect(landed.asked[0]?.answer).toBe(entry?.answer);
+    expect(landed.candidates).toHaveLength(entry?.remaining ?? -1);
+    expect(landed.candidates.length).toBeLessThan(r.reachable.length);
+    expect(nextAnswerAt(asked, t)).toBe(t + ANSWER_WINDOW_SECONDS);
+    expect(nextAnswerAt(asked, t + ANSWER_WINDOW_SECONDS)).toBeNull();
+  });
+
+  it("reveals every answer once the round is over, even one still in its window", () => {
+    const r = round();
+    const t = r.seekStart;
+    const asked = ask(r, { kind: "radar", miles: 1 }, t);
+    const res = applySoloIntent(asked, { type: "giveUp" }, t + 10, idx);
+    if (!res.ok) throw new Error(res.error);
+    expect(soloView(res.round, t + 10, idx).asked[0]?.answer).toBe(asked.asked[0]?.answer);
+  });
+});
+
 describe("solo round", () => {
   it("starts seeking at 10:20 from the hub with the hider somewhere reachable", () => {
     const r = round();
     expect(r.seekStart).toBe(TEN + HIDE_SECONDS);
     expect(r.reachable).toContain(r.hider);
-    expect(soloView(r, idx).hider).toBeNull(); // secret while playing
+    expect(soloView(r, r.seekStart, idx).hider).toBeNull(); // secret while playing
   });
 
   it("answers questions, adds the cooldowns, and narrows the candidates", () => {
@@ -147,7 +209,7 @@ describe("solo round", () => {
     const t = r.seekStart;
     const res = applySoloIntent(r, { type: "ask", question: { kind: "radar", miles: 1 } }, t, idx);
     if (!res.ok) throw new Error(res.error);
-    const view = soloView(res.round, idx);
+    const view = soloView(res.round, t + ANSWER_WINDOW_SECONDS, idx);
     expect(view.asked).toHaveLength(1);
     expect(view.candidates).toContain(r.hider);
     expect(view.candidates.length).toBeLessThan(r.reachable.length);
@@ -213,7 +275,7 @@ describe("solo round", () => {
     expect(advanceSolo(res.round, arrival - 1, idx).result).toBeNull();
     const done = advanceSolo(res.round, arrival + 30, idx);
     expect(done.result).toEqual({ kind: "found", at: arrival });
-    expect(soloView(done, idx).hider).toBe(target); // revealed once over
+    expect(soloView(done, arrival, idx).hider).toBe(target); // revealed once over
   });
 
   it("times out after two hours", () => {

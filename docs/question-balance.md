@@ -57,3 +57,8 @@ Final rules, a question every 5 / 8 / 12 game minutes:
 
 The simulation is optimistic about travel (it teleports), so real rounds take longer;
 the point is the mix of questions, not the times.
+
+Re-run 2026-10-06, after a vetoed question became closed for the round and every station
+answer started waiting out a 1-min window: unchanged (5.4–5.5 questions to pin, ~64 min,
+no category above 28%). The simulated seeker faces no cards, and a minute's wait doesn't
+change which questions it asks. The veto's new weight is for the S4 bot-vs-bot run.

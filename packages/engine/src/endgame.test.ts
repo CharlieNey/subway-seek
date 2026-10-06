@@ -2,6 +2,7 @@ import type { Dataset } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { seededRandom } from "./daily.ts";
+import { distanceMeters, offsetMeters } from "./geo.ts";
 import { Geometry } from "./geometry.ts";
 import {
   advanceSolo,
@@ -11,14 +12,13 @@ import {
   type HidingSpot,
   placeHider,
   type SoloRound,
-  soloViewAt,
+  soloView,
 } from "./solo.ts";
 import { buildIndex, type TimetableIndex } from "./timetable.ts";
 import { trailPosition } from "./trail.ts";
 import {
   applyIntent,
   ENTER_SECONDS,
-  metersBetween,
   type OnStreet,
   resolve,
   WALK_DETOUR,
@@ -37,10 +37,7 @@ beforeAll(() => {
 });
 
 /** A point `m` meters east of (lat, lon). */
-const east = (lat: number, lon: number, m: number) => ({
-  lat,
-  lon: lon + m / (111_320 * Math.cos((lat * Math.PI) / 180)),
-});
+const east = (lat: number, lon: number, m: number) => offsetMeters({ lat, lon }, m, 0);
 
 function onStreetAt(complex: number, t: number): OnStreet {
   return { kind: "street", complex, exit: 0, since: t };
@@ -79,7 +76,7 @@ describe("walking on the street", () => {
     if (!r.ok) throw new Error(r.error);
     if (r.state.kind !== "walking") throw new Error("expected walking");
     const nearest = Math.min(
-      ...c.exits.map(([lat, lon]) => metersBetween({ lat, lon }, away.at ?? c)),
+      ...c.exits.map(([lat, lon]) => distanceMeters({ lat, lon }, away.at ?? c)),
     );
     expect(r.state.end - TEN).toBeCloseTo((nearest * WALK_DETOUR) / WALK_MPS + ENTER_SECONDS, 3);
   });
@@ -102,7 +99,7 @@ describe("the Street View endgame", () => {
     const end = round.hiderTrail.at(-1)?.state;
     if (end?.kind !== "walking") throw new Error("expected a final walk");
     const p = trailPosition(geo, round.hiderTrail, end.end + 60);
-    expect(p && metersBetween({ lat: p[1], lon: p[0] }, spot)).toBeLessThan(1);
+    expect(p && distanceMeters({ lat: p[1], lon: p[0] }, spot)).toBeLessThan(1);
   });
 
   it("finding the station starts the endgame instead of ending the round", () => {
@@ -124,9 +121,9 @@ describe("the Street View endgame", () => {
       ...round,
       seeker: { ...onStreetAt(round.hider, t), at: east(spot.lat, spot.lon, m) },
     });
-    expect(soloViewAt(at(80), t, idx).spotNearby).toBeNull();
+    expect(soloView(at(80), t, idx).spotNearby).toBeNull();
     expect(applySoloIntent(at(80), { type: "catch" }, t, idx).ok).toBe(false);
-    expect(soloViewAt(at(35), t, idx).spotNearby).not.toBeNull();
+    expect(soloView(at(35), t, idx).spotNearby).not.toBeNull();
     expect(applySoloIntent(at(35), { type: "catch" }, t, idx).ok).toBe(false);
     const caught = applySoloIntent(at(10), { type: "catch" }, t, idx);
     if (!caught.ok) throw new Error(caught.error);
@@ -144,6 +141,7 @@ describe("the Street View endgame", () => {
         end: t + 60,
         fromPoint: [spot.lat, spot.lon],
         toPoint: [spot.lat + 0.001, spot.lon],
+        fromComplex: round.hider,
         dest: { ...onStreetAt(round.hider, t + 60), at: { lat: spot.lat + 0.001, lon: spot.lon } },
       },
     };

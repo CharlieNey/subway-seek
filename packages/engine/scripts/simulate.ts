@@ -18,29 +18,26 @@
  * Balance goals: no category is more than ~35% of either moving seeker's questions,
  * every category gets used, and pinning a station costs the hider ~60–80 bonus minutes.
  */
-import type { LandmarkKind } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
   type AskContext,
-  askReadyAt,
   buildIndex,
   categoryOf,
-  distanceMeters,
+  chooseQuestion,
   evaluate,
   HIDE_SECONDS,
   HUB_STATION_IDS,
-  LANDMARK_KINDS,
   type MapQuestion,
+  nearestToCentre,
   type Place,
+  placeOf,
   QUESTION_CATEGORIES,
   QUESTION_GAP_SECONDS,
   QUESTION_RULES,
   type Question,
   type QuestionCategory,
-  questionError,
-  RADAR_MILES,
+  questionPool,
   reachableComplexes,
-  TENTACLE_MILES,
 } from "../src/index.ts";
 
 const paceArg = process.argv.indexOf("--pace");
@@ -57,50 +54,6 @@ if (process.env.SIM_RULES) Object.assign(QUESTION_RULES, JSON.parse(process.env.
 const ds = loadDataset();
 const idx = buildIndex(ds);
 const TEN = 10 * 3600;
-const placeOf = (complex: number): Place => {
-  const c = ds.complexes[complex];
-  if (!c) throw new Error("complex");
-  return { lat: c.lat, lon: c.lon, complex };
-};
-const tentacleKinds = LANDMARK_KINDS.filter((k) => TENTACLE_MILES[k] !== undefined);
-
-function pool(origin: Place, baseline: Place | null): { q: MapQuestion; ctx: AskContext }[] {
-  const qs: MapQuestion[] = [
-    ...RADAR_MILES.map((miles) => ({ kind: "radar" as const, miles })),
-    ...(ds.complexes[origin.complex]?.routes ?? []).map((letter) => ({
-      kind: "route" as const,
-      letter,
-    })),
-    { kind: "borough" },
-    { kind: "express" },
-    { kind: "moreRoutes" },
-    ...LANDMARK_KINDS.flatMap((landmark: LandmarkKind) => [
-      { kind: "matching" as const, landmark },
-      { kind: "measuring" as const, landmark },
-    ]),
-    ...tentacleKinds.map((landmark) => ({ kind: "tentacles" as const, landmark })),
-    { kind: "thermometer" },
-  ];
-  return qs.flatMap((q) => {
-    const ctx = { origin, baseline: q.kind === "thermometer" ? baseline : null };
-    return questionError(ds, q, ctx) ? [] : [{ q, ctx }];
-  });
-}
-
-function nearestToCentre(cands: number[]): Place {
-  const lat = cands.reduce((s, c) => s + (ds.complexes[c]?.lat ?? 0), 0) / cands.length;
-  const lon = cands.reduce((s, c) => s + (ds.complexes[c]?.lon ?? 0), 0) / cands.length;
-  let best = cands[0] as number;
-  let bestD = Number.POSITIVE_INFINITY;
-  for (const c of cands) {
-    const d = distanceMeters(placeOf(c), { lat, lon });
-    if (d < bestD) {
-      bestD = d;
-      best = c;
-    }
-  }
-  return placeOf(best);
-}
 
 type Policy = "greedy" | "thrifty" | "static";
 
@@ -117,9 +70,14 @@ interface Run {
   kinds: string[];
 }
 
+/**
+ * One game. The question choice and the move toward the candidates are the engine's
+ * (`hardness.ts`), so what the bot's difficulty bands measure is what this reports;
+ * "static" is the thrifty policy without moving (a pessimistic bound).
+ */
 function play(hub: number, hider: number, reach: number[], policy: Policy): Run {
   let cands = [...reach];
-  let origin = placeOf(ds.stations[hub]?.complex as number);
+  let origin = placeOf(ds, ds.stations[hub]?.complex as number);
   let baseline: Place | null = policy === "static" ? null : origin;
   const asked: { q: Question; at: number }[] = [];
   const run: Run = {
@@ -132,22 +90,16 @@ function play(hub: number, hider: number, reach: number[], policy: Policy): Run 
   };
   for (let slot = 0; slot < MAX_SLOTS && cands.length > 1; slot++) {
     const t = slot * PACE;
-    let best: { q: MapQuestion; ctx: AskContext; score: number } | null = null;
-    for (const { q, ctx } of pool(origin, baseline)) {
-      const category = categoryOf(q);
-      if (t < askReadyAt(asked, category)) continue;
-      const parts = new Map<string, number>();
-      for (const c of cands) {
-        const key = JSON.stringify(evaluate(ds, q, c, ctx));
-        parts.set(key, (parts.get(key) ?? 0) + 1);
-      }
-      if (parts.size < 2) continue;
-      let bits = 0;
-      for (const k of parts.values()) bits += (k / cands.length) * Math.log2(cands.length / k);
-      const price = QUESTION_RULES[category].bonusSeconds / 60;
-      const score = policy === "greedy" ? bits : bits / (price + PACE_MIN);
-      if (!best || score > best.score) best = { q, ctx, score };
-    }
+    const pool: { q: MapQuestion; ctx: AskContext }[] = questionPool(ds, origin, baseline);
+    const best = chooseQuestion(
+      ds,
+      cands,
+      pool,
+      asked,
+      t,
+      policy === "greedy" ? "greedy" : "thrifty",
+      PACE,
+    );
     if (!best) continue; // nothing useful is off cooldown: wait for the next slot
     const { q, ctx } = best;
     const answer = JSON.stringify(evaluate(ds, q, hider, ctx));
@@ -167,7 +119,7 @@ function play(hub: number, hider: number, reach: number[], policy: Policy): Run 
     }
     if (policy !== "static") {
       baseline = origin;
-      origin = nearestToCentre(cands);
+      origin = nearestToCentre(ds, cands);
     }
   }
   return run;

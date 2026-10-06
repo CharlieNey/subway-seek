@@ -3,6 +3,7 @@
  * the engine sees them; server messages are plain types (the server is trusted).
  */
 import { z } from "zod";
+import type { Difficulty } from "./hardness.ts";
 import type { RoundMode, SoloIntent, SoloView } from "./solo.ts";
 import type { TransitIntent } from "./transit.ts";
 
@@ -43,7 +44,8 @@ export const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("spotThermometer") }),
 ]);
 
-export type NewRoundIntent = { type: "newRound"; mode: RoundMode };
+/** `difficulty` applies to practice rounds; the daily always plays Normal. */
+export type NewRoundIntent = { type: "newRound"; mode: RoundMode; difficulty?: Difficulty };
 /** Solo-only clock controls, handled by the server's session rather than the round. */
 export type ClockIntent =
   | { type: "pause" }
@@ -58,7 +60,11 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("startFootThermometer") }),
   z.object({ type: z.literal("giveUp") }),
   z.object({ type: z.literal("catch") }),
-  z.object({ type: z.literal("newRound"), mode: z.enum(["daily", "practice"]) }),
+  z.object({
+    type: z.literal("newRound"),
+    mode: z.enum(["daily", "practice"]),
+    difficulty: z.enum(["easy", "normal", "hard"]).optional(),
+  }),
   z.object({ type: z.literal("pause") }),
   z.object({ type: z.literal("resume") }),
   z.object({ type: z.literal("skip"), to: z.enum(["next", "end"]) }),

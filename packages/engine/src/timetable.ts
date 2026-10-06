@@ -83,3 +83,32 @@ export function departures(
   }
   return out;
 }
+
+/** One row of a countdown-clock board: a route and direction, and its next trains. */
+export interface BoardRow {
+  route: Route;
+  dir: Direction;
+  /** Soonest first. The row reads as the first train's headsign. */
+  trains: Departure[];
+}
+
+/**
+ * A station's departures as the platform countdown clocks show them (DESIGN.md, Sidebar):
+ * a row per route and direction with its next `perRow` trains ("2 min, then 9 min"),
+ * rows in order of their first train. Express variants (6X) keep their own row.
+ */
+export function departureBoard(
+  idx: TimetableIndex,
+  station: number,
+  from: number,
+  { horizon = 30 * 60, perRow = 2 }: { horizon?: number; perRow?: number } = {},
+): BoardRow[] {
+  const rows = new Map<string, BoardRow>();
+  for (const d of departures(idx, station, from, { horizon, limit: Number.POSITIVE_INFINITY })) {
+    const key = `${d.route.id}|${d.dir}`;
+    const row = rows.get(key);
+    if (!row) rows.set(key, { route: d.route, dir: d.dir, trains: [d] });
+    else if (row.trains.length < perRow) row.trains.push(d);
+  }
+  return [...rows.values()];
+}

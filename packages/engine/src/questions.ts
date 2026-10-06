@@ -261,10 +261,9 @@ function stationFitsSpotAnswer(ds: Dataset, c: number, ctx: AskContext, answer: 
   const station = ds.complexes[c];
   if (!station) return false;
   const d = distanceMeters(station, ctx.origin);
-  const slack = 5; // the server checks the zone with a flat-earth distance
   return answer === "far"
-    ? d > ON_FOOT_RANGE_M - ZONE_RADIUS_M - slack
-    : d <= ON_FOOT_RANGE_M + ZONE_RADIUS_M + slack;
+    ? d > ON_FOOT_RANGE_M - ZONE_RADIUS_M
+    : d <= ON_FOOT_RANGE_M + ZONE_RADIUS_M;
 }
 
 /** Why a question can't be asked right now, or null if it can. */
@@ -321,6 +320,43 @@ export interface Asked {
   answer: Answer;
 }
 
+/**
+ * A question's kind and setting, which is what a veto closes: Radar 1 mi, "Does the Q
+ * stop there?", a photo looking north from their exit. Where it was asked from doesn't
+ * count, or the seeker would ask it again from the next stop.
+ */
+export function questionKey(q: Question): string {
+  switch (q.kind) {
+    case "radar":
+      return `radar ${q.miles}`;
+    case "route":
+      return `route ${q.letter}`;
+    case "matching":
+    case "measuring":
+    case "tentacles":
+      return `${q.kind} ${q.landmark}`;
+    case "photo":
+      return `photo ${q.from} ${q.look}`;
+    case "spotRadar":
+      return `spotRadar ${q.meters}`;
+    default:
+      return q.kind;
+  }
+}
+
+/**
+ * The questions the hider has vetoed, as questionKeys: each is closed for the rest of
+ * the round (DESIGN.md, "Veto closes the question"). The rest of its category stays open.
+ * Answers still in their window (null) aren't known yet.
+ */
+export function closedQuestions(
+  asked: readonly { q: Question; answer: Answer | null }[],
+): Set<string> {
+  const closed = new Set<string>();
+  for (const a of asked) if (a.answer !== null && isVetoed(a.answer)) closed.add(questionKey(a.q));
+  return closed;
+}
+
 /** Candidates that give the same answer as the hider to every question asked. */
 export function filterCandidates(
   ds: Dataset,
@@ -337,6 +373,49 @@ export function filterCandidates(
       return true;
     }),
   );
+}
+
+/** How `q` splits the candidates: answer → how many give it. */
+export function partition(
+  ds: Dataset,
+  q: MapQuestion,
+  candidates: readonly number[],
+  ctx: AskContext,
+): Map<string, number> {
+  const parts = new Map<string, number>();
+  for (const c of candidates) {
+    const key = JSON.stringify(evaluate(ds, q, c, ctx));
+    parts.set(key, (parts.get(key) ?? 0) + 1);
+  }
+  return parts;
+}
+
+/** Every map question the seeker could ask from `origin` (the thermometer needs a baseline). */
+export function questionPool(
+  ds: Dataset,
+  origin: Place,
+  baseline: Place | null,
+): { q: MapQuestion; ctx: AskContext }[] {
+  const qs: MapQuestion[] = [
+    ...RADAR_MILES.map((miles) => ({ kind: "radar" as const, miles })),
+    ...(ds.complexes[origin.complex]?.routes ?? []).map((letter) => ({
+      kind: "route" as const,
+      letter,
+    })),
+    { kind: "borough" },
+    { kind: "express" },
+    { kind: "moreRoutes" },
+    ...LANDMARK_KINDS.flatMap((landmark) => [
+      { kind: "matching" as const, landmark },
+      { kind: "measuring" as const, landmark },
+      ...(TENTACLE_MILES[landmark] ? [{ kind: "tentacles" as const, landmark }] : []),
+    ]),
+    { kind: "thermometer" },
+  ];
+  return qs.flatMap((q) => {
+    const ctx: AskContext = { origin, baseline: q.kind === "thermometer" ? baseline : null };
+    return questionError(ds, q, ctx) ? [] : [{ q, ctx }];
+  });
 }
 
 /** Where questions are asked from, given the seeker's movement state at time t. */
@@ -357,12 +436,10 @@ export function questionOrigin(state: Transit, t: number, idx: TimetableIndex): 
       const p = streetPoint(s, idx);
       return { lat: p.lat, lon: p.lon, complex: s.complex };
     }
-    case "walking": {
-      const dest = s.dest;
-      const complex =
-        dest.kind === "street" ? dest.complex : (ds.stations[dest.station]?.complex ?? 0);
-      return { lat: s.fromPoint[0], lon: s.fromPoint[1], complex };
-    }
+    case "walking":
+      // From where you set off until you arrive: a transfer can cross complexes, and the
+      // lines and the distances have to be about the same place.
+      return { lat: s.fromPoint[0], lon: s.fromPoint[1], complex: s.fromComplex };
   }
 }
 

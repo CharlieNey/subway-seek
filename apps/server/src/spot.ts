@@ -3,11 +3,12 @@
  * around its station. Uses the Street View metadata endpoint, which is free and uses
  * no quota (developers.google.com/maps/documentation/streetview/metadata).
  *
- * Google's terms: we keep the spot for the round only (no long-term caching of
- * Google's coordinates); panorama IDs may be stored.
+ * Google's terms: we keep the spot's coordinates for the round only (no caching of
+ * Google's coordinates); panorama IDs may be stored, so the daily keeps those and looks
+ * the coordinates up again for each round (spotFromPano).
  */
 import type { Dataset } from "@stand-clear/data";
-import { type HidingSpot, metersBetween, ZONE_RADIUS_M } from "@stand-clear/engine";
+import { distanceMeters, type HidingSpot, offsetMeters, ZONE_RADIUS_M } from "@stand-clear/engine";
 
 const KEY = process.env.GOOGLE_STREETVIEW_SERVER_KEY;
 const ATTEMPTS = 8;
@@ -18,14 +19,27 @@ interface Metadata {
   location?: { lat: number; lng: number };
 }
 
-export async function nearestPano(lat: number, lon: number): Promise<HidingSpot | null> {
-  const url =
-    `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lon}` +
-    `&radius=40&source=outdoor&key=${KEY}`;
+async function metadata(query: string): Promise<HidingSpot | null> {
+  const url = `https://maps.googleapis.com/maps/api/streetview/metadata?${query}&key=${KEY}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
   const d = (await res.json()) as Metadata;
   if (d.status !== "OK" || !d.pano_id || !d.location) return null;
   return { lat: d.location.lat, lon: d.location.lng, pano: d.pano_id };
+}
+
+export function nearestPano(lat: number, lon: number): Promise<HidingSpot | null> {
+  return metadata(`location=${lat},${lon}&radius=40&source=outdoor`);
+}
+
+/** A panorama's spot, by its ID. Null when there's no key, or the lookup fails. */
+export async function spotFromPano(pano: string): Promise<HidingSpot | null> {
+  if (!KEY) return null;
+  try {
+    return await metadata(`pano=${encodeURIComponent(pano)}`);
+  } catch (err) {
+    console.warn(`panorama lookup failed: ${String(err)}`);
+    return null;
+  }
 }
 
 /**
@@ -43,11 +57,10 @@ export async function pickSpot(
   for (let i = 0; i < ATTEMPTS; i++) {
     const angle = random() * 2 * Math.PI;
     const r = Math.sqrt(60 ** 2 + random() * (360 ** 2 - 60 ** 2));
-    const lat = c.lat + (r * Math.sin(angle)) / 110_540;
-    const lon = c.lon + (r * Math.cos(angle)) / (111_320 * Math.cos((c.lat * Math.PI) / 180));
+    const { lat, lon } = offsetMeters(c, r * Math.cos(angle), r * Math.sin(angle));
     try {
       const spot = await nearestPano(lat, lon);
-      if (spot && metersBetween(c, spot) <= ZONE_RADIUS_M) return spot;
+      if (spot && distanceMeters(c, spot) <= ZONE_RADIUS_M) return spot;
     } catch (err) {
       console.warn(`spot lookup failed: ${String(err)}`);
     }

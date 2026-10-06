@@ -2,7 +2,7 @@ import type { Dataset, Trip } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Geometry } from "./geometry.ts";
-import { buildIndex, departures, type TimetableIndex } from "./timetable.ts";
+import { buildIndex, departureBoard, departures, type TimetableIndex } from "./timetable.ts";
 import {
   type ApplyResult,
   applyIntent,
@@ -60,6 +60,23 @@ describe("departures", () => {
       if (i > 0) expect(d.dep).toBeGreaterThanOrEqual(list[i - 1]?.dep ?? 0);
       expect(d.stop).toBeLessThan(trip(d.trip).stops.length - 1);
     }
+  });
+});
+
+describe("the departure board", () => {
+  it("shows each route and direction's next two trains, like the countdown clocks", () => {
+    const list = departures(idx, station("127"), TEN, { horizon: 1800, limit: 1000 });
+    const board = departureBoard(idx, station("127"), TEN, { horizon: 1800 });
+    const key = (d: { route: { id: string }; dir: number }) => `${d.route.id}|${d.dir}`;
+    expect(board.map(key)).toEqual([...new Set(list.map(key))]);
+    for (const row of board) {
+      expect(row.trains).toEqual(list.filter((d) => key(d) === key(row)).slice(0, 2));
+    }
+    // Times Sq's 1 2 3 platforms: three routes, both ways, each with a train after the first.
+    expect(board).toHaveLength(6);
+    expect(board.every((row) => row.trains.length === 2)).toBe(true);
+    const firsts = board.map((row) => row.trains[0]?.dep ?? 0);
+    expect(firsts).toEqual([...firsts].sort((a, b) => a - b));
   });
 });
 

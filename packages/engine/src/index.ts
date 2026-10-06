@@ -3,6 +3,7 @@ export * from "./clock.ts";
 export * from "./daily.ts";
 export * from "./geo.ts";
 export * from "./geometry.ts";
+export * from "./hardness.ts";
 export * from "./hiderBot.ts";
 export * from "./hubs.ts";
 export * from "./landmarks.ts";

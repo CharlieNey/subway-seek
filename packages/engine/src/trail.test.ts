@@ -66,9 +66,9 @@ describe("seeker's trail and the replay", () => {
     if (!res.ok) throw new Error(res.error);
     round = res.round;
     expect(round.seekerTrail).toHaveLength(2);
-    expect(soloView(round, idx).replay).toBeNull();
+    expect(soloView(round, round.seekStart, idx).replay).toBeNull();
     const over = advanceSolo(round, round.seekEnd, idx);
-    const replay = soloView(over, idx).replay;
+    const replay = soloView(over, round.seekEnd, idx).replay;
     expect(replay?.seeker).toHaveLength(2);
     expect(replay?.hider.length).toBeGreaterThan(1);
   });
@@ -80,8 +80,8 @@ describe("giving up", () => {
     const res = applySoloIntent(round, { type: "giveUp" }, round.seekStart + 600, idx);
     if (!res.ok) throw new Error(res.error);
     expect(res.round.result).toEqual({ kind: "gaveUp", at: round.seekStart + 600 });
-    expect(soloView(res.round, idx).hider).toBe(round.hider);
-    expect(soloView(res.round, idx).replay).not.toBeNull();
+    expect(soloView(res.round, round.seekStart + 600, idx).hider).toBe(round.hider);
+    expect(soloView(res.round, round.seekStart + 600, idx).replay).not.toBeNull();
     expect(applySoloIntent(res.round, { type: "giveUp" }, round.seekStart + 700, idx).ok).toBe(
       false,
     );

@@ -15,26 +15,33 @@ import {
   type ClockSync,
   clientMessageSchema,
   createSoloRound,
+  type Difficulty,
   dailyNumber,
   dailyRandom,
   type GameClock,
   gameTime,
+  type HidingSpot,
+  isAnswered,
   jumpClock,
+  nextAnswerAt,
   nextEventTime,
   nyDate,
   pauseClock,
   pickHubId,
   placeHider,
   type RoundMode,
+  realMsUntil,
   resumeClock,
   type ServerMessage,
   type SoloRound,
-  soloViewAt,
+  type SoloView,
+  skipSolo,
+  soloView,
   startClock,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
 import { MatchLog } from "./matchLog.ts";
-import { pickExitPano, pickSpot } from "./spot.ts";
+import { pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -73,34 +80,96 @@ function logCards(session: Session) {
   session.cardsLogged = session.round.cardEvents.length;
 }
 
+/**
+ * The daily is the same for everyone, so it's built once per New York date: the round,
+ * and the panoramas for the spot and the exit photo (up to twelve Street View lookups).
+ * Only panorama IDs are kept. Google's coordinates aren't cached (spot.ts), so each
+ * round looks the spot up again by its ID: one lookup.
+ */
+interface DailySetup {
+  /** The day's round, with its exit photo, before the hider is placed at the spot. */
+  round: SoloRound;
+  spotPano: string | null;
+}
+let daily: { date: string; setup: Promise<DailySetup> } | null = null;
+
+function dailySetup(date: string): Promise<DailySetup> {
+  if (daily?.date !== date) {
+    const setup = buildDaily(date);
+    daily = { date, setup };
+    // A failed build isn't kept: the next connection tries again.
+    setup.catch(() => {
+      if (daily?.setup === setup) daily = null;
+    });
+  }
+  return daily.setup;
+}
+
+async function buildDaily(date: string): Promise<DailySetup> {
+  // Each daily starts somewhere different (same for everyone that day).
+  const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
+  // The daily is Normal for everyone; difficulty is a practice setting.
+  const round = createSoloRound(idx, {
+    hub,
+    hideStart: HIDE_START,
+    random: dailyRandom(date, DAILY_SECRET),
+    daily: { date, number: dailyNumber(date) },
+  });
+  // Separate seeds, so the exit doesn't change with how many tries the spot took.
+  const [spot, photoExit] = await Promise.all([
+    pickSpot(dataset, round.hider, dailyRandom(`${date}|spot`, DAILY_SECRET)),
+    pickExitPano(dataset, round.hider, dailyRandom(`${date}|exit`, DAILY_SECRET)),
+  ]);
+  if (!spot && process.env.GOOGLE_STREETVIEW_SERVER_KEY) {
+    console.warn(`daily ${date}: no hiding spot found, so no street endgame today`);
+  }
+  return { round: { ...round, photoExit }, spotPano: spot?.pano ?? null };
+}
+
 async function newRound(
   mode: RoundMode,
+  difficulty: Difficulty = "normal",
 ): Promise<{ round: SoloRound; clock: GameClock; log: MatchLog }> {
-  const date = nyDate(new Date());
-  // Each daily starts somewhere different (same for everyone that day); practice is random.
-  const hub = stationIndex(
-    pickHubId(mode === "daily" ? dailyRandom(`${date}|hub`, DAILY_SECRET) : Math.random),
-  );
-  let round =
-    mode === "daily"
-      ? createSoloRound(idx, {
-          hub,
-          hideStart: HIDE_START,
-          random: dailyRandom(date, DAILY_SECRET),
-          daily: { date, number: dailyNumber(date) },
-        })
-      : createSoloRound(idx, { hub, hideStart: HIDE_START });
+  let round: SoloRound;
   // The exact hiding spot for the Street View endgame (same spot all day for the daily).
-  const spotRandom = mode === "daily" ? dailyRandom(`${date}|spot`, DAILY_SECRET) : Math.random;
-  const spot = await pickSpot(dataset, round.hider, spotRandom);
+  let spot: HidingSpot | null;
+  if (mode === "daily") {
+    const date = nyDate(new Date());
+    let setup = await dailySetup(date);
+    if (setup.spotPano === null && process.env.GOOGLE_STREETVIEW_SERVER_KEY) {
+      // The day's first build found no spot (a lookup can fail). Same seed, so a retry
+      // that works gives everyone the same spot; keep it for the rest of the day.
+      const retry = await pickSpot(
+        dataset,
+        setup.round.hider,
+        dailyRandom(`${date}|spot`, DAILY_SECRET),
+      );
+      if (retry) {
+        setup = { ...setup, spotPano: retry.pano };
+        if (daily?.date === date) daily = { date, setup: Promise.resolve(setup) };
+        console.log(`daily ${date}: hiding spot found on retry`);
+      }
+    }
+    round = setup.round;
+    spot = setup.spotPano ? await spotFromPano(setup.spotPano) : null;
+  } else {
+    const hub = stationIndex(pickHubId(Math.random));
+    round = createSoloRound(idx, { hub, hideStart: HIDE_START, difficulty });
+    // The view outside one of its exits, for "photo from your station's exit".
+    const [picked, photoExit] = await Promise.all([
+      pickSpot(dataset, round.hider, Math.random),
+      pickExitPano(dataset, round.hider, Math.random),
+    ]);
+    spot = picked;
+    round = { ...round, photoExit };
+  }
   if (spot) round = placeHider(round, spot, idx);
-  // The view outside one of its exits, for "photo from your station's exit".
-  round = { ...round, photoExit: await pickExitPano(dataset, round.hider, spotRandom) };
   const log = new MatchLog();
   log.write("round_start", {
     mode,
+    difficulty: round.difficulty,
     daily: round.daily,
-    hub: dataset.stations[hub]?.id,
+    hub: dataset.stations[round.hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
     spot: spot ? { lat: spot.lat, lon: spot.lon } : null,
     photoExit: round.photoExit !== null,
@@ -148,12 +217,23 @@ const wss = new WebSocketServer({ port: PORT });
 wss.on("connection", async (socket) => {
   const session: Session = { ...(await newRound("daily")), lastSeq: -1, cardsLogged: 0 };
   /** The seeker's view right now (the hider's marker shows only when they're close). */
-  const viewNow = (now: number) => soloViewAt(session.round, gameTime(session.clock, now), idx);
+  const viewNow = (now: number) => soloView(session.round, gameTime(session.clock, now), idx);
+  const answered = (v: SoloView) => v.asked.filter(isAnswered).length;
   let markerShown = false;
+  let answersShown = 0;
   let stationLogged = false;
+  /** Sends the view the moment the next answer lands (the 1 s tick could be a second late). */
+  let answerTimer: ReturnType<typeof setTimeout> | undefined;
   const remember = (now: number) => {
     const v = viewNow(now);
     markerShown = v.spotNearby !== null;
+    answersShown = answered(v);
+    clearTimeout(answerTimer);
+    const next = nextAnswerAt(session.round, gameTime(session.clock, now));
+    const ms = next === null ? Number.POSITIVE_INFINITY : realMsUntil(session.clock, next, now);
+    if (Number.isFinite(ms)) {
+      answerTimer = setTimeout(() => sendState(session.lastSeq, Date.now()), ms + 10);
+    }
     return v;
   };
   const sendState = (seq: number, now: number) =>
@@ -167,7 +247,8 @@ wss.on("connection", async (socket) => {
   });
 
   // Rides and walks resolve lazily, so once a second: has the seeker reached the
-  // hider's station, come within sight of their spot, or run out of time?
+  // hider's station, come within sight of their spot, had an answer land, or run out
+  // of time?
   const timer = setInterval(() => {
     const now = Date.now();
     const next = advanceSolo(session.round, gameTime(session.clock, now), idx);
@@ -179,12 +260,14 @@ wss.on("connection", async (socket) => {
       stationLogged = true;
       session.log.write("station_found", { t: session.round.stationFoundAt });
     }
-    if (changed || (viewNow(now).spotNearby !== null) !== markerShown) {
+    const v = viewNow(now);
+    if (changed || (v.spotNearby !== null) !== markerShown || answered(v) !== answersShown) {
       sendState(session.lastSeq, now);
     }
   }, 1000);
   socket.on("close", () => {
     clearInterval(timer);
+    clearTimeout(answerTimer);
     session.log.write("disconnect", {});
   });
 
@@ -216,7 +299,7 @@ wss.on("connection", async (socket) => {
     session.lastSeq = seq;
 
     if (intent.type === "newRound") {
-      Object.assign(session, await newRound(intent.mode), { cardsLogged: 0 });
+      Object.assign(session, await newRound(intent.mode, intent.difficulty), { cardsLogged: 0 });
       stationLogged = false;
       sendState(seq, Date.now());
       return;
@@ -241,7 +324,10 @@ wss.on("connection", async (socket) => {
       if (intent.type === "skip") {
         const target = nextEventTime(session.round.seeker, t, idx, intent.to);
         if (target === null) return reject("Nothing to skip to.");
-        session.clock = jumpClock(session.clock, Math.min(target, session.round.seekEnd), now);
+        // Stops early if the hider plays a card on the way.
+        const skipped = skipSolo(session.round, t, Math.min(target, session.round.seekEnd), idx);
+        session.round = skipped.round;
+        session.clock = jumpClock(session.clock, skipped.t, now);
       } else if (session.round.mode !== "practice") {
         return reject("Pausing is for practice rounds.");
       } else {
@@ -249,6 +335,7 @@ wss.on("connection", async (socket) => {
       }
       session.log.write("clock", { t, type: intent.type, to: gameTime(session.clock, now) });
       session.round = advanceSolo(session.round, gameTime(session.clock, now), idx);
+      logCards(session);
       logEnd(session);
       sendState(seq, now);
       return;

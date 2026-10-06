@@ -13,9 +13,9 @@
  *   - walker: never asks, just sweeps
  *   - asker:  asks an on-foot question whenever the search time it should save beats
  *             its price (a free walking thermometer is started at the exit)
- * Flat-earth meters (x east, y north) and straight-line walking at the game's pace, so
- * it's optimistic: real streets go around blocks. Spot photos aren't modelled (they're
- * for a person to read).
+ * Flat meters (x east, y north, the engine's localMeters) and straight-line walking at
+ * the game's pace, so it's optimistic: real streets go around blocks. Spot photos aren't
+ * modelled (they're for a person to read).
  *
  * Target: the endgame is a third to half of the seeking time. Finding the station takes
  * ~25–30 game-min, so that's roughly 13–30 game-min here.
@@ -27,6 +27,7 @@ import {
   FOOT_THERMOMETER_MIN_METERS,
   HIDE_SECONDS,
   HUB_STATION_IDS,
+  localMeters,
   ON_FOOT_RANGE_M,
   QUESTION_RULES,
   reachableComplexes,
@@ -216,7 +217,6 @@ const games: { spot: P; start: P }[] = [];
 for (const c of pool.slice(0, STATIONS)) {
   const complex = ds.complexes[c];
   if (!complex) continue;
-  const kx = 111_320 * Math.cos((complex.lat * Math.PI) / 180);
   for (let k = 0; k < SPOTS_PER_STATION; k++) {
     const angle = random() * 2 * Math.PI;
     const r = Math.sqrt(60 ** 2 + random() * (360 ** 2 - 60 ** 2));
@@ -226,7 +226,7 @@ for (const c of pool.slice(0, STATIONS)) {
     ];
     games.push({
       spot: [r * Math.cos(angle), r * Math.sin(angle)],
-      start: [(elon - complex.lon) * kx, (elat - complex.lat) * 110_540],
+      start: localMeters(complex, { lat: elat, lon: elon }),
     });
   }
 }

@@ -7,6 +7,7 @@
  * from the shared clock and the public timetable.
  */
 import type { Direction, LatLon } from "@stand-clear/data";
+import { distanceMeters } from "./geo.ts";
 import type { TimetableIndex } from "./timetable.ts";
 
 /** Going up to the street or back down to the platform takes 2 game-minutes. */
@@ -63,6 +64,8 @@ export interface Walking {
   end: number;
   fromPoint: LatLon;
   toPoint: LatLon;
+  /** The complex you set off from: questions are asked from it until you arrive. */
+  fromComplex: number;
   /** Where you'll be once you arrive. */
   dest: OnPlatform | OnStreet;
 }
@@ -185,6 +188,7 @@ export function applyIntent(
           end: t + link.seconds,
           fromPoint: [from.lat, from.lon],
           toPoint: [to.lat, to.lon],
+          fromComplex: from.complex,
           dest: { kind: "platform", station: intent.to, since: t + link.seconds, arrivedDir: null },
         },
       };
@@ -206,6 +210,7 @@ export function applyIntent(
           end: t + EXIT_SECONDS,
           fromPoint: [station.lat, station.lon],
           toPoint: exitPoint,
+          fromComplex: station.complex,
           dest: {
             kind: "street",
             complex: station.complex,
@@ -238,6 +243,7 @@ export function applyIntent(
           end: t + duration,
           fromPoint: [here.lat, here.lon],
           toPoint: [station.lat, station.lon],
+          fromComplex: state.complex,
           dest: {
             kind: "platform",
             station: intent.station,
@@ -253,7 +259,7 @@ export function applyIntent(
       const complex = ds.complexes[state.complex];
       if (!complex) return fail("No such station.");
       const target: StreetPoint = { lat: intent.lat, lon: intent.lon, pano: intent.pano };
-      if (metersBetween(complex, target) > STREET_RADIUS_M) {
+      if (distanceMeters(complex, target) > STREET_RADIUS_M) {
         return fail("That's too far to walk — take the subway.");
       }
       const here = streetPoint(state, idx);
@@ -267,6 +273,7 @@ export function applyIntent(
           end,
           fromPoint: [here.lat, here.lon],
           toPoint: [target.lat, target.lon],
+          fromComplex: state.complex,
           dest: {
             kind: "street",
             complex: state.complex,
@@ -280,21 +287,12 @@ export function applyIntent(
   }
 }
 
-/** Straight-line meters (equirectangular; fine at city scale). */
-export function metersBetween(
-  a: { lat: number; lon: number },
-  b: { lat: number; lon: number },
-): number {
-  const kx = 111_320 * Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
-  return Math.hypot((a.lon - b.lon) * kx, (a.lat - b.lat) * 110_540);
-}
-
 /** Game seconds to walk between two points along the streets. */
 export function walkSeconds(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
 ): number {
-  return (metersBetween(a, b) * WALK_DETOUR) / WALK_MPS;
+  return (distanceMeters(a, b) * WALK_DETOUR) / WALK_MPS;
 }
 
 /** Where someone on the street is standing: where they walked to, or their exit. */

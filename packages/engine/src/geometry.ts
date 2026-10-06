@@ -4,12 +4,11 @@
  * corners. Positions are [lon, lat] (GeoJSON order) for the map.
  */
 import type { Dataset, Trip } from "@stand-clear/data";
+import { METERS_PER_DEGREE } from "./geo.ts";
 import type { TimetableIndex } from "./timetable.ts";
 import { resolve, streetPoint, type Transit } from "./transit.ts";
 
 export type LonLat = [number, number];
-
-const M_PER_DEG_LAT = 110_540;
 
 interface Track {
   /** Shape points as [lon, lat]. */
@@ -21,7 +20,7 @@ interface Track {
 }
 
 function metersPerDegLon(lat: number): number {
-  return 111_320 * Math.cos((lat * Math.PI) / 180);
+  return METERS_PER_DEGREE * Math.cos((lat * Math.PI) / 180);
 }
 
 /**
@@ -32,7 +31,7 @@ function buildTrack(ds: Dataset, trip: Trip): Track {
   const points = ds.shapes[trip.shape]?.points ?? [];
   const lat0 = points[0]?.[1] ?? 40.7;
   const kx = metersPerDegLon(lat0);
-  const ky = M_PER_DEG_LAT;
+  const ky = METERS_PER_DEGREE;
   const cum = [0];
   for (let i = 1; i < points.length; i++) {
     const [ax, ay] = points[i - 1] as [number, number];
