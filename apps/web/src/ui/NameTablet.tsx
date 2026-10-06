@@ -14,6 +14,7 @@ export function NameTablet({
   style = "irt",
   className,
   setMs,
+  rows = 9,
 }: {
   text: string;
   width?: number;
@@ -23,6 +24,8 @@ export function NameTablet({
   className?: string;
   /** Set tile by tile, left to right, over this many ms when it first shows. */
   setMs?: number;
+  /** Letter height in tiles: 9 for a station, 14 for the homepage's wall. */
+  rows?: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -36,14 +39,14 @@ export function NameTablet({
   const [cssW, setCssW] = useState(width ?? 300);
   useEffect(() => {
     if (!fontsLoaded || !ref.current) return;
-    const model = tablet(text, style);
+    const model = tablet(text, style, rows);
     const w = width ?? Math.min(maxWidth, model.W * (tile ?? 3));
     setCssW(w);
     const still =
       typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (setMs && !still) return setIn(ref.current, model, w, setMs);
     paintAt(ref.current, model, w);
-  }, [fontsLoaded, text, style, width, tile, maxWidth, setMs]);
+  }, [fontsLoaded, text, style, width, tile, maxWidth, setMs, rows]);
   return (
     <canvas
       ref={ref}

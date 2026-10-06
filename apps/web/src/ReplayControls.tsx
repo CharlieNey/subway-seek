@@ -7,6 +7,7 @@
  */
 import { type KeyboardEvent, type PointerEvent, useRef } from "react";
 import { hhmm } from "./ask.ts";
+import { useGame } from "./game.ts";
 import { useReplay } from "./replay.ts";
 import { FAMILY_COLORS } from "./ui/family.ts";
 import { Button, Caption } from "./ui/vocab.tsx";
@@ -15,6 +16,7 @@ export function ReplayControls() {
   const { active, playing, start, end, t, toggle, seek, close, log, seekStart, footStart } =
     useReplay();
   const scrub = useRef<HTMLDivElement>(null);
+  const replayOnly = useGame((s) => s.replayOnly);
   if (!active) return null;
   const span = Math.max(1, end - start);
   const at = (x: number) => `${(((x - start) / span) * 100).toFixed(3)}%`;
@@ -128,7 +130,8 @@ export function ReplayControls() {
           ))}
         </div>
       </div>
-      <Button onClick={close}>Close</Button>
+      {/* The homepage's replay has no round behind it: Close goes home. */}
+      <Button onClick={replayOnly ? () => location.assign("/") : close}>Close</Button>
     </div>
   );
 }

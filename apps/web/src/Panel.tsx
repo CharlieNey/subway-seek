@@ -31,6 +31,7 @@ import { useGame, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
+import { formatDay } from "./names.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { ReplayPanel } from "./ReplayPanel.tsx";
 import { hm, ResultCard } from "./Result.tsx";
@@ -49,13 +50,6 @@ import {
   WainscotText,
 } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
-
-const formatDay = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
 
 const DIFFICULTY_LABEL = { easy: "Easy", normal: "Normal", hard: "Hard" } as const;
 

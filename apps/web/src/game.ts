@@ -26,7 +26,8 @@ import {
 import { create } from "zustand";
 import { keepArmed } from "./ask.ts";
 import { ATTEMPT_TIMEOUT_MS, attemptFailed, type Link, startAttempt } from "./connection.ts";
-import { type DailyResult, loadResults, saveResult } from "./history.ts";
+import { doorOf, type StoredSession, tokenFor, withoutDoor } from "./doors.ts";
+import { type DailyResult, loadReplay, loadResults, saveResult } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
 
@@ -35,6 +36,15 @@ const SERVER_URL =
   (import.meta.env.DEV ? new URLSearchParams(location.search).get("server") : null) ??
   import.meta.env.VITE_SERVER_URL ??
   "ws://localhost:8787";
+
+/** The game server's HTTP side, beside its WebSocket (the homepage's GET /daily). */
+export function serverHttpUrl(path: string): string {
+  const u = new URL(SERVER_URL);
+  u.protocol = u.protocol === "wss:" ? "https:" : "http:";
+  u.pathname = path;
+  u.search = "";
+  return u.toString();
+}
 
 export interface World {
   ds: Dataset;
@@ -71,6 +81,8 @@ interface GameStore {
   tab: "travel" | "ask";
   /** This daily was already finished in this browser: playing it again doesn't count. */
   alreadyPlayed: boolean;
+  /** Showing the last daily's replay from this browser, with no round or server. */
+  replayOnly: boolean;
   results: Record<string, DailyResult>;
   /** A refused action, in the notice row until dismissed. */
   notice: string | null;
@@ -123,6 +135,7 @@ export const useGame = create<GameStore>((set) => ({
   view: null,
   tab: "travel",
   alreadyPlayed: false,
+  replayOnly: false,
   results: loadResults(),
   notice: null,
   busy: false,
@@ -174,29 +187,46 @@ export function hubName(world: World | null, view: SoloView | null): string | un
 
 const SESSION_KEY = "standClear.session";
 
-/** The session this browser last played, and whether its round was still going. */
-interface StoredSession {
-  token: string;
-  live: boolean;
-}
-
-function loadSession(): StoredSession | null {
+export function loadSession(): StoredSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     const s = raw ? (JSON.parse(raw) as Partial<StoredSession>) : null;
-    return typeof s?.token === "string" ? { token: s.token, live: !!s.live } : null;
+    if (typeof s?.token !== "string") return null;
+    return {
+      token: s.token,
+      live: !!s.live,
+      mode: s.mode === "daily" || s.mode === "practice" ? s.mode : null,
+      daily: typeof s.daily === "number" ? s.daily : null,
+      at: typeof s.at === "number" ? s.at : 0,
+    };
   } catch {
     return null;
   }
 }
 
-function saveSession(s: StoredSession) {
+function saveSession(s: Omit<StoredSession, "at">) {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, at: Date.now() }));
   } catch {
     // Private windows can refuse storage: the round just won't survive a refresh.
   }
 }
+
+/** Note the session as the page closes: the homepage offers Resume for the grace period. */
+function rememberSession() {
+  const { view } = useGame.getState();
+  if (!sessionToken || !view) return;
+  saveSession({
+    token: sessionToken,
+    live: !view.result,
+    mode: view.mode,
+    daily: view.daily?.number ?? null,
+  });
+}
+window.addEventListener("pagehide", rememberSession);
+
+/** How this page was opened: today's daily, practice, the last daily's replay, or carry on. */
+const door = doorOf(location.search);
 
 let sessionToken: string | null = null;
 
@@ -204,7 +234,14 @@ let sessionToken: string | null = null;
 
 /** Bookkeeping when a round's view arrives: already-played flag at the start, history at the end. */
 function onView(view: SoloView): Partial<GameStore> {
-  if (sessionToken) saveSession({ token: sessionToken, live: !view.result });
+  if (sessionToken) {
+    saveSession({
+      token: sessionToken,
+      live: !view.result,
+      mode: view.mode,
+      daily: view.daily?.number ?? null,
+    });
+  }
   if (!view.result) {
     return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
@@ -233,7 +270,12 @@ function handle(msg: ServerMessage) {
         pending = [];
       }
       // A round in progress that the server didn't keep (away too long, or it restarted).
-      const lost = !msg.resumed && stored?.live === true;
+      // Not when the door asked for a fresh round.
+      const lost = !msg.resumed && stored?.live === true && tokenFor(door, stored) === stored.token;
+      // The round is up: drop the door from the address, so a refresh carries on.
+      if (location.search !== withoutDoor(location.search)) {
+        history.replaceState(null, "", location.pathname + withoutDoor(location.search));
+      }
       const { view } = useGame.getState();
       const fresh = !msg.resumed && view !== null;
       if (fresh) useReplay.getState().close();
@@ -316,8 +358,13 @@ function connect() {
   clearTimeout(retryTimer);
   dropSocket();
   const url = new URL(SERVER_URL);
-  const token = sessionToken ?? loadSession()?.token;
+  const token = sessionToken ?? tokenFor(door, loadSession());
   if (token) url.searchParams.set(SESSION_PARAM, token);
+  else if (door.kind === "practice") {
+    // A new session starts the round the door asked for.
+    url.searchParams.set("mode", "practice");
+    if (door.difficulty) url.searchParams.set("difficulty", door.difficulty);
+  }
   const ws = new WebSocket(url);
   socket = ws;
   let opened = false;
@@ -401,7 +448,7 @@ function setBoot(change: (b: Boot) => Partial<Boot>) {
 }
 
 /** Loads the timetable and landmarks and builds the network. False if a download failed. */
-async function loadWorld(): Promise<boolean> {
+export async function loadWorld(): Promise<boolean> {
   useGame.setState({ status: "loading", boot: BOOT });
   try {
     let lastPaint = 0;
@@ -448,5 +495,31 @@ let started = false;
 export async function startGame() {
   if (started) return;
   started = true;
-  if (await loadWorld()) connect();
+  if (!(await loadWorld())) return;
+  if (door.kind === "replay") showStoredReplay();
+  else connect();
+}
+
+/**
+ * The last daily's replay, from this browser, with no server: the homepage's Watch
+ * replay. The round is over, so its view holds everything the replay shows.
+ */
+function showStoredReplay() {
+  const kept = loadReplay();
+  const { world } = useGame.getState();
+  if (!kept?.view.result || !world) {
+    location.replace("/");
+    return;
+  }
+  const view = kept.view;
+  useGame.setState({
+    status: "ready",
+    link: { kind: "open" },
+    everOpen: true,
+    replayOnly: true,
+    view,
+    sync: { gameTime: view.result?.at ?? 0, speed: 6, serverNow: Date.now(), paused: true },
+    results: loadResults(),
+  });
+  useReplay.getState().open(world, view);
 }

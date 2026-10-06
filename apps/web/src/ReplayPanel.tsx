@@ -30,7 +30,7 @@ function Mark({ e }: { e: LogEvent }) {
 }
 
 export function ReplayPanel({ world, roundLine }: { world: World; roundLine: string }) {
-  const { view, results, alreadyPlayed, busy } = useGame();
+  const { view, results, alreadyPlayed, busy, replayOnly } = useGame();
   const newRound = useNewRound();
   const { log, t, seek } = useReplay();
   const box = useRef<HTMLDivElement>(null);
@@ -109,8 +109,12 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
           kind="ink"
           disabled={busy}
           onClick={() => {
-            useReplay.getState().close();
-            newRound("practice", view.difficulty);
+            // From the homepage's replay there's no round to replace: open one.
+            if (replayOnly) location.assign("/play?practice");
+            else {
+              useReplay.getState().close();
+              newRound("practice", view.difficulty);
+            }
           }}
         >
           {view.daily ? "Practice round" : "Play again"}

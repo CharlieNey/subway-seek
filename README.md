@@ -12,6 +12,8 @@ pnpm dev:server     # game server on ws://localhost:8787
 pnpm dev:web        # client on http://localhost:5173
 ```
 
+The homepage is at `/` and the game at `/play`: `/play?daily` (today's daily, or carry on with it), `/play?practice` (with `&difficulty=easy|normal|hard`), and `/play?replay` (the last daily's replay, from this browser). Plain `/play` carries on with this browser's round. The server answers `GET /daily` beside its WebSocket with today's start and reachable stations and yesterday's hider; the homepage reads it without starting a round.
+
 Optional env:
 - `GOOGLE_STREETVIEW_SERVER_KEY` in `apps/server/.env.local` (gitignored): server key (Street View API only) used to pick the bot hider's exact Street View spot. Without it, rounds fall back to "find the station".
 - `DAILY_SECRET` (server): mixed into the daily seed so players can't compute the answer. A dev default is used if unset; set a real one anywhere public.

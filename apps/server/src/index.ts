@@ -8,6 +8,7 @@
  * reconnect with the session token within the grace period picks the round up again.
  */
 import "./env.ts";
+import { createServer } from "node:http";
 import { formatServiceTime } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
@@ -304,7 +305,69 @@ function tick(session: Session<Game>, now: number) {
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+/** Yesterday's hider, revealed once its day is over (the homepage's "Yesterday's hider"). */
+const pastHiders = new Map<string, number>();
+function hiderOn(date: string): number {
+  let hider = pastHiders.get(date);
+  if (hider === undefined) {
+    // The same seeds as buildDaily: the station doesn't need the Street View lookups.
+    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
+    hider = createSoloRound(idx, {
+      hub,
+      hideStart: HIDE_START,
+      random: dailyRandom(date, DAILY_SECRET),
+      daily: { date, number: dailyNumber(date) },
+    }).hider;
+    pastHiders.set(date, hider);
+  }
+  return hider;
+}
+
+/**
+ * What the homepage shows before a round starts: today's daily, where it starts and the
+ * stations its hider could reach (public: every seeker sees them when the round begins),
+ * and yesterday's hider, now that its day is over. Never today's hider.
+ */
+async function dailyInfo() {
+  const date = nyDate(new Date());
+  const { round } = await dailySetup(date);
+  const y = new Date(`${date}T12:00:00Z`);
+  y.setUTCDate(y.getUTCDate() - 1);
+  const yesterday = y.toISOString().slice(0, 10);
+  return {
+    date,
+    number: dailyNumber(date),
+    start: dataset.stations[round.hub]?.complex ?? null,
+    hideStart: round.hideStart,
+    seekStart: round.seekStart,
+    reachable: round.reachable,
+    yesterday:
+      dailyNumber(yesterday) >= 1
+        ? { date: yesterday, number: dailyNumber(yesterday), hider: hiderOn(yesterday) }
+        : null,
+  };
+}
+
+const httpServer = createServer((req, res) => {
+  // Public facts only, so any page may read them.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  if (req.method === "GET" && new URL(req.url ?? "/", "http://localhost").pathname === "/daily") {
+    dailyInfo().then(
+      (info) => {
+        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        res.end(JSON.stringify(info));
+      },
+      (err) => {
+        console.error("daily info failed:", err);
+        res.writeHead(500).end();
+      },
+    );
+    return;
+  }
+  res.writeHead(404).end();
+});
+const wss = new WebSocketServer({ server: httpServer });
+httpServer.listen(PORT);
 
 setInterval(() => {
   const now = Date.now();
@@ -328,11 +391,20 @@ setInterval(() => {
 wss.on("connection", async (socket, req) => {
   alive.set(socket, true);
   socket.on("pong", () => alive.set(socket, true));
-  const token = new URL(req.url ?? "/", "http://localhost").searchParams.get(SESSION_PARAM);
+  const params = new URL(req.url ?? "/", "http://localhost").searchParams;
+  const token = params.get(SESSION_PARAM);
   let session = sessions.get(token);
   const resumed = session !== undefined;
   if (!session) {
-    const game: Game = { ...(await newGame("daily")), lastSeq: -1, answerTimer: undefined };
+    // A new session starts the round its link asked for: the daily unless it says practice.
+    const mode: RoundMode = params.get("mode") === "practice" ? "practice" : "daily";
+    const d = params.get("difficulty");
+    const difficulty = d === "easy" || d === "normal" || d === "hard" ? d : undefined;
+    const game: Game = {
+      ...(await newGame(mode, difficulty)),
+      lastSeq: -1,
+      answerTimer: undefined,
+    };
     // It may have gone while the round was being built.
     if (socket.readyState !== socket.OPEN) return;
     session = sessions.create(game);
