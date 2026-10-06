@@ -12,6 +12,7 @@
   "scripts": {
     "build-dataset": "tsx scripts/build-dataset.ts",
     "build-landmarks": "tsx scripts/build-landmarks.ts",
+    "check-dataset": "tsx scripts/check-dataset.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {

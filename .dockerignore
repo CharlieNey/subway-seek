@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+apps/web
+apps/server/logs
+packages/data/raw
+.git
+.github
+docs
+*.md
+.env*
+**/.env*

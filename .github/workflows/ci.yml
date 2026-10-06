@@ -23,5 +23,7 @@ jobs:
         run: pnpm typecheck
       - name: Test
         run: pnpm test
+      - name: Timetable freshness
+        run: pnpm data:check
       - name: Build web
         run: pnpm --filter @stand-clear/web build

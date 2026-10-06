@@ -8,6 +8,7 @@
   },
   "scripts": {
     "data:build": "pnpm --filter @stand-clear/data build-dataset",
+    "data:check": "pnpm --filter @stand-clear/data check-dataset",
     "dev:server": "pnpm --filter @stand-clear/server dev",
     "dev:web": "pnpm --filter @stand-clear/web dev",
     "test": "vitest run",

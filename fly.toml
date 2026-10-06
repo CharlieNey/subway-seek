@@ -1,0 +1,40 @@
+# Fly.io app for the game server (apps/server). Deploy from the repo root: `fly deploy`.
+#
+# One machine, always on: rounds live in memory, the daily is cached per New York date,
+# and WebSockets need a process that doesn't stop between requests. Newark is the region
+# nearest the players and the game's city.
+#
+# Secrets (never in this file): `fly secrets set DAILY_SECRET=… GOOGLE_STREETVIEW_SERVER_KEY=…`
+# and, once photo URLs are signed, STREETVIEW_SIGNING_SECRET and GOOGLE_MAPS_BROWSER_KEY.
+
+app = "stand-clear-server"
+primary_region = "ewr"
+
+[build]
+  dockerfile = "apps/server/Dockerfile"
+
+[env]
+  PORT = "8787"
+  # Match logs go on the volume below, so they survive deploys.
+  MATCH_LOG_DIR = "/data/logs"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 400
+    hard_limit = 500
+
+# Playtest metrics: one JSONL file per round. Create once with `fly volumes create match_logs -r ewr -s 1`.
+[mounts]
+  source = "match_logs"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

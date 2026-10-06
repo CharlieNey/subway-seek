@@ -35,7 +35,17 @@ import type {
   Trip,
 } from "../src/types.ts";
 
-const SERVICE_DATE = "2026-10-14"; // a plain Wednesday inside the feed's validity range
+/**
+ * The pinned service day: a plain Wednesday inside the feed's validity range. Re-pin with
+ * `pnpm data:build --refresh --date=YYYY-MM-DD` (see docs/DEPLOY.md, "Re-pinning the
+ * timetable"); `pnpm data:check` says how far away the current pin is.
+ */
+const SERVICE_DATE =
+  process.argv.find((a) => a.startsWith("--date="))?.slice("--date=".length) ??
+  process.env.SERVICE_DATE ??
+  "2026-10-14";
+if (!/^\d{4}-\d{2}-\d{2}$/.test(SERVICE_DATE))
+  throw new Error(`--date must be YYYY-MM-DD, got ${SERVICE_DATE}`);
 const PLAY_WINDOW = [10 * 3600, 13 * 3600] as const;
 const EXCLUDED_ROUTES = new Set(["SI"]); // Staten Island Railway: unreachable without the ferry
 const SHAPE_TOLERANCE_M = 4;
