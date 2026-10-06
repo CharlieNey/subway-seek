@@ -66,7 +66,6 @@ export function platformBoard(
       .filter((r) => r.dir === dir)
       .map((r): CountdownLine => {
         const first = r.trains[0] as Departure;
-        const then = r.trains[1] ?? null;
         let reason: string | null = null;
         let struck = false;
         if (tourist) {
