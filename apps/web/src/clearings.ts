@@ -20,9 +20,11 @@ interface MotionStore {
   clearing: Clearing | null;
   /** Search tiles clearing after an on-foot answer; ids are tile keys' indices in `tiles`. */
   tiles: { clearing: Clearing; tiles: [number, number][] } | null;
+  /** When the round ended while you watched (real ms), so the result sets; null after a refresh. */
+  ended: number | null;
 }
 
-export const useMotion = create<MotionStore>(() => ({ clearing: null, tiles: null }));
+export const useMotion = create<MotionStore>(() => ({ clearing: null, tiles: null, ended: null }));
 
 export const reducedMotion = () =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -44,8 +46,15 @@ export function watchClearings(getWorld: () => World | null) {
     const prev = prevSt.view;
     const next = st.view;
     if (!world || !prev || !next || prev === next) return;
-    // A new round, or the end of one: nothing to choreograph.
-    if (prev.seekStart !== next.seekStart || prev.hub !== next.hub || next.result) return;
+    if (prev.seekStart !== next.seekStart || prev.hub !== next.hub) {
+      useMotion.setState({ ended: null });
+      return;
+    }
+    // The end of the round: the result sets (Found, Score tally); nothing clears.
+    if (next.result) {
+      if (!prev.result) useMotion.setState({ ended: performance.now() });
+      return;
+    }
     const answers = landed(prev, next);
     const a = answers.at(-1);
     if (!a) return;

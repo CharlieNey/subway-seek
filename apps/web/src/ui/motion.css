@@ -1,0 +1,200 @@
+/*
+ * Motion (DESIGN.md, Motion): presentation, never state. Only transform and opacity
+ * animate; nothing in the panel runs over 300 ms; nothing eases in except a tablet
+ * departing. Brake and depart move with the timetable, so they're the exception to the
+ * ceiling. prefers-reduced-motion switches each to its fallback (bottom of the file).
+ */
+
+/* A band unrolls from its top edge (band, 280 ms). */
+@keyframes sc-unroll {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.sc-anim-unroll {
+  transform-origin: 50% 0;
+  animation: sc-unroll var(--dur-band) var(--ease-decel) both;
+}
+
+/* A band collapses into its log row (band). */
+@keyframes sc-collapse {
+  from {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  to {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+.sc-anim-collapse {
+  transform-origin: 50% 0;
+  animation: sc-collapse var(--dur-band) var(--ease-decel) both;
+}
+
+/* New information sets like a tile: settling, decelerating (set, 160 ms). */
+@keyframes sc-set {
+  from {
+    transform: scale(0.88);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.sc-anim-set {
+  animation: sc-set var(--dur-set) var(--ease-decel) both;
+}
+
+/* A state steps: digits flip, chips and labels change (step, 160 ms). */
+@keyframes sc-step {
+  from {
+    transform: translateY(-35%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.sc-anim-step {
+  display: inline-block;
+  animation: sc-step var(--dur-step) var(--ease-decel) both;
+}
+
+/* A tile lifts as a timer runs down (set, 160 ms). */
+.sc-tiles > i {
+  position: relative;
+}
+
+/* A name tablet brakes in from the right as the train stops (brake, 900 ms, constant deceleration). */
+@keyframes sc-brake-in {
+  from {
+    transform: translateX(110%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.sc-anim-brake {
+  animation: sc-brake-in var(--dur-brake) var(--ease-brake) both;
+}
+
+/* ... and accelerates out to the left as it leaves (depart, 600 ms, constant acceleration). */
+@keyframes sc-depart-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-120%);
+  }
+}
+.sc-anim-depart {
+  animation: sc-depart-out var(--dur-depart) var(--ease-depart) both;
+}
+
+/* Daylight at the top of the stairs: the dark recedes from the top down (900 ms). */
+@keyframes sc-daylight {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+.sc-anim-daylight {
+  animation: sc-daylight 900ms var(--ease-decel) both;
+}
+
+/* Going back down: the dark comes in from the top (the daylight in reverse). */
+@keyframes sc-dusk {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.sc-anim-dusk {
+  animation: sc-dusk 900ms var(--ease-decel) both;
+}
+
+/* A card rises 24 px into place (band), and later shrinks into its chip (400 ms). */
+@keyframes sc-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.sc-anim-rise {
+  animation: sc-rise var(--dur-band) var(--ease-decel) both;
+}
+@keyframes sc-shrink {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.12);
+    opacity: 0;
+  }
+}
+.sc-anim-shrink {
+  animation: sc-shrink 400ms var(--ease-decel) both;
+}
+
+/* A photo sets into its plaque from the top edge down (set, 600 ms): a cover slides away. */
+@keyframes sc-reveal-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(101%);
+  }
+}
+.sc-anim-reveal {
+  animation: sc-reveal-down 600ms var(--ease-decel) both;
+}
+
+/* Crossfade, the reduced-motion fallback for most rows (160 ms). */
+@keyframes sc-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.sc-anim-fade {
+  animation: sc-fade var(--dur-step) linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-anim-unroll,
+  .sc-anim-set,
+  .sc-anim-step,
+  .sc-anim-rise,
+  .sc-anim-brake {
+    animation: sc-fade var(--dur-step) linear both;
+  }
+  .sc-anim-collapse,
+  .sc-anim-shrink,
+  .sc-anim-depart {
+    animation: none;
+    opacity: 0;
+  }
+  .sc-anim-daylight,
+  .sc-anim-dusk,
+  .sc-anim-reveal {
+    animation: none;
+    opacity: 0;
+  }
+}

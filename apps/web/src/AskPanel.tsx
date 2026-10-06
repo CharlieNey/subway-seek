@@ -889,7 +889,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
           </>
         ) : vetoed ? (
           <>
-            <span className="sc-band-answer flex items-center gap-2">
+            <span className="sc-band-answer sc-anim-set flex items-center gap-2">
               <FamilySquare family={family} vetoed /> Vetoed
             </span>
             <span className="text-[12px] opacity-90">
@@ -907,7 +907,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
           </>
         ) : (
           <>
-            <span className="sc-band-answer flex items-center gap-2">
+            <span className="sc-band-answer sc-anim-set flex items-center gap-2">
               {tentacle !== null && a.q.kind === "tentacles" && (
                 <Pict kind={a.q.landmark} size={17} />
               )}

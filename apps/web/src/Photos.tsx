@@ -3,10 +3,19 @@
  * two compasses for asking, the photo arriving in its plaque, the newest spot photo pinned
  * as "Looking for" while on foot, and the enlarged view with Esc and the arrow keys.
  */
-import type { Photo, PhotoLook, Question, SeenQuestion, SoloView } from "@stand-clear/engine";
+import {
+  type Photo,
+  type PhotoLook,
+  type Question,
+  type SeenQuestion,
+  type SoloView,
+  syncedGameTime,
+} from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { type ChipState, hhmm, LOOK_WORD } from "./ask.ts";
+import { reducedMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
+import { useGame } from "./game.ts";
 import { photoUrl } from "./street.ts";
 import { Button, PhotoPlaque } from "./ui/vocab.tsx";
 
@@ -66,7 +75,7 @@ export function Compass({
               onBlur={() => onHover(null)}
               className={cn(
                 "sc-focus flex items-center justify-center font-display text-[12px] font-bold tracking-[0.08em] uppercase",
-                "shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-colors duration-[var(--dur-step)]",
+                "shadow-[inset_0_0_0_1.5px_var(--color-ink)]",
                 look === "up" ? "bg-glaze" : "bg-glaze-hi",
                 state === "armed" && "bg-ink text-glaze-hi",
                 state === "ready" &&
@@ -118,6 +127,12 @@ export function PhotoImage({
 }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // It sets into its plaque only as it arrives; after a refresh it's simply there.
+  const [reveal] = useState(() => {
+    const sync = useGame.getState().sync;
+    if (!sync || reducedMotion()) return false;
+    return ((syncedGameTime(sync, Date.now()) - p.answerAt) * 1000) / sync.speed < 3000;
+  });
   return (
     <div>
       <PhotoPlaque
@@ -131,6 +146,7 @@ export function PhotoImage({
           setAttempt((n) => n + 1);
         }}
         small={small}
+        reveal={reveal && attempt === 0}
         key={attempt}
         onError={() => setFailed(true)}
       />
@@ -147,7 +163,7 @@ export function LookingFor({ p, onOpen }: { p: ArrivedPhoto; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="sc-focus mx-4 mt-2.5 flex w-[calc(100%-32px)] items-center gap-2.5 bg-glaze-hi py-[5px] pr-2.5 pl-[11px] text-left shadow-[inset_0_0_0_1.5px_var(--color-ink),inset_5px_0_0_var(--color-photo)]"
+      className="sc-focus sc-anim-set mx-4 mt-2.5 flex w-[calc(100%-32px)] items-center gap-2.5 bg-glaze-hi py-[5px] pr-2.5 pl-[11px] text-left shadow-[inset_0_0_0_1.5px_var(--color-ink),inset_5px_0_0_var(--color-photo)]"
     >
       <img
         src={photoUrl(p.photo)}

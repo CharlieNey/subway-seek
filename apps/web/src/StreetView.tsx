@@ -1,8 +1,10 @@
 import { resolve, streetPoint, type Walking } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "./cn.ts";
 import { bearing, compassArrow, compassLetters, compassWord } from "./compass.ts";
 import { useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
+import { useLanded } from "./landing.ts";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { nearestPano, panoPoint } from "./street.ts";
@@ -148,10 +150,16 @@ export function StreetView({ visible }: { visible: boolean }) {
   };
 
   const walking = s?.kind === "walking" ? s : null;
+  const speed = useGame.getState().sync?.speed ?? 6;
+  // Real ms since you came up the stairs (the daylight): standing at the exit, not walked off.
+  const sinceArrival =
+    standing && !standing.at && t !== null ? ((t - standing.since) * 1000) / speed : 9e9;
   const shed = view?.curses.some(
     (c) => c.card === "shed" && t !== null && "until" in c && t < c.until,
   );
-  const speed = useGame.getState().sync?.speed ?? 6;
+  // Fog ramps in once its card is in its chip (Motion: Curse lands).
+  const fog = cursed(view, "fog", t);
+  const fogLanded = useLanded(fog ? `fog@${fog.at}` : null);
 
   if (!usesGoogle) {
     return (
@@ -167,8 +175,8 @@ export function StreetView({ visible }: { visible: boolean }) {
       <div ref={el} className="absolute inset-0 z-0" />
       {/* Fog: the panorama blurs, ramping in and out (Motion: Curse lands). */}
       <div
-        className="pointer-events-none absolute inset-0 z-[5] transition-[backdrop-filter] duration-[600ms] ease-[var(--ease-decel)]"
-        style={{ backdropFilter: cursed(view, "fog", t) ? "blur(6px)" : "blur(0px)" }}
+        className="pointer-events-none absolute inset-0 z-[5] backdrop-blur-[6px] transition-opacity duration-[600ms] ease-[var(--ease-decel)] motion-reduce:transition-none"
+        style={{ opacity: fog && fogLanded ? 1 : 0 }}
       />
       {standing && (
         // The only text on the photo: addresses and road labels stay off.
@@ -177,6 +185,15 @@ export function StreetView({ visible }: { visible: boolean }) {
         </div>
       )}
       {spot && <CatchBand />}
+      {standing && sinceArrival < 900 && (
+        // Daylight at the top of the stairs: the pane brightens from the top down.
+        <div className="pointer-events-none absolute inset-0 z-[6] overflow-hidden">
+          <div
+            className="sc-anim-daylight h-full w-full bg-[#1E1B17]"
+            style={{ animationDelay: `-${Math.round(sinceArrival)}ms` }}
+          />
+        </div>
+      )}
       {walking && walking.reason !== "street" && (
         <Stairs state={walking} t={t ?? 0} speed={speed} />
       )}
@@ -268,7 +285,7 @@ function WalkingBand({
         <i
           className="block h-full bg-glaze-hi"
           style={{
-            width: `${f * 100}%`,
+            width: `round(down, ${(f * 100).toFixed(3)}%, 14px)`,
             backgroundImage: halfSpeed
               ? "repeating-linear-gradient(135deg, transparent 0 6px, rgb(47 91 69 / 0.55) 6px 9px)"
               : "repeating-linear-gradient(90deg, transparent 0 13px, rgb(36 32 27 / 0.18) 13px 14px)",
@@ -284,8 +301,20 @@ function Stairs({ state, t, speed }: { state: Walking; t: number; speed: number 
   const total = Math.max(1, Math.round((state.end - state.start) / 10));
   const done = Math.min(total, Math.floor((t - state.start) / 10));
   const left = Math.max(0, Math.ceil((state.end - t) / speed));
+  // Going back down: the dark comes in from the top, the daylight in reverse.
+  const since = ((t - state.start) * 1000) / speed;
   return (
-    <div className="sc-tilefield-dark absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5">
+    <div
+      className={cn(
+        "sc-tilefield-dark absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5",
+        state.reason === "enter" && since < 900 && "sc-anim-dusk",
+      )}
+      style={
+        state.reason === "enter" && since < 900
+          ? { animationDelay: `-${Math.round(since)}ms` }
+          : undefined
+      }
+    >
       <Caption>
         {state.reason === "exit"
           ? "Up to the street"
@@ -305,14 +334,18 @@ function Stairs({ state, t, speed }: { state: Walking; t: number; speed: number 
  */
 function CatchBand() {
   return (
-    <div
-      role="status"
-      className="sc-grid-lines absolute top-0 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-0.5 bg-ink px-[22px] pt-3 pb-2.5 text-glaze-hi [--grid:0.1] shadow-[inset_0_-5px_0_var(--color-gold),inset_0_5px_0_var(--color-gold)]"
-    >
-      <b className="font-display text-[15px] font-bold tracking-[0.12em] uppercase">
-        Someone's here
-      </b>
-      <span className="text-[12px] opacity-[0.82]">Click them to catch</span>
+    // It unrolls from the top of Street View after a two-frame hold (33 ms), the beat the
+    // sound lands on.
+    <div role="status" className="absolute top-0 left-1/2 z-10 -translate-x-1/2">
+      <div
+        className="sc-grid-lines sc-anim-unroll flex flex-col items-center gap-0.5 bg-ink px-[22px] pt-3 pb-2.5 text-glaze-hi [--grid:0.1] shadow-[inset_0_-5px_0_var(--color-gold),inset_0_5px_0_var(--color-gold)]"
+        style={{ animationDelay: "33ms" }}
+      >
+        <b className="font-display text-[15px] font-bold tracking-[0.12em] uppercase">
+          Someone's here
+        </b>
+        <span className="text-[12px] opacity-[0.82]">Click them to catch</span>
+      </div>
     </div>
   );
 }

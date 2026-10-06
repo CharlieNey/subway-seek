@@ -5,8 +5,9 @@
  * round in white. Practice takes a difficulty: three Buttons, the chosen one ink.
  */
 import { DIFFICULTIES, type Difficulty, questionBonusSeconds } from "@stand-clear/engine";
-import { useState } from "react";
-import { tallyTiles } from "./ask.ts";
+import { useEffect, useState } from "react";
+import { type TallyTile, tallyTiles } from "./ask.ts";
+import { reducedMotion, useMotion } from "./clearings.ts";
 import { hubName, useGame, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
 import { dailyStats } from "./history.ts";
@@ -67,11 +68,40 @@ function Numbers({ items }: { items: [string, string][] }) {
   );
 }
 
+/** The Found tablet sets over 900 ms; the tally follows it (one choreography at a time). */
+const FOUND_SET_MS = 900;
+const TALLY_STEP_MS = 40;
+
+/** Whether the round ended while you watched, so its result sets rather than just being there. */
+function useEndedLive(): boolean {
+  const ended = useMotion((s) => s.ended);
+  const [live] = useState(
+    () => ended !== null && performance.now() - ended < 4000 && !reducedMotion(),
+  );
+  return live;
+}
+
+/**
+ * How many of the tally's tiles have set: left to right at 40 ms each, after `delay`
+ * (DESIGN.md, Motion › Score tally). All of them at once if it isn't playing.
+ */
+function useTallyCount(total: number, play: boolean, delay: number): number {
+  const [n, setN] = useState(play ? 0 : total);
+  useEffect(() => {
+    if (!play) return;
+    const start = performance.now() + delay;
+    const id = setInterval(() => {
+      const k = Math.max(0, Math.floor((performance.now() - start) / TALLY_STEP_MS) + 1);
+      setN(Math.min(total, k));
+      if (k >= total) clearInterval(id);
+    }, TALLY_STEP_MS / 2);
+    return () => clearInterval(id);
+  }, [total, play, delay]);
+  return n;
+}
+
 /** The score as tiles, one per 5 game-min: where it came from, not just the number. */
-function Tally() {
-  const view = useGame((s) => s.view);
-  if (!view) return null;
-  const tiles = tallyTiles(view);
+function Tally({ tiles, play, delay }: { tiles: TallyTile[]; play: boolean; delay: number }) {
   return (
     <div
       className="mt-2.5 flex flex-wrap gap-px bg-grout p-px"
@@ -82,7 +112,7 @@ function Tally() {
         <i
           // biome-ignore lint/suspicious/noArrayIndexKey: tiles are positional
           key={i}
-          className="block h-2.5 w-2.5"
+          className={play ? "block h-2.5 w-2.5 sc-anim-set" : "block h-2.5 w-2.5"}
           style={{
             background:
               tile === "ink"
@@ -90,6 +120,7 @@ function Tally() {
                 : tile === "gold"
                   ? "var(--color-gold)"
                   : FAMILY_COLORS[tile].fill,
+            animationDelay: play ? `${delay + i * TALLY_STEP_MS}ms` : undefined,
           }}
         />
       ))}
@@ -101,6 +132,10 @@ export function ResultCard({ world }: { world: World }) {
   const { view, busy, results, alreadyPlayed } = useGame();
   const newRound = useNewRound();
   const [difficulty, setDifficulty] = useState<Difficulty>(view?.difficulty ?? "normal");
+  const live = useEndedLive();
+  const tiles = view?.result ? tallyTiles(view) : [];
+  const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
+  const tallied = useTallyCount(tiles.length, live, tallyDelay);
   if (!view?.result || view.hider === null) return null;
   const hider = world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
@@ -128,6 +163,7 @@ export function ResultCard({ world }: { world: World }) {
         text={kind === "found" ? "Found" : kind === "timeout" ? "Time's up" : "Gave up"}
         style={kind === "found" ? "irt-gold" : "irt"}
         width={kind === "found" ? 170 : 210}
+        setMs={live && kind === "found" ? FOUND_SET_MS : undefined}
       />
       <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
       {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={320} />}
@@ -146,10 +182,14 @@ export function ResultCard({ world }: { world: World }) {
             String(view.asked.length),
             `${view.asked.length === 1 ? "question" : "questions"}, +${questionMin} min`,
           ],
-          [hm(elapsed + view.bonusSeconds), "hider score"],
+          [
+            // The total counts up with the tally, then lands on the exact score.
+            tallied < tiles.length ? hm(tallied * 300) : hm(elapsed + view.bonusSeconds),
+            "hider score",
+          ],
         ]}
       />
-      <Tally />
+      <Tally tiles={tiles} play={live} delay={tallyDelay} />
       {view.hiderHand && <HandReveal hand={view.hiderHand} />}
       {view.daily && (
         <p className="text-[12px] text-ink-2">

@@ -8,6 +8,7 @@
 @import "@fontsource/libre-franklin/latin-700.css";
 @import "@fontsource/libre-franklin/latin-800.css";
 @import "./ui/mosaic.css" layer(components);
+@import "./ui/motion.css" layer(components);
 
 /*
  * Mosaic tokens (DESIGN.md, Look and motion). IRT tile carries identity, IND tile carries

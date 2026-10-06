@@ -36,6 +36,7 @@ import { hm, ResultCard } from "./Result.tsx";
 import { searchScene } from "./searchArea.ts";
 import { onStreet } from "./street.ts";
 import { TravelAction, TravelPanel } from "./TravelPanel.tsx";
+import { useLeaving } from "./ui/useLeaving.ts";
 import {
   Button,
   ClockTile,
@@ -129,11 +130,6 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
   );
 }
 
-/**
- * The round as three numbers on a 2 px rule: the hero (stations possible, or on foot the
- * share of your circle left), the time left, and the minutes the questions added to their
- * score. "Give up" is a quiet link.
- */
 /** While an elimination is in flight, re-render every frame so the count steps with it. */
 function useClearingCount(): number {
   const clearing = useMotion((s) => s.clearing);
@@ -148,6 +144,11 @@ function useClearingCount(): number {
   return stillStanding(clearing, now);
 }
 
+/**
+ * The round as three numbers on a 2 px rule: the hero (stations possible, or on foot the
+ * share of your circle left), the time left, and the minutes the questions added to their
+ * score. "Give up" is a quiet link.
+ */
 function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
   const { send, alreadyPlayed, busy } = useGame();
   // The count steps down one per square as an answer clears them (Motion: Ask → answer).
@@ -252,7 +253,7 @@ function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
   const text = notice ?? (hint ? HINTS[hint] : null);
   if (text) {
     return (
-      <div className="mx-4 mt-2.5">
+      <div key={text} className="sc-anim-set mx-4 mt-2.5">
         <Notice onDismiss={notice ? dismissNotice : dismiss}>
           <span className="whitespace-pre-line">{text}</span>
         </Notice>
@@ -284,7 +285,9 @@ function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: numbe
         disabled={!!blocker || busy}
         onClick={() => send({ type: "ask", question: armed })}
       >
-        {askLabel(armed)}
+        <span key={askLabel(armed)} className="sc-anim-step">
+          {askLabel(armed)}
+        </span>
       </Button>
       <WainscotText>{blocker ?? priceText(armed)}</WainscotText>
     </>
@@ -322,6 +325,9 @@ export function Panel() {
   const now = useNow(4);
   const screen = useLinkScreen();
   const [zoom, setZoom] = useState<number | null>(null);
+  const lost = useLeaving(screen.kind === "lost" ? screen : null, 280);
+  // The answered band collapses into the log rather than vanishing.
+  const band = useLeaving(view && !view.result ? liveQuestion(view, now) : null, 280);
   useAskKeys(world, view, t);
   // Leaving a tab unmounts its chips without a mouseleave: forget the hover.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on tab change only
@@ -355,7 +361,6 @@ export function Panel() {
   // Mid-round with the link down: the round is paused, the controls dim, one band explains.
   const down = screen.kind !== "none";
   const over = view.result !== null;
-  const live = liveQuestion(view, now);
   const onFoot = view.hasSpot && onStreet(view, t, world);
   const photos = arrivedPhotos(view);
   const lookingFor = onFoot ? [...photos].reverse().find((p) => p.q.from === "spot") : undefined;
@@ -364,7 +369,11 @@ export function Panel() {
     <aside className={aside}>
       {/* Another tab has the round, and its clock: this one doesn't know the time. */}
       <PanelTop t={screen.kind === "takenOver" ? null : t} world={world} />
-      {screen.kind === "lost" && <LostBand screen={screen} />}
+      {lost.value && (
+        <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
+          <LostBand screen={lost.value} />
+        </div>
+      )}
       {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}
       {screen.kind === "takenOver" && <TakenOverPlaque />}
       <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
@@ -386,9 +395,13 @@ export function Panel() {
         <NoticeRow view={view} onFoot={onFoot && !over} />
         <CurseChips world={world} t={t} view={view} />
         {lookingFor && (
-          <LookingFor p={lookingFor} onOpen={() => setZoom(photos.indexOf(lookingFor))} />
+          <LookingFor
+            key={lookingFor.at}
+            p={lookingFor}
+            onOpen={() => setZoom(photos.indexOf(lookingFor))}
+          />
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
           {over ? (
             <>
               <ResultCard world={world} />
@@ -396,13 +409,15 @@ export function Panel() {
             </>
           ) : (
             <>
-              {live && (
-                <QuestionBand
-                  key={`${live.at}|${questionKey(live.q)}`}
-                  a={live}
-                  world={world}
-                  t={t}
-                />
+              {band.value && (
+                <div data-land="question" className={band.leaving ? "sc-anim-collapse" : undefined}>
+                  <QuestionBand
+                    key={`${band.value.at}|${questionKey(band.value.q)}`}
+                    a={band.value}
+                    world={world}
+                    t={t}
+                  />
+                </div>
               )}
               {tab === "travel" ? (
                 <TravelPanel world={world} t={t} />

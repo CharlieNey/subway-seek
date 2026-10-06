@@ -34,7 +34,7 @@ const C = {
 };
 
 /** The station squares, each `size` CSS px: possible, ruled out, the start, the hider's. */
-export const STATION_ICONS = ["possible", "out", "start", "hider", "tile"] as const;
+export const STATION_ICONS = ["possible", "out", "start", "hider", "tile", "found"] as const;
 export type StationIcon = (typeof STATION_ICONS)[number];
 
 function canvas(w: number, h: number) {
@@ -80,6 +80,12 @@ export function stationAtlas(): Atlas {
         break;
       case "tile":
         square(0, "#ffffff");
+        break;
+      case "found":
+        // The hider's spot: gold with a deep-gold border and a glaze edge.
+        square(0, C.glazeHi);
+        square(1.5, "#8E6A14");
+        square(3.5, "#C99A3A");
         break;
     }
     mapping[key] = { x: ox, y: 0, width: cell, height: cell, mask: key === "tile" };

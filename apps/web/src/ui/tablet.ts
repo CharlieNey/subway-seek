@@ -8,7 +8,7 @@
  */
 
 /** Sampling pixels per tile. */
-const K = 8;
+export const K = 8;
 
 export const MOSAIC = {
   glaze: "#F4EFE3",
@@ -49,13 +49,13 @@ export interface MosaicModel {
   grout: string;
 }
 
-interface Ring {
+export interface Ring {
   t: number;
   kind: "solid" | "zig" | "checker";
   c: string[];
 }
 
-function hash(s: string): number {
+export function hash(s: string): number {
   let h = 2166136261;
   for (const ch of s) {
     h ^= ch.charCodeAt(0);
@@ -80,7 +80,7 @@ const rgb = (hex: string) => {
   return [0, 2, 4].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
 };
 
-function canvas2d(w: number, h: number) {
+export function canvas2d(w: number, h: number) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
@@ -90,10 +90,10 @@ function canvas2d(w: number, h: number) {
 }
 
 /** Which quarter of a cell (u, v in 0–1) a point is in: top, right, bottom, left. */
-const quarterOf = (u: number, v: number) =>
+export const quarterOf = (u: number, v: number) =>
   v < u && v < 1 - u ? 0 : v > u && v > 1 - u ? 2 : u < v && u < 1 - v ? 3 : 1;
 
-function builder(seed: number) {
+export function builder(seed: number) {
   const rnd = mulberry(seed);
   const tiles: Tile[] = [];
   const tint = (hex: string, amt: number) => {
@@ -172,7 +172,12 @@ function builder(seed: number) {
   return { tiles, quad, tri };
 }
 
-function addRings(b: ReturnType<typeof builder>, W: number, H: number, rings: Ring[]): number {
+export function addRings(
+  b: ReturnType<typeof builder>,
+  W: number,
+  H: number,
+  rings: Ring[],
+): number {
   let d = 0;
   for (const ring of rings) {
     const t = ring.t;
@@ -347,17 +352,21 @@ export interface DrawOptions {
   tile?: number;
   /** Per-tile reveal, 0–1, for tiles that set one by one. */
   reveal?: ((t: Tile) => number) | null;
+  /** The grout bed's opacity, 0–1, so a setting tablet's bed can come in first. */
+  groutAlpha?: number;
   /** Grout width in canvas units. */
   gpx?: number | null;
 }
 
 export function draw(ctx: CanvasRenderingContext2D, model: MosaicModel, opts: DrawOptions = {}) {
-  const { x = 0, y = 0, tile = 6, reveal = null, gpx = null } = opts;
+  const { x = 0, y = 0, tile = 6, reveal = null, gpx = null, groutAlpha = 1 } = opts;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(tile, tile);
+  ctx.globalAlpha = groutAlpha;
   ctx.fillStyle = model.grout;
   ctx.fillRect(0, 0, model.W, model.H);
+  ctx.globalAlpha = 1;
   const g = (gpx ?? Math.max(0.75, tile * 0.13)) / tile;
   for (const t of model.tiles) {
     let v = 1;
@@ -405,6 +414,7 @@ export function paintAt(
   model: MosaicModel,
   cssW: number,
   reveal: DrawOptions["reveal"] = null,
+  groutAlpha = 1,
 ) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const tile = cssW / model.W;
@@ -416,7 +426,37 @@ export function paintAt(
   if (!ctx) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  draw(ctx, model, { tile: tile * dpr, reveal, gpx: Math.max(0.75, tile * 0.13) * dpr });
+  draw(ctx, model, {
+    tile: tile * dpr,
+    reveal,
+    groutAlpha,
+    gpx: Math.max(0.75, tile * 0.13) * dpr,
+  });
+}
+
+/**
+ * A tablet setting tile by tile, left to right, over `ms` (DESIGN.md, Motion › Found: set,
+ * 900 ms): the grout bed comes in over its first 120 ms, then each tile sets in 160 ms as
+ * the sweep reaches its center. Returns a stop function.
+ */
+export function setIn(canvas: HTMLCanvasElement, model: MosaicModel, cssW: number, ms: number) {
+  const start = performance.now();
+  const span = Math.max(0, ms - 160);
+  const decel = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
+  let id = 0;
+  const frame = () => {
+    const u = performance.now() - start;
+    paintAt(
+      canvas,
+      model,
+      cssW,
+      (tl) => decel((u - (tl.cx / model.W) * span) / 160),
+      Math.min(1, u / 120),
+    );
+    if (u < ms) id = requestAnimationFrame(frame);
+  };
+  frame();
+  return () => cancelAnimationFrame(id);
 }
 
 let fonts: Promise<void> | null = null;

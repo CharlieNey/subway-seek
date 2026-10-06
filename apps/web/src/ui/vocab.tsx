@@ -3,7 +3,7 @@
  * thirteen). One shape per role. Styles live in mosaic.css.
  */
 import type { LandmarkKind, Route } from "@stand-clear/data";
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 import { cn } from "../cn.ts";
 import type { Family } from "./family.ts";
 import { pictCells } from "./pict.ts";
@@ -412,7 +412,10 @@ export function ExpressBand({
   role?: "status";
 }) {
   return (
-    <div className={cn("sc-band-express sc-grid-lines", `fam-${family}`)} role={role}>
+    <div
+      className={cn("sc-band-express sc-grid-lines sc-anim-unroll", `fam-${family}`)}
+      role={role}
+    >
       <small>{label}</small>
       {children}
     </div>
@@ -611,7 +614,13 @@ export function ClockTile({
         </button>
       )}
       <span className="sc-cap">
-        <span className="sc-num">{time === null ? "--:--" : paused ? "Paused" : time}</span>
+        {/* The minutes flip (step) once per game minute; a fast-forward steps them too. */}
+        <span
+          key={time === null ? "off" : paused ? "paused" : time}
+          className="sc-num sc-anim-step"
+        >
+          {time === null ? "--:--" : paused ? "Paused" : time}
+        </span>
       </span>
       {time !== null &&
         !paused &&
@@ -648,6 +657,7 @@ export function PhotoPlaque({
   onRetry,
   onError,
   small,
+  reveal,
 }: {
   /** Null: the empty frame (waiting, or vetoed). */
   src: string | null;
@@ -659,7 +669,10 @@ export function PhotoPlaque({
   /** The image didn't load: the caller shows the failed frame. */
   onError?: () => void;
   small?: boolean;
+  /** It just arrived: it sets into the plaque from the top edge down once it has loaded. */
+  reveal?: boolean;
 }) {
+  const [loaded, setLoaded] = useState(false);
   return (
     <figure className="sc-plq" style={small ? { padding: 4 } : undefined}>
       {failed ? (
@@ -672,7 +685,20 @@ export function PhotoPlaque({
           )}
         </div>
       ) : src ? (
-        <img src={src} alt={`${from}, facing ${facing}`} onError={onError} />
+        <div className="relative overflow-hidden">
+          <img
+            src={src}
+            alt={`${from}, facing ${facing}`}
+            onError={onError}
+            onLoad={() => setLoaded(true)}
+          />
+          {reveal && (
+            <i
+              aria-hidden="true"
+              className={cn("sc-plq-empty absolute inset-0", loaded && "sc-anim-reveal")}
+            />
+          )}
+        </div>
       ) : (
         <div className="sc-plq-empty" />
       )}

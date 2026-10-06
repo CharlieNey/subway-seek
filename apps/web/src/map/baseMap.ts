@@ -173,6 +173,7 @@ export function createVeil(
   });
   parent.appendChild(el);
   let circle: { lat: number; lon: number; meters: number } | null = null;
+  let hide: ReturnType<typeof setTimeout> | undefined;
   const update = () => {
     if (!circle) return;
     const { x, y, r } = place(circle);
@@ -180,13 +181,39 @@ export function createVeil(
     el.style.maskImage = mask;
     el.style.webkitMaskImage = mask;
   };
+  const reduced = () =>
+    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   return {
     el,
     update,
+    /**
+     * The circle draws first (400 ms), then the outside blurs and takes its veil (600 ms,
+     * decelerating). Going back down reverses it (DESIGN.md, Motion: Search area).
+     */
     set(c: { lat: number; lon: number; meters: number } | null) {
-      circle = c;
-      el.style.display = c ? "block" : "none";
-      update();
+      clearTimeout(hide);
+      if (c) {
+        circle = c;
+        update();
+        el.style.display = "block";
+        el.style.transition = reduced()
+          ? "none"
+          : "opacity 600ms cubic-bezier(0.2, 0.7, 0.2, 1) 400ms";
+        el.style.opacity = "0";
+        requestAnimationFrame(() => {
+          el.style.opacity = "1";
+        });
+      } else {
+        el.style.transition = reduced() ? "none" : "opacity 600ms cubic-bezier(0.2, 0.7, 0.2, 1)";
+        el.style.opacity = "0";
+        hide = setTimeout(
+          () => {
+            circle = null;
+            el.style.display = "none";
+          },
+          reduced() ? 0 : 600,
+        );
+      }
     },
   };
 }

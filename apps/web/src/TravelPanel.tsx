@@ -196,6 +196,7 @@ function nextStop(world: World, state: OnTrain, t: number): number {
 
 function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
   const { send, busy } = useGame();
+  const speed = useGame((s) => s.sync?.speed ?? 6);
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
   const route = trip && world.ds.routes[trip.route];
@@ -211,6 +212,13 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
       ? `arriving at ${nameOf(next)}`
       : `next: ${nameOf(next)} in ${minutes((trip.arr[next] as number) - t)} min`;
   const connections = connectionsBoard(world.idx, state);
+  // Arrive and depart (Motion): the platform's tablet brakes in from the right over the
+  // last 900 ms before the train stops, and accelerates out to the left as it leaves.
+  const realMs = (gameSeconds: number) => (gameSeconds * 1000) / speed;
+  const sinceDep = realMs(t - (trip.dep[state.from] as number));
+  const toArr = realMs((trip.arr[state.to] as number) - t);
+  const fromSt = world.ds.stations[trip.stops[state.from] as number];
+  const toSt = world.ds.stations[trip.stops[state.to] as number];
   const last = trip.stops.length - 1;
   // The stops up to yours and three after, so the connections stay in view; the rest fold.
   const first = waiting ? state.from + 1 : next;
@@ -219,18 +227,63 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
   for (let k = first; k <= (allStops ? last : shownTo); k++) stops.push(k);
   const folded = last - shownTo;
   return (
-    <>
-      <div className="flex items-center gap-3 px-4 pt-3.5">
-        <RouteBullet route={route} size={30} />
-        <div className="min-w-0">
-          <b className="block truncate text-[17px] leading-tight font-bold">
-            {displayName(trip.headsign)}
-          </b>
-          <span className="text-[12px] text-ink-2">
-            {dirLabel} · {status}
-          </span>
+    <div className="relative">
+      {waiting && fromSt ? (
+        <>
+          {/* Still at the platform: its tablet, and the train you boarded as the express band. */}
+          <Where world={world} complex={fromSt.complex} sub="On the train" routes={fromSt.routes} />
+          <div className="sc-express-ink sc-grid-lines sc-anim-unroll mx-4 mt-2.5">
+            <div className="flex items-center gap-2.5">
+              <RouteBullet route={route} size={22} />
+              <b className="min-w-0 flex-1 truncate font-text text-[13.5px] font-semibold tracking-normal normal-case">
+                {displayName(trip.headsign)}
+              </b>
+              <span className="font-display text-[12px] font-bold tracking-[0.08em] uppercase">
+                Boarded · {status}
+              </span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-3 px-4 pt-3.5">
+          <RouteBullet route={route} size={30} />
+          <div className="min-w-0">
+            <b className="block truncate text-[17px] leading-tight font-bold">
+              {displayName(trip.headsign)}
+            </b>
+            <span className="text-[12px] text-ink-2">
+              {dirLabel} · {status}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
+      {!waiting && sinceDep >= 0 && sinceDep < 600 && fromSt && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+          <div className="sc-anim-depart" style={{ animationDelay: `-${Math.round(sinceDep)}ms` }}>
+            <Where
+              world={world}
+              complex={fromSt.complex}
+              sub="On the train"
+              routes={fromSt.routes}
+            />
+          </div>
+        </div>
+      )}
+      {toArr > 0 && toArr <= 900 && toSt && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+          <div
+            className="sc-anim-brake"
+            style={{ animationDelay: `-${Math.round(900 - toArr)}ms` }}
+          >
+            <Where
+              world={world}
+              complex={toSt.complex}
+              sub="On the platform"
+              routes={toSt.routes}
+            />
+          </div>
+        </div>
+      )}
       <section className="px-4 pt-3">
         <Rule>Stops</Rule>
         {stops.map((k) => {
@@ -293,7 +346,7 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
           </CountdownBoard>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

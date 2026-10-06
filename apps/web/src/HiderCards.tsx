@@ -8,7 +8,9 @@ import {
   TOURIST_WALK_M,
 } from "@stand-clear/engine";
 import type { World } from "./game.ts";
+import { useLanded } from "./landing.ts";
 import { displayName } from "./names.ts";
+import { CardEmblem } from "./ui/Card.tsx";
 import { TileTimer } from "./ui/vocab.tsx";
 
 /** What a curse is doing to you right now, and how long it has left (in game minutes). */
@@ -71,31 +73,36 @@ export function CurseChips({ world, t, view }: { world: World; t: number; view: 
   if (view.result || view.curses.length === 0) return null;
   return (
     <div className="mx-4 mt-2.5 flex flex-col gap-1.5">
-      {view.curses.map((c) => {
-        const line = curseLine(c, t, world, view);
-        return (
-          <div
-            key={`${c.card}-${c.at}`}
-            className="flex items-center gap-2.5 bg-glaze-hi px-2.5 py-2 shadow-[inset_0_0_0_1.5px_var(--color-ink)]"
-          >
-            <span
-              className="sc-sq"
-              style={
-                { "--c": "var(--color-terra)", "--t": "var(--color-ink)" } as React.CSSProperties
-              }
-            />
-            <div className="min-w-0 flex-1">
-              <b className="block font-display text-[12px] font-bold uppercase tracking-[0.08em]">
-                {CARDS[c.card].title}
-              </b>
-              <span className="text-[11.5px] text-ink-2">{line.what}</span>
-            </div>
-            {line.total !== null && line.minutesLeft !== null && (
-              <TileTimer total={line.total} left={line.minutesLeft} size={7} lastTerra />
-            )}
-          </div>
-        );
-      })}
+      {view.curses.map((c) => (
+        <CurseChip key={`${c.card}-${c.at}`} c={c} line={curseLine(c, t, world, view)} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One curse: its emblem, what it's doing, and its tile timer. While its card is landing it
+ * holds its place, empty, so the card has somewhere to shrink into (Motion: Curse lands).
+ */
+function CurseChip({ c, line }: { c: ActiveCurse; line: ReturnType<typeof curseLine> }) {
+  const key = `${c.card}@${c.at}`;
+  const landed = useLanded(key);
+  return (
+    <div
+      data-land={key}
+      className="flex items-center gap-2.5 bg-glaze-hi px-2.5 py-2 shadow-[inset_0_0_0_1.5px_var(--color-ink)]"
+      style={{ opacity: landed ? 1 : 0 }}
+    >
+      <CardEmblem card={c.card} size={30} />
+      <div className="min-w-0 flex-1">
+        <b className="block font-display text-[12px] font-bold uppercase tracking-[0.08em]">
+          {CARDS[c.card].title}
+        </b>
+        <span className="text-[11.5px] text-ink-2">{line.what}</span>
+      </div>
+      {line.total !== null && line.minutesLeft !== null && (
+        <TileTimer total={line.total} left={line.minutesLeft} size={7} lastTerra />
+      )}
     </div>
   );
 }

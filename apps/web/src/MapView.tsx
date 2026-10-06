@@ -24,7 +24,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { liveQuestion } from "./AskPanel.tsx";
 import { askContext } from "./ask.ts";
-import { useMotion, watchClearings } from "./clearings.ts";
+import { reducedMotion, useMotion, watchClearings } from "./clearings.ts";
 import { nowGameTime, useGame, type World } from "./game.ts";
 import { MapLegend } from "./MapLegend.tsx";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
@@ -187,6 +187,15 @@ export function MapView() {
     /** The search circle the map last framed. */
     let framed: number | null = null;
     let veiled: number | null = null;
+    // Motion clocks (real ms): when the game's layers came in, when the search circle
+    // started drawing, when the preview shape changed, when the round was found.
+    const shownAt = performance.now();
+    let searchSince = 0;
+    let shapeSince = 0;
+    let lastShape: Shape | null = null;
+    let foundSince = 0;
+    const decel = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
+    const reduced = reducedMotion();
 
     // Re-shade stations and question overlays when the round changes; reveal the hider.
     const unsubscribeGame = useGame.subscribe((st, prev) => {
@@ -271,8 +280,17 @@ export function MapView() {
       if (veilAt !== veiled) {
         const c = veilAt === null ? undefined : world.ds.complexes[veilAt];
         base.setVeil(c ? { lat: c.lat, lon: c.lon, meters: ZONE_RADIUS_M } : null);
+        if (veilAt !== null) searchSince = now;
         veiled = veilAt;
       }
+      if (shape !== lastShape) {
+        shapeSince = now;
+        lastShape = shape;
+      }
+      const { view: v } = useGame.getState();
+      const spot = v?.result?.kind === "found" ? v.spotNearby : null;
+      if (spot && foundSince === 0) foundSince = now;
+      if (!spot) foundSince = 0;
       const motion = useMotion.getState();
       base.setLayers(
         buildLayers({
@@ -287,6 +305,12 @@ export function MapView() {
           clearing: motion.clearing,
           tiles: motion.tiles,
           now,
+          shapeGrow: reduced ? 1 : decel((now - shapeSince) / 300),
+          searchGrow: reduced ? 1 : decel((now - searchSince) / 400),
+          fadeIn: reduced ? 1 : Math.min(1, (now - shownAt) / 400),
+          found: spot
+            ? { position: [spot.lon, spot.lat], set: reduced ? 1 : decel((now - foundSince) / 160) }
+            : null,
         }),
       );
     };

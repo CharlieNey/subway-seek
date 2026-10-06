@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fontsReady, paintAt, type TabletStyle, tablet } from "./tablet.ts";
+import { fontsReady, paintAt, setIn, type TabletStyle, tablet } from "./tablet.ts";
 
 /**
  * A mosaic name tablet (IRT tile: identity). Sized by `width` (CSS px), or by `tile` (CSS px
@@ -13,6 +13,7 @@ export function NameTablet({
   maxWidth = 360,
   style = "irt",
   className,
+  setMs,
 }: {
   text: string;
   width?: number;
@@ -20,6 +21,8 @@ export function NameTablet({
   maxWidth?: number;
   style?: TabletStyle;
   className?: string;
+  /** Set tile by tile, left to right, over this many ms when it first shows. */
+  setMs?: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -36,8 +39,11 @@ export function NameTablet({
     const model = tablet(text, style);
     const w = width ?? Math.min(maxWidth, model.W * (tile ?? 3));
     setCssW(w);
+    const still =
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (setMs && !still) return setIn(ref.current, model, w, setMs);
     paintAt(ref.current, model, w);
-  }, [fontsLoaded, text, style, width, tile, maxWidth]);
+  }, [fontsLoaded, text, style, width, tile, maxWidth, setMs]);
   return (
     <canvas
       ref={ref}

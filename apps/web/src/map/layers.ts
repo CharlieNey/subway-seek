@@ -164,6 +164,13 @@ export interface Scene {
   clearing: Clearing | null;
   tiles: { clearing: Clearing; tiles: [number, number][] } | null;
   now: number;
+  /** Motion, 0–1: the preview shape drawing in, the search circle drawing out, the game's
+   * lines and stations crossfading in after the timetable loads. */
+  shapeGrow: number;
+  searchGrow: number;
+  fadeIn: number;
+  /** At the end of a found round: the hider's spot, set gold, and how far it has set. */
+  found: { position: LonLat; set: number } | null;
 }
 
 type StationDatum = StaticData["stations"][number];
@@ -232,7 +239,7 @@ export function buildLayers(scene: Scene): Layer[] {
   // The question's shape, in its family color.
   if (shape) {
     const f = shape.family;
-    const g = answering ? growth : 1;
+    const g = answering ? growth : scene.shapeGrow;
     layers.push(
       new PathLayer<Path>({
         id: "shape-cells",
@@ -289,6 +296,7 @@ export function buildLayers(scene: Scene): Layer[] {
   layers.push(
     new PathLayer<StaticData["lines"][number]>({
       id: "lines",
+      opacity: scene.fadeIn,
       data: data.lines,
       getPath: (l) => l.path,
       // A route question picks its line out; the others step back.
@@ -340,11 +348,13 @@ export function buildLayers(scene: Scene): Layer[] {
       }),
       new PathLayer<[number, number][]>({
         id: "search-ring",
-        data: [scene.search.ring],
+        // It draws out from its center as you come up (400 ms).
+        data: [grow(scene.search.ring, scene.searchGrow)],
         getPath: (p) => p,
         getColor: INK,
         getWidth: 2,
         widthUnits: "pixels",
+        updateTriggers: { getPath: scene.searchGrow },
       }),
     );
   }
@@ -355,6 +365,7 @@ export function buildLayers(scene: Scene): Layer[] {
   layers.push(
     new IconLayer<StationDatum>({
       id: "stations-out",
+      opacity: scene.fadeIn,
       data: data.stations,
       pickable: true,
       iconAtlas: atlas.url,
@@ -370,6 +381,7 @@ export function buildLayers(scene: Scene): Layer[] {
     }),
     new IconLayer<StationDatum>({
       id: "stations-possible",
+      opacity: scene.fadeIn,
       data: data.stations,
       iconAtlas: atlas.url,
       iconMapping: atlas.mapping,
@@ -422,6 +434,7 @@ export function buildLayers(scene: Scene): Layer[] {
     // Trains are circles, in their route's color.
     new ScatterplotLayer<Train>({
       id: "trains",
+      opacity: scene.fadeIn,
       data: scene.trains,
       getPosition: (t) => t.position,
       getFillColor: (t) => t.color,
@@ -510,6 +523,25 @@ export function buildLayers(scene: Scene): Layer[] {
     if (hiderHead) layers.push(dot("replay-hider", hiderHead, TERRA));
   }
   if (scene.me) layers.push(...meDot(scene.me.position, scene.me.label));
+  // Found: the hider's spot sets gold, a square tile like the marker on Street View. You
+  // caught them within 25 m, so it sits over your dot rather than under it.
+  if (scene.found) {
+    const set = scene.found.set;
+    layers.push(
+      new IconLayer<LonLat>({
+        id: "found-spot",
+        data: [scene.found.position],
+        iconAtlas: atlas.url,
+        iconMapping: atlas.mapping,
+        getIcon: () => "found",
+        getPosition: (p) => p,
+        getSize: 18 * (0.6 + 0.4 * set),
+        sizeUnits: "pixels",
+        opacity: set,
+        updateTriggers: { getSize: set },
+      }),
+    );
+  }
   return layers;
 }
 

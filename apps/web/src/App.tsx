@@ -1,20 +1,23 @@
 import { useEffect } from "react";
+import { CardLanding } from "./CardLanding.tsx";
 import { useLinkScreen } from "./Connection.tsx";
 import { cn } from "./cn.ts";
 import { startGame, useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
+import { watchLandings } from "./landing.ts";
 import { MapView } from "./MapView.tsx";
 import { Panel } from "./Panel.tsx";
 import { ReplayControls } from "./ReplayControls.tsx";
+import { SignalLoss } from "./SignalLoss.tsx";
 import { StreetView } from "./StreetView.tsx";
 import { onStreet } from "./street.ts";
-import { Caption } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 export function App() {
   useEffect(() => {
     void startGame();
   }, []);
+  useEffect(() => watchLandings(), []);
   const { view, world, everOpen } = useGame();
   const t = useGameTime(4);
   const link = useLinkScreen();
@@ -36,30 +39,11 @@ export function App() {
           <MapView />
           {veiled && <span className="sc-veil strong z-20" />}
           <ReplayControls />
-          {cursed(view, "signalLoss", t) && (
-            <SignalLoss until={cursed(view, "signalLoss", t)?.until} t={t} />
-          )}
+          <SignalLoss curse={cursed(view, "signalLoss", t)} />
         </div>
       </div>
       <Panel />
+      <CardLanding />
     </main>
-  );
-}
-
-/**
- * The Signal loss curse: glazed tiles over the map, leaving the departure boards. A curse
- * is terra cotta's job; the boards in the panel still work.
- */
-function SignalLoss({ until, t }: { until: number | undefined; t: number | null }) {
-  const left = until !== undefined && t !== null ? Math.max(1, Math.ceil((until - t) / 60)) : null;
-  return (
-    <div className="sc-tilefield absolute inset-0 z-20 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <Caption tone="terra">Signal loss{left ? ` · ${left} min` : ""}</Caption>
-        <p className="max-w-xs text-[13px] text-ink-2">
-          Your map is hidden. The departure boards still work.
-        </p>
-      </div>
-    </div>
   );
 }
