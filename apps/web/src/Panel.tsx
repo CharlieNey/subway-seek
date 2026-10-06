@@ -17,11 +17,11 @@ const formatDay = (date: string) =>
   });
 
 function RoundBar({ t }: { t: number }) {
-  const { view, send, busy, sync } = useGame();
+  const { view, send, busy, sync, alreadyPlayed } = useGame();
   if (!view || view.result) return null;
   const left = Math.max(0, view.seekEnd - t);
   const giveUp = () => {
-    const note = view.daily ? " It counts as not found for today." : "";
+    const note = view.daily && !alreadyPlayed ? " It counts as not found for today." : "";
     if (window.confirm(`Give up and see where the hider was?${note}`)) send({ type: "giveUp" });
   };
   const paused = sync?.paused ?? false;
@@ -30,7 +30,9 @@ function RoundBar({ t }: { t: number }) {
       <div className="grid grid-cols-3 gap-2 rounded-lg bg-stone-100 px-3 py-2 text-center">
         <div>
           <div className="text-lg font-semibold tabular-nums">{view.candidates.length}</div>
-          <div className="text-[11px] text-stone-500">stations possible</div>
+          <div className="text-[11px] text-stone-500">
+            {view.candidates.length === 1 ? "station possible" : "stations possible"}
+          </div>
         </div>
         <div>
           <div className="text-lg font-semibold tabular-nums">{formatMinutes(left)}</div>
@@ -77,22 +79,25 @@ function useNewRound() {
 }
 
 function ShareButton() {
-  const { view, world } = useGame();
+  const { view, world, results, alreadyPlayed } = useGame();
   const [copied, setCopied] = useState(false);
   if (!view?.result) return null;
+  // A replayed daily doesn't count, so share the result that does.
+  const counted = view.daily && alreadyPlayed ? results[view.daily.date]?.share : undefined;
+  const text = counted ?? shareText(view, hubName(world, view));
   return (
     <ActionButton
       onClick={() => {
         navigator.clipboard
-          .writeText(shareText(view, hubName(world, view)))
+          .writeText(text)
           .then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           })
-          .catch(() => window.prompt("Copy your result:", shareText(view, hubName(world, view))));
+          .catch(() => window.prompt("Copy your result:", text));
       }}
     >
-      {copied ? "Copied!" : "Share result"}
+      {copied ? "Copied!" : counted ? "Share today's result" : "Share result"}
     </ActionButton>
   );
 }
@@ -187,23 +192,27 @@ function ModeLine() {
   const newRound = useNewRound();
   if (!view) return <div className="text-xs text-stone-500">Find the hider's station</div>;
   return (
-    <div className="flex items-center gap-1.5 text-xs text-stone-500">
-      <span>
+    // The round on one line; where it starts and the mode switch on the next, so
+    // neither wraps mid-name in the narrow header.
+    <div className="text-xs text-stone-500">
+      <div>
         {view.daily
           ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
           : "Practice round"}
-        {startName ? ` · from ${startName}` : ""}
-      </span>
-      {!view.result && (
-        <button
-          type="button"
-          disabled={busy}
-          className="underline decoration-stone-300 underline-offset-2 hover:text-stone-800"
-          onClick={() => newRound(view.daily ? "practice" : "daily")}
-        >
-          {view.daily ? "practice instead" : "today's daily"}
-        </button>
-      )}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-1.5">
+        {startName && <span>from {startName}</span>}
+        {!view.result && (
+          <button
+            type="button"
+            disabled={busy}
+            className="whitespace-nowrap underline decoration-stone-300 underline-offset-2 hover:text-stone-800"
+            onClick={() => newRound(view.daily ? "practice" : "daily")}
+          >
+            {view.daily ? "practice instead" : "today's daily"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

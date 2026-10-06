@@ -71,7 +71,11 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       events: view.asked.map((a) => ({
         t: a.at,
         p: [a.ctx.origin.lon, a.ctx.origin.lat] as LonLat,
-        label: `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer, a.q, world.ds)}`,
+        // A photo's answer is just "Photo", so don't say it twice.
+        label:
+          a.q.kind === "photo"
+            ? "Photo"
+            : `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer, a.q, world.ds)}`,
       })),
     });
   },

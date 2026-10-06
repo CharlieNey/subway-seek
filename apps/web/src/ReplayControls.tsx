@@ -6,7 +6,8 @@ export function ReplayControls() {
   const { active, playing, start, end, t, toggle, seek, close } = useReplay();
   if (!active) return null;
   return (
-    <div className="absolute inset-x-4 bottom-8 z-10 flex items-center gap-3 rounded-lg bg-white/95 px-3 py-2 shadow">
+    // right-16 keeps clear of the map's zoom buttons in the bottom-right corner.
+    <div className="absolute bottom-8 left-4 right-16 z-10 flex items-center gap-3 rounded-lg bg-white/95 px-3 py-2 shadow">
       <button
         type="button"
         onClick={toggle}
