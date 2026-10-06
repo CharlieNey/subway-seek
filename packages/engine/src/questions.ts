@@ -118,6 +118,11 @@ export interface Photo {
   heading: number;
   pitch: number;
   fov: number;
+  /**
+   * The image URL, signed by the server when it holds the Street View signing secret
+   * (apps/server/src/sign.ts). The client builds an unsigned one when this is absent.
+   */
+  url?: string;
 }
 
 /** Tentacles: the landmark nearest the hider, or null when they're out of range. */

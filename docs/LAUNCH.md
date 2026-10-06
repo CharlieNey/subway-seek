@@ -14,8 +14,8 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 ## Google
 
 - [x] URL signing implemented and tested against Google's documented example (`apps/server/src/sign.ts`).
-- [ ] **Wire it in** (after the UI build lands, since it touches the server's photo answer and the client's photo URL): the server builds `staticPhotoUrl(photo, { key, secret })` for each photo answer and sends it with the answer; the client shows that URL instead of building its own. Then set the Static API's unsigned quota to 0.
-- [ ] Generate the signing secret; `fly secrets set STREETVIEW_SIGNING_SECRET=… GOOGLE_MAPS_BROWSER_KEY=…`.
+- [x] Wired in: the server attaches a signed URL to every photo answer when `GOOGLE_MAPS_BROWSER_KEY` and `STREETVIEW_SIGNING_SECRET` are set, and the client uses it. Unsigned until then (it warns at startup).
+- [ ] Generate the signing secret; `fly secrets set STREETVIEW_SIGNING_SECRET=… GOOGLE_MAPS_BROWSER_KEY=…`. Then set the Static API's unsigned quota to 0.
 - [ ] Restrict the browser key's referrers to the production domain (and previews), APIs to Maps JavaScript + Street View Static.
 - [ ] Check the vector Map ID in Safari; fall back to the raster ID if the overlay fails.
 - [ ] Confirm the budget alert and daily caps against the expected first-week traffic.
@@ -24,7 +24,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 - [x] `apps/web/public/terms.html`: what the game is, data and attribution (MTA, Google with the required links, OpenStreetMap, NYC Parks), privacy (browser storage, server match logs, Google's own requests, no analytics or cookies), sharing, fair play.
 - [ ] **Put a contact address in** (search the file for `CONTACT-ADDRESS`).
-- [ ] Link `/terms.html` from the homepage footer and the result screen's share area (the UI build's homepage step).
+- [x] Linked from the homepage footer.
 - [ ] If the game is ever monetised or gets accounts, have a lawyer read the page first.
 
 ## Timetable freshness

@@ -1,5 +1,6 @@
+import type { SoloView } from "@stand-clear/engine";
 import { describe, expect, it } from "vitest";
-import { signUrl, staticPhotoUrl } from "./sign.ts";
+import { signUrl, staticPhotoUrl, withPhotoUrls } from "./sign.ts";
 
 describe("signUrl", () => {
   it("reproduces Google's documented example", () => {
@@ -38,6 +39,28 @@ describe("staticPhotoUrl", () => {
       key: "K",
     });
     expect(url.searchParams.has("signature")).toBe(false);
+  });
+
+  it("signs every photo answer in a view and leaves the rest alone", () => {
+    const view = {
+      asked: [
+        { q: { kind: "radar", miles: 1 }, answer: false, at: 0, answerAt: 60 },
+        { q: { kind: "photo", from: "spot", look: "N" }, answer: { photo }, at: 0, answerAt: 60 },
+        {
+          q: { kind: "photo", from: "exit", look: "E" },
+          answer: { vetoed: true },
+          at: 0,
+          answerAt: 60,
+        },
+      ],
+    } as unknown as SoloView;
+    const signed = withPhotoUrls(view, { key: "K", secret: "vNIXE0xscrmjlyV-12Nj_BvUPaw=" });
+    const [radar, spot, vetoed] = signed.asked as { answer: unknown }[];
+    expect(radar?.answer).toBe(false);
+    const spotAnswer = spot?.answer as { photo: { url?: string } } | undefined;
+    expect(spotAnswer?.photo.url).toMatch(/signature=/);
+    expect(vetoed?.answer).toEqual({ vetoed: true });
+    expect(withPhotoUrls(view, null)).toBe(view);
   });
 
   it("appends a signature when a secret is set", () => {

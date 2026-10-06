@@ -12,7 +12,7 @@
  * Cloud console can go to 0 (docs/LAUNCH.md).
  */
 import { createHmac } from "node:crypto";
-import type { Photo } from "@stand-clear/engine";
+import type { Photo, SoloView } from "@stand-clear/engine";
 
 /** Google's URL signing: the secret is URL-safe base64; so is the signature. */
 export function signUrl(url: string, secret: string): string {
@@ -51,4 +51,23 @@ export function staticPhotoUrl(
   });
   const url = `https://maps.googleapis.com/maps/api/streetview?${q}`;
   return secret ? signUrl(url, secret) : url;
+}
+
+/**
+ * The seeker's view with every photo answer carrying its signed image URL. Pending
+ * answers aren't in the view yet, so nothing is signed before it's shown. With no
+ * options (no secret configured) the view is returned as is and the client builds
+ * unsigned URLs itself.
+ */
+export function withPhotoUrls(view: SoloView, opts: StaticPhotoOptions | null): SoloView {
+  if (!opts) return view;
+  let changed = false;
+  const asked = view.asked.map((a) => {
+    const answer = a.answer;
+    if (typeof answer !== "object" || answer === null || !("photo" in answer)) return a;
+    changed = true;
+    const photo = answer.photo;
+    return { ...a, answer: { photo: { ...photo, url: staticPhotoUrl(photo, opts) } } };
+  });
+  return changed ? { ...view, asked } : view;
 }

@@ -49,6 +49,7 @@ import {
 import { type WebSocket, WebSocketServer } from "ws";
 import { MatchLog } from "./matchLog.ts";
 import { type Session, SessionStore } from "./sessions.ts";
+import { withPhotoUrls } from "./sign.ts";
 import { pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -249,8 +250,21 @@ const sessions = new SessionStore<Game>({
   },
 });
 
+/**
+ * Photo answers carry a signed Street View Static URL when the browser key and the URL
+ * signing secret are set (docs/DEPLOY.md). Then the Static API's unsigned quota can be 0
+ * and the browser key alone can't fetch images.
+ */
+const PHOTO_SIGNING =
+  process.env.GOOGLE_MAPS_BROWSER_KEY && process.env.STREETVIEW_SIGNING_SECRET
+    ? { key: process.env.GOOGLE_MAPS_BROWSER_KEY, secret: process.env.STREETVIEW_SIGNING_SECRET }
+    : null;
+if (!PHOTO_SIGNING)
+  console.warn("photo URLs unsigned — set GOOGLE_MAPS_BROWSER_KEY and STREETVIEW_SIGNING_SECRET");
+
 /** The seeker's view right now (the hider's marker shows only when they're close). */
-const viewNow = (game: Game, now: number) => soloView(game.round, gameTime(game.clock, now), idx);
+const viewNow = (game: Game, now: number) =>
+  withPhotoUrls(soloView(game.round, gameTime(game.clock, now), idx), PHOTO_SIGNING);
 const answered = (v: SoloView) => v.asked.filter(isAnswered).length;
 
 /** The view to send, noting what it shows and timing the push for the next answer. */

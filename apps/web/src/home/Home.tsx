@@ -214,6 +214,7 @@ export function Home() {
               <a href="#how">How it plays</a>
               <a href="#record">Your record</a>
               <a href="/play?practice">Practice</a>
+              <a href="/terms.html">Terms, data and privacy</a>
             </nav>
           </div>
         </div>

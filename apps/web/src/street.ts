@@ -86,6 +86,8 @@ if (import.meta.env.DEV)
  * the same URL serves the thumbnail and the full view, so the browser fetches it once.
  */
 export function photoUrl(p: Photo): string {
+  // The server signs the URL when it has the secret; that one is good for exactly this photo.
+  if (p.url) return p.url;
   const q = new URLSearchParams({
     size: "640x400",
     pano: p.pano,

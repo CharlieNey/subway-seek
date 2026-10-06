@@ -14,6 +14,7 @@ fly apps create stand-clear-server
 fly volumes create match_logs --region ewr --size 1          # playtest logs survive deploys
 fly secrets set DAILY_SECRET="$(openssl rand -base64 32)"       # mixed into the daily's seed
 fly secrets set GOOGLE_STREETVIEW_SERVER_KEY=…                  # the server key, Street View API only
+fly secrets set GOOGLE_MAPS_BROWSER_KEY=… STREETVIEW_SIGNING_SECRET=…   # signs photo URLs (see Google, step 2)
 fly deploy
 ```
 
