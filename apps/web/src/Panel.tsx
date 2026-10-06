@@ -1,6 +1,22 @@
-import { DIFFICULTIES, type Difficulty, questionBonusSeconds } from "@stand-clear/engine";
+import {
+  DIFFICULTIES,
+  type Difficulty,
+  dailyNumber,
+  nyDate,
+  questionBonusSeconds,
+  type SoloView,
+} from "@stand-clear/engine";
 import { useState } from "react";
 import { AskPanel, QuestionLog } from "./AskPanel.tsx";
+import {
+  BootBoard,
+  BootWainscot,
+  LoadFailed,
+  LostBand,
+  ServerPlaque,
+  TakenOverPlaque,
+  useLinkScreen,
+} from "./Connection.tsx";
 import { cn } from "./cn.ts";
 import { hubName, useGame, type World } from "./game.ts";
 import { HandReveal, HiderStrip } from "./HiderCards.tsx";
@@ -8,6 +24,7 @@ import { dailyStats } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { formatMinutes, shareText } from "./share.ts";
 import { TravelPanel } from "./TravelPanel.tsx";
+import { Caption, Notice, Num, Wainscot, WainscotText } from "./ui/vocab.tsx";
 import { ActionButton, Bullets, routesFor } from "./ui.tsx";
 import { formatClock, useGameTime } from "./useGameTime.ts";
 
@@ -220,7 +237,7 @@ function ResultCard({ world }: { world: World }) {
 }
 
 function Tabs() {
-  const { tab, setTab, view, follow, setFollow } = useGame();
+  const { tab, setTab, view, follow, setFollow, mapFailed } = useGame();
   const tabClass = (active: boolean) =>
     cn(
       "rounded-md px-3 py-1 text-sm font-semibold",
@@ -235,15 +252,15 @@ function Tabs() {
         Ask{view?.asked.length ? ` (${view.asked.length})` : ""}
       </button>
       <span className="flex-1" />
-      <ActionButton quiet onClick={() => setFollow(!follow)}>
-        {follow ? "Following you" : "Follow me"}
+      <ActionButton quiet disabled={!!mapFailed} onClick={() => setFollow(!follow)}>
+        {mapFailed ? "No map" : follow ? "Following you" : "Follow me"}
       </ActionButton>
     </div>
   );
 }
 
 function ModeLine() {
-  const { view, busy, alreadyPlayed, world } = useGame();
+  const { view, busy, world } = useGame();
   const startName = hubName(world, view);
   const newRound = useNewRound();
   if (!view) return <div className="text-xs text-stone-500">Find the hider's station</div>;
@@ -251,11 +268,6 @@ function ModeLine() {
     // The round on one line; where it starts and the mode switch on the next, so
     // neither wraps mid-name in the narrow header.
     <div className="text-xs text-stone-500">
-      <div>
-        {view.daily
-          ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
-          : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`}
-      </div>
       <div className="flex flex-wrap items-center gap-x-1.5">
         {startName && <span>from {startName}</span>}
         {!view.result && (
@@ -273,10 +285,57 @@ function ModeLine() {
   );
 }
 
+/** The round on one line: before the server answers, today's daily from the date. */
+function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
+  if (!view) {
+    const date = nyDate(new Date());
+    return `Daily #${dailyNumber(date)} · ${formatDay(date)}`;
+  }
+  return view.daily
+    ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
+    : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`;
+}
+
+/** The time as a caption tile, nothing under it: blank until the server answers, "Paused" while stopped. */
+function ClockTile({ t }: { t: number | null }) {
+  const paused = useGame((s) => s.sync?.paused ?? false);
+  if (t === null) {
+    return (
+      <div className="sc-clock off" title="The clock starts when the server answers">
+        <Caption>
+          <Num>--:--</Num>
+        </Caption>
+      </div>
+    );
+  }
+  return (
+    <div className={cn("sc-clock", paused && "paused")}>
+      <Caption>
+        <Num>{paused ? "Paused" : formatClock(t).slice(0, 5)}</Num>
+      </Caption>
+    </div>
+  );
+}
+
+function PanelTop({ t }: { t: number | null }) {
+  const { view, alreadyPlayed } = useGame();
+  return (
+    <header className="flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
+      <div className="min-w-0">
+        <div className="font-display text-[12.5px] font-bold uppercase tracking-[0.12em]">
+          Stand Clear
+        </div>
+        <div className="text-[12px] text-ink-2">{roundLine(view, alreadyPlayed)}</div>
+        {view && <ModeLine />}
+      </div>
+      <ClockTile t={t} />
+    </header>
+  );
+}
+
 export function Panel() {
   const {
     status,
-    error,
     world,
     view,
     notice,
@@ -285,66 +344,84 @@ export function Panel() {
     dismissCardNotice,
     tab,
     alreadyPlayed,
+    everOpen,
   } = useGame();
   const t = useGameTime(4);
+  const screen = useLinkScreen();
   const ready = status === "ready" && world && view && t !== null;
 
+  // Before the round: the loading board, or a plaque if something's wrong.
+  if (!everOpen || !ready) {
+    return (
+      <aside className="flex h-full w-[380px] shrink-0 flex-col bg-glaze-hi shadow-[inset_1px_0_0_var(--color-grout)]">
+        <PanelTop t={null} />
+        {status === "error" ? (
+          <LoadFailed />
+        ) : screen.kind === "unreachable" ? (
+          <ServerPlaque screen={screen} />
+        ) : screen.kind === "takenOver" ? (
+          <TakenOverPlaque />
+        ) : (
+          <>
+            <BootBoard />
+            <div className="flex-1" />
+            <BootWainscot />
+          </>
+        )}
+      </aside>
+    );
+  }
+
+  // Mid-round with the link down: the round is paused, the controls dim, one band explains.
+  const down = screen.kind !== "none";
   return (
-    <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-stone-200 bg-white">
-      <header className="flex items-center gap-3 px-4 py-3">
-        <div className="flex-1">
-          <div className="text-sm font-bold tracking-tight">Stand Clear</div>
-          <ModeLine />
-        </div>
-        {t !== null && (
-          <div className="text-right">
-            <div className="font-mono text-lg font-semibold tabular-nums">{formatClock(t)}</div>
-            <div className="text-[11px] text-stone-500">6× real time</div>
+    <aside className="flex h-full w-[380px] shrink-0 flex-col bg-glaze-hi shadow-[inset_1px_0_0_var(--color-grout)]">
+      {/* Another tab has the round, and its clock: this one doesn't know the time. */}
+      <PanelTop t={screen.kind === "takenOver" ? null : t} />
+      {screen.kind === "lost" && <LostBand screen={screen} />}
+      {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}
+      {screen.kind === "takenOver" && <TakenOverPlaque />}
+      <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
+        {alreadyPlayed && !view.result && (
+          <p className="mx-4 mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-600">
+            You've already played today's challenge. Playing again won't change your result.
+          </p>
+        )}
+        <RoundBar t={t} />
+        <HiderStrip world={world} t={t} />
+        <ResultCard world={world} />
+        <Tabs />
+        {cardNotice && !view.result && (
+          <button
+            type="button"
+            onClick={dismissCardNotice}
+            className="mx-4 mt-3 rounded-md bg-orange-50 px-3 py-2 text-left text-sm text-orange-900"
+          >
+            {cardNotice}
+          </button>
+        )}
+        {notice && (
+          <div className="mx-4 mt-3">
+            <Notice onDismiss={dismissNotice}>{notice}</Notice>
           </div>
         )}
-      </header>
-      {ready && alreadyPlayed && !view.result && (
-        <p className="mx-4 mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-600">
-          You've already played today's challenge. Playing again won't change your result.
-        </p>
-      )}
-      {ready && <RoundBar t={t} />}
-      {ready && <HiderStrip world={world} t={t} />}
-      {ready && <ResultCard world={world} />}
-      {ready && <Tabs />}
-      {cardNotice && !view?.result && (
-        <button
-          type="button"
-          onClick={dismissCardNotice}
-          className="mx-4 mt-3 rounded-md bg-orange-50 px-3 py-2 text-left text-sm text-orange-900"
-        >
-          {cardNotice}
-        </button>
-      )}
-      {notice && (
-        <button
-          type="button"
-          onClick={dismissNotice}
-          className="mx-4 mt-3 rounded-md bg-red-50 px-3 py-2 text-left text-sm text-red-800"
-        >
-          {notice}
-        </button>
-      )}
-      <div className="min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
-        {status === "loading" && (
-          <p className="px-4 text-sm text-stone-500">Loading the timetable…</p>
-        )}
-        {status === "connecting" && <p className="px-4 text-sm text-stone-500">Connecting…</p>}
-        {status === "error" && <p className="px-4 text-sm text-red-700">{error}</p>}
-        {ready &&
-          (view.result ? (
+        <div className="min-h-0 flex-1 overflow-y-auto pt-3 pb-6">
+          {view.result ? (
             <QuestionLog world={world} />
           ) : tab === "travel" ? (
             <TravelPanel world={world} t={t} />
           ) : (
             <AskPanel world={world} t={t} />
-          ))}
+          )}
+        </div>
       </div>
+      {down && screen.kind !== "takenOver" && (
+        <Wainscot>
+          <WainscotText>
+            Buttons come back when you reconnect. Nothing you pressed is lost.
+          </WainscotText>
+        </Wainscot>
+      )}
     </aside>
   );
 }

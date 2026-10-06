@@ -16,8 +16,13 @@ import { zoomHold } from "./zoomHold.ts";
 maplibregl.setWorkerUrl(workerUrl);
 
 export interface BaseMap {
-  /** Resolves once the map can draw (it only paints while the page is visible). */
+  /**
+   * Resolves once the map can draw (it only paints while the page is visible). Rejects
+   * if it can't load at all.
+   */
   ready: Promise<void>;
+  /** Called if the map fails after loading (Google can reject the key late). */
+  onFailure(cb: (reason: string) => void): void;
   /** Replace the deck.gl layers drawn over the map. */
   setLayers(layers: Layer[]): void;
   setCenter(p: LonLat): void;
@@ -46,7 +51,25 @@ export function createMapLibreBase(
     attributionControl: { compact: true },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
-  map.on("error", (e) => console.error(`map: ${e.error?.message ?? String(e.error)}`));
+  // Before the style loads, an error means no map; after, it's a tile here and there.
+  let loaded = false;
+  let fail: (reason: string) => void = () => {};
+  const ready = new Promise<void>((resolve, reject) => {
+    fail = (reason) => {
+      if (!loaded) reject(new Error(reason));
+    };
+    map.on("load", () => {
+      loaded = true;
+      resolve();
+    });
+  });
+  const timeout = setTimeout(() => fail("The map tiles didn't arrive in 20 s"), 20_000);
+  map.on("load", () => clearTimeout(timeout));
+  map.on("error", (e) => {
+    const reason = e.error?.message ?? String(e.error);
+    console.error(`map: ${reason}`);
+    fail(reason);
+  });
   const overlay = new MapboxOverlay({ interleaved: false, layers: [], getTooltip });
   map.addControl(overlay as unknown as maplibregl.IControl);
   if (import.meta.env.DEV) (window as unknown as { __map: maplibregl.Map }).__map = map;
@@ -54,7 +77,8 @@ export function createMapLibreBase(
   map.on("moveend", zoom.release);
 
   return {
-    ready: new Promise((resolve) => map.on("load", () => resolve())),
+    ready,
+    onFailure: () => {},
     setLayers: (layers) => overlay.setProps({ layers }),
     setCenter: (p) => {
       if (!zoom.held()) map.setCenter(p);
@@ -65,6 +89,7 @@ export function createMapLibreBase(
     onUserDrag: (cb) => map.on("dragstart", cb),
     onClick: (cb) => map.on("click", (e) => cb([e.lngLat.lng, e.lngLat.lat])),
     remove: () => {
+      clearTimeout(timeout);
       zoom.remove();
       map.remove();
     },
@@ -74,6 +99,9 @@ export function createMapLibreBase(
 export type MapProvider = "google" | "maplibre";
 
 export function chooseProvider(): MapProvider {
+  // Dev only: ?map=maplibre (or google) picks the provider per tab, for headless checks.
+  const asked = import.meta.env.DEV ? new URLSearchParams(location.search).get("map") : null;
+  if (asked === "maplibre" || asked === "google") return asked;
   const forced = import.meta.env.VITE_MAP_PROVIDER as string | undefined;
   if (forced === "maplibre" || forced === "google") return forced;
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? "google" : "maplibre";

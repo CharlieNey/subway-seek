@@ -15,7 +15,7 @@ import type { Layer } from "@deck.gl/core";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import type { LonLat } from "@stand-clear/engine";
 import type { BaseMap } from "./baseMap.ts";
-import { loadGoogleMaps } from "./loadGoogle.ts";
+import { loadGoogleMaps, onGoogleAuthFailure } from "./loadGoogle.ts";
 import { zoomHold } from "./zoomHold.ts";
 
 /** Quiet base map: no POIs or transit icons, muted colors, so the game's layers read. */
@@ -43,8 +43,15 @@ export function createGoogleBase(
     else pending.push(() => map && fn(map));
   };
   const zoom = zoomHold(container);
+  const failures: ((reason: string) => void)[] = [];
+  let rejectReady: (err: Error) => void = () => {};
+  const stopAuth = onGoogleAuthFailure(() => {
+    const reason = "Google Maps rejected the API key";
+    rejectReady(new Error(reason));
+    for (const cb of failures) cb(reason);
+  });
 
-  const ready = loadGoogleMaps()
+  const loaded = loadGoogleMaps()
     .then(() => google.maps.importLibrary("maps"))
     .then(() => {
       if (removed) return;
@@ -69,9 +76,14 @@ export function createGoogleBase(
         google.maps.event.addListenerOnce(map as google.maps.Map, "idle", () => resolve());
       });
     });
+  const ready = new Promise<void>((resolve, reject) => {
+    rejectReady = reject;
+    loaded.then(resolve, reject);
+  });
 
   return {
     ready,
+    onFailure: (cb) => failures.push(cb),
     setLayers: (layers: Layer[]) => overlay.setProps({ layers }),
     setCenter: (p) =>
       whenMap((m) => {
@@ -96,6 +108,7 @@ export function createGoogleBase(
       ),
     remove: () => {
       removed = true;
+      stopAuth();
       for (const l of listeners) l.remove();
       zoom.remove();
       overlay.finalize();

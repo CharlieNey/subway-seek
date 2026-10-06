@@ -6,6 +6,14 @@ let loading: Promise<void> | null = null;
 
 export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
+const authFailureListeners = new Set<() => void>();
+
+/** Called if Google rejects the key, which can happen after the map has drawn. */
+export function onGoogleAuthFailure(cb: () => void): () => void {
+  authFailureListeners.add(cb);
+  return () => authFailureListeners.delete(cb);
+}
+
 export function loadGoogleMaps(): Promise<void> {
   if (loading) return loading;
   loading = new Promise((resolve, reject) => {
@@ -13,11 +21,19 @@ export function loadGoogleMaps(): Promise<void> {
     const w = window as unknown as Record<string, unknown>;
     w.__standClearMapsReady = () => resolve();
     // Google calls this when it rejects the key (wrong referrer, API not enabled, quota…).
-    w.gm_authFailure = () => console.error("Google Maps rejected the API key");
+    w.gm_authFailure = () => {
+      console.error("Google Maps rejected the API key");
+      for (const cb of authFailureListeners) cb();
+    };
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&v=weekly&loading=async&callback=__standClearMapsReady`;
     script.async = true;
-    script.onerror = () => reject(new Error("Couldn't load the Google Maps script"));
+    script.onerror = () => {
+      // Forget the failure, so "Try again" loads the script afresh.
+      script.remove();
+      loading = null;
+      reject(new Error("Couldn't load the Google Maps script"));
+    };
     document.head.append(script);
   });
   return loading;

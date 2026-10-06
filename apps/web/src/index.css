@@ -1,4 +1,78 @@
 @import "tailwindcss";
+@import "@fontsource/josefin-sans/latin-600.css";
+@import "@fontsource/josefin-sans/latin-700.css";
+@import "@fontsource/libre-franklin/latin-400.css";
+@import "@fontsource/libre-franklin/latin-400-italic.css";
+@import "@fontsource/libre-franklin/latin-500.css";
+@import "@fontsource/libre-franklin/latin-600.css";
+@import "@fontsource/libre-franklin/latin-700.css";
+@import "@fontsource/libre-franklin/latin-800.css";
+@import "./ui/mosaic.css";
+
+/*
+ * Mosaic tokens (DESIGN.md, Look and motion). IRT tile carries identity, IND tile carries
+ * information; the six family colors are the question categories, each with its trim.
+ */
+@theme {
+  --color-glaze: #f4efe3;
+  --color-glaze-hi: #fbf8f1;
+  --color-grout: #d8cfbc;
+  --color-grout-soft: #e7e0d0;
+  --color-buff: #c9a877;
+  --color-buff-deep: #a9874f;
+  --color-ink: #24201b;
+  --color-ink-2: #5e554a;
+  --color-ink-3: #8a8072;
+  --color-faience: #24479a;
+  --color-faience-deep: #172f6b;
+  --color-terra: #b9532f;
+  --color-gold: #c99a3a;
+  --color-gold-deep: #8e6a14;
+
+  /* Question families, each with its trim. */
+  --color-radar: #25396b;
+  --color-radar-trim: #121b36;
+  --color-thermo: #a12a3c;
+  --color-thermo-trim: #3a1a1c;
+  --color-match: #4c8a40;
+  --color-match-trim: #2c5a2a;
+  --color-measure: #ddae36;
+  --color-measure-trim: #8e6a14;
+  --color-tent: #1f6e6b;
+  --color-tent-trim: #0e3a38;
+  --color-photo: #6b4a8c;
+  --color-photo-trim: #3e2759;
+
+  /* The base map (map/mosaicCloudStyle.json): land, blocks, roads, water, parks. */
+  --color-map-land: #efeadf;
+  --color-map-block: #e6dfcf;
+  --color-map-road: #fbf8f1;
+  --color-map-road-edge: #e2d9c4;
+  --color-map-highway: #f1e7d2;
+  --color-map-water: #cbd6d6;
+  --color-map-park: #dce1cc;
+
+  --font-display: "Josefin Sans", "Futura", "Century Gothic", "Avenir Next", sans-serif;
+  --font-text: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+
+  /* Motion: the three curves. No control point above 1, so nothing overshoots. */
+  --ease-decel: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-brake: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-depart: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+
+/* Timing tokens (DESIGN.md, Motion). */
+:root {
+  --dur-press: 100ms;
+  --dur-step: 160ms;
+  --dur-band: 280ms;
+  --dur-set: 160ms;
+  --dur-brake: 900ms;
+  --dur-depart: 600ms;
+  /* The tile unit: one tessera of the mosaic, and the grid the panels are drawn on. */
+  --tile: 14px;
+  color-scheme: light;
+}
 
 html,
 body,
@@ -8,5 +82,8 @@ body,
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-text);
+  background: var(--color-glaze);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
 }

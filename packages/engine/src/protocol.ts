@@ -93,8 +93,29 @@ export interface ClockSync {
   paused: boolean;
 }
 
+/**
+ * A dropped player's round is kept this long on the server, its clock paused, for them to
+ * come back to with their session token (DESIGN.md, Disconnects).
+ */
+export const RECONNECT_GRACE_MS = 3 * 60 * 1000;
+/** The query parameter on the WebSocket URL that carries the session token. */
+export const SESSION_PARAM = "session";
+/** Close code for a connection whose session was opened somewhere else (another tab). */
+export const CLOSE_TAKEN_OVER = 4001;
+
 export type ServerMessage =
-  | { type: "hello"; serviceDate: string; clock: ClockSync; view: SoloView }
+  | {
+      type: "hello";
+      /** The session token: send it back on reconnect to pick the round up again. */
+      session: string;
+      /** This connection picked up a session that was already running. */
+      resumed: boolean;
+      /** The last intent seq the session handled; the client numbers on from there. */
+      seq: number;
+      serviceDate: string;
+      clock: ClockSync;
+      view: SoloView;
+    }
   | { type: "state"; seq: number; clock: ClockSync; view: SoloView }
   | { type: "rejected"; seq: number; error: string; clock: ClockSync; view: SoloView };
 

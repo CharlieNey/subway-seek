@@ -1,0 +1,423 @@
+/*
+ * The Mosaic vocabulary (DESIGN.md, Look and motion › Interaction; the Deck page, part
+ * thirteen). One shape per role, and no two roles share one. Measurements come from the
+ * Deck page's CSS. Caps that carry information are at least 12 px with 0.08 em tracking
+ * (Interaction, small fixes). No rounded corners, no shadows: the inset box-shadows below
+ * are rules drawn inside the tile, not shadows.
+ */
+
+/* ---------- surfaces ---------- */
+.sc-tilefield {
+  background-color: var(--color-glaze-hi);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='32'%3E%3Cpath d='M0 .5H64M0 16.5H64M.5 0V16M32.5 0V16M16.5 16V32M48.5 16V32' stroke='%23E2D9C6' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+}
+/* A tile field in the dark, for Street View's pane when it can't show. */
+.sc-tilefield-dark {
+  background-color: #3a3732;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 23px, rgb(251 248 241 / 0.07) 23px 24px),
+    repeating-linear-gradient(180deg, transparent 0 11px, rgb(251 248 241 / 0.07) 11px 12px);
+}
+.sc-veil {
+  position: absolute;
+  inset: 0;
+  background: rgb(244 239 227 / 0.42);
+  pointer-events: none;
+}
+.sc-veil.strong {
+  background: rgb(244 239 227 / 0.62);
+}
+
+/* ---------- Caption: a black tile with white tracked caps ---------- */
+.sc-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  background: var(--color-ink);
+  color: var(--color-glaze);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.6em 0.65em 0.42em;
+  white-space: nowrap;
+}
+/* Light: map legends only. */
+.sc-cap.light {
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+}
+.sc-cap.terra {
+  background: var(--color-terra);
+  color: var(--color-glaze-hi);
+}
+.sc-num {
+  font-family: var(--font-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.sc-cap .sc-num {
+  font-weight: 700;
+}
+
+/* ---------- Clock: the time as a caption tile, nothing under it ---------- */
+.sc-clock {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 3px;
+}
+.sc-clock > .sc-cap {
+  font-size: 18px;
+  padding: 0.42em 0.5em 0.32em;
+}
+.sc-clock.off > .sc-cap {
+  background: var(--color-glaze-hi);
+  color: var(--color-ink-3);
+  box-shadow: inset 0 0 0 1.5px var(--color-grout);
+}
+.sc-clock.paused > .sc-cap {
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+
+/* ---------- Button: ink default, white alternative, terra cotta fixes where you are ---------- */
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.75em 1.05em 0.58em;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sc-btn.ink {
+  background: var(--color-ink);
+  color: var(--color-glaze);
+}
+.sc-btn.terra {
+  background: var(--color-terra);
+  color: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 2px var(--color-terra);
+}
+.sc-btn.sm {
+  font-size: 12px;
+  padding: 0.62em 0.8em 0.46em;
+}
+/* Press: the button sinks 2 px, at once (the press token has no curve). */
+.sc-btn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.sc-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.sc-btn:focus-visible,
+.sc-focus:focus-visible {
+  outline: 3px solid var(--color-faience);
+  outline-offset: 2px;
+}
+
+/* ---------- Keys: printed small on the control they fire ---------- */
+.sc-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 3px 5px 1px;
+  font: 700 9px / 1 var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1.2px var(--color-ink-3);
+  color: var(--color-ink-2);
+  vertical-align: 1px;
+}
+.sc-btn .sc-kbd {
+  margin-left: 8px;
+  color: inherit;
+  box-shadow: inset 0 0 0 1.2px currentColor;
+  opacity: 0.7;
+}
+
+/* ---------- Tile timer: one tile per unit, lifting as time runs out ---------- */
+.sc-tiles {
+  display: inline-flex;
+  gap: 1px;
+  background: var(--color-grout);
+  padding: 1px;
+  flex: none;
+}
+.sc-tiles > i {
+  display: block;
+  width: var(--t, 11px);
+  height: var(--t, 11px);
+  background: var(--color-ink);
+}
+.sc-tiles > i.gone {
+  background: var(--color-glaze-hi);
+}
+.sc-tiles > i.last {
+  background: var(--color-terra);
+}
+/* On a dark band: glaze tiles in a pale grout. */
+.sc-tiles.on-dark {
+  background: rgb(251 248 241 / 0.3);
+}
+.sc-tiles.on-dark > i {
+  background: var(--color-glaze-hi);
+}
+.sc-tiles.on-dark > i.gone {
+  background: transparent;
+}
+
+/* ---------- Rule: a section heading, small caps over a 2 px ink line ---------- */
+.sc-rule {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--color-ink);
+  margin-bottom: 7px;
+}
+
+/* ---------- Notice: a light row with a terra cotta square, dismissed by clicking ---------- */
+.sc-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  text-align: left;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1px var(--color-grout);
+  font: 400 13px / 1.45 var(--font-text);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.sc-notice::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 4px;
+  background: var(--color-terra);
+}
+.sc-notice > span {
+  flex: 1;
+}
+.sc-notice > small {
+  color: var(--color-ink-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ---------- A line: the conductor's voice, small and italic ---------- */
+.sc-line {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-ink-2);
+}
+
+/* ---------- Wainscot: the one main action, on buff brick ---------- */
+.sc-wains {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  min-height: 66px;
+  background-color: var(--color-buff);
+  border-top: 3px solid var(--color-buff-deep);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12'%3E%3Cpath d='M0 .5H48M0 6.5H48M.5 0V6M24.5 6V12' stroke='%23E4D5B4' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+}
+.sc-wains-text {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+
+/* ---------- Bands: local (2 tiles) and express (3 tiles) ---------- */
+.sc-grid-lines {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 13px,
+      rgb(251 248 241 / var(--grid, 0.2)) 13px 14px
+    ),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 13px,
+      rgb(251 248 241 / var(--grid, 0.2)) 13px 14px
+    );
+}
+/* The connection's express band: ink with buff trim, the one thing that matters now. */
+.sc-express-ink {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 16px 9px;
+  min-height: 42px;
+  color: var(--color-glaze-hi);
+  background-color: var(--color-ink);
+  --grid: 0.1;
+  box-shadow:
+    inset 0 -4px 0 var(--color-buff-deep),
+    inset 0 4px 0 var(--color-buff-deep);
+}
+.sc-express-ink > b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.sc-express-ink > span {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* ---------- Plaque: an error says what happened, what's safe, and what to do ---------- */
+.sc-err {
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+.sc-err-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px 9px;
+  background: var(--color-ink);
+  color: var(--color-glaze-hi);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.sc-err-h::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--color-terra);
+}
+.sc-err-b {
+  padding: 12px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+/* The safe line, marked with the locked-spot glyph. */
+.sc-safe {
+  display: flex;
+  gap: 9px;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  background: var(--color-glaze);
+  box-shadow: inset 0 0 0 1px var(--color-grout);
+}
+.sc-safe::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 3px;
+  background: var(--color-ink);
+  box-shadow:
+    0 0 0 2px var(--color-glaze),
+    0 0 0 3.5px #9c927f;
+}
+.sc-retry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+}
+.sc-det {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--color-ink-3);
+  border-top: 1px dashed var(--color-grout);
+  padding-top: 8px;
+}
+
+/* ---------- The loading board ---------- */
+.sc-boot-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-grout);
+}
+.sc-boot-row > i {
+  width: 12px;
+  height: 12px;
+  display: block;
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+.sc-boot-row.done > i {
+  background: var(--color-ink);
+}
+.sc-boot-row.now > i {
+  background: linear-gradient(90deg, var(--color-ink) 50%, var(--color-glaze-hi) 50%);
+}
+.sc-boot-row.wait {
+  color: var(--color-ink-3);
+}
+.sc-boot-row.wait > i {
+  box-shadow: inset 0 0 0 1.5px var(--color-ink-3);
+}
+.sc-boot-row > b {
+  font-weight: 600;
+  font-size: 14px;
+}
+.sc-boot-row > small {
+  grid-column: 2 / 4;
+  font-size: 12px;
+  color: var(--color-ink-2);
+}
+.sc-boot-row.wait > small {
+  color: var(--color-ink-3);
+}
+.sc-boot-row > em {
+  font-style: normal;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sc-boot-row > .sc-tiles {
+  grid-column: 2 / 4;
+  justify-self: start;
+}
+
+/* While the link is down, the panel's controls dim and stop taking clicks. */
+.sc-frozen {
+  opacity: 0.42;
+  pointer-events: none;
+}

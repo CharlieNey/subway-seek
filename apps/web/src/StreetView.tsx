@@ -6,6 +6,7 @@ import { cursed } from "./HiderCards.tsx";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { compass, nearestPano, panoPoint } from "./street.ts";
+import { Button, Plaque } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 /**
@@ -35,11 +36,16 @@ export function StreetView({ visible }: { visible: boolean }) {
   const expectedRef = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [links, setLinks] = useState<google.maps.StreetViewLink[]>([]);
+  /** Why the imagery didn't arrive, while it hasn't. */
+  const [failed, setFailed] = useState<string | null>(null);
+  /** Bumped by "Try again". */
+  const [retry, setRetry] = useState(0);
   const { world, view, send, busy } = useGame();
   const t = useGameTime(4);
   const usesGoogle = chooseProvider() === "google";
 
   // One panorama, created the first time you're on the street and reused after.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` is the try-again trigger
   useEffect(() => {
     if (!visible || panoRef.current || !el.current || !usesGoogle) return;
     let cancelled = false;
@@ -50,6 +56,10 @@ export function StreetView({ visible }: { visible: boolean }) {
         const p = new google.maps.StreetViewPanorama(el.current, {
           ...PANORAMA_OPTIONS,
           visible: true,
+        });
+        p.addListener("status_changed", () => {
+          const status = p.getStatus();
+          setFailed(status === google.maps.StreetViewStatus.OK ? null : `Status ${status}`);
         });
         p.addListener("links_changed", () =>
           setLinks((p.getLinks() ?? []).filter((l): l is google.maps.StreetViewLink => !!l?.pano)),
@@ -62,11 +72,14 @@ export function StreetView({ visible }: { visible: boolean }) {
         });
         panoRef.current = p;
         setReady(true);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setFailed(err instanceof Error ? err.message : String(err));
       });
     return () => {
       cancelled = true;
     };
-  }, [visible, usesGoogle]);
+  }, [visible, usesGoogle, retry]);
 
   // Re-measure when the pane reappears.
   useEffect(() => {
@@ -82,7 +95,8 @@ export function StreetView({ visible }: { visible: boolean }) {
   // Show where you're standing: the panorama you walked to, or the one nearest your exit.
   const standingPano = standing?.at?.pano ?? null;
   const standingPoint = standing && world ? streetPoint(standing, world.idx) : null;
-  // standingKey captures everything that matters about where you stand.
+  // standingKey captures everything that matters about where you stand; `retry` shows
+  // it again after a failure.
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on standingKey on purpose
   useEffect(() => {
     const p = panoRef.current;
@@ -90,13 +104,15 @@ export function StreetView({ visible }: { visible: boolean }) {
     const show = (pano: string) => {
       expectedRef.current = pano;
       if (p.getPano() !== pano) p.setPano(pano);
+      else setFailed(null);
     };
     if (standingPano) return show(standingPano);
     if (!standingPoint) return;
     void nearestPano(standingPoint.lat, standingPoint.lon, 60).then((found) => {
       if (found) show(found.pano);
+      else setFailed("No panorama within 60 m of the exit");
     });
-  }, [ready, standingKey]);
+  }, [ready, standingKey, retry]);
 
   // The hider's marker, once you're close enough to see them.
   const spot = view?.spotNearby ?? null;
@@ -140,6 +156,15 @@ export function StreetView({ visible }: { visible: boolean }) {
     <div className="relative h-full w-full bg-stone-300">
       {/* Its own stacking context, so Google's internal z-indexes stay below our overlays. */}
       <div ref={el} className="absolute inset-0 z-0" />
+      {failed && visible && (
+        <StreetViewFailed
+          reason={failed}
+          onRetry={() => {
+            setFailed(null);
+            setRetry((n) => n + 1);
+          }}
+        />
+      )}
       {cursed(view, "fog", t) && (
         // Fog: blurred, but you can still walk (and the marker still shows when you're close).
         <div className="pointer-events-none absolute inset-0 z-[5] backdrop-blur-md" />
@@ -174,6 +199,32 @@ export function StreetView({ visible }: { visible: boolean }) {
             </button>
           ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Street View didn't load: the pane keeps its place, with a dark tile field and the
+ * plaque. The walk still counted; the map and the questions work.
+ */
+function StreetViewFailed({ reason, onRetry }: { reason: string; onRetry: () => void }) {
+  return (
+    <div className="sc-tilefield-dark absolute inset-0 z-30 flex items-center justify-center p-4">
+      <Plaque
+        className="w-[360px] max-w-full"
+        title="Street View didn't load"
+        safe="You're still here, and the walk counted. The map and your questions work."
+        actions={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button kind="ink" onClick={onRetry}>
+              Try again
+            </Button>
+          </div>
+        }
+        details={reason}
+      >
+        <p>Google's imagery for this corner didn't arrive.</p>
+      </Plaque>
     </div>
   );
 }
