@@ -1,75 +1,111 @@
-import type { Dataset } from "@stand-clear/data";
 import {
   type ActiveCurse,
   CARDS,
-  type CardEvent,
   type CardId,
   handBonusSeconds,
+  resolve,
   type SoloView,
   TOURIST_WALK_M,
 } from "@stand-clear/engine";
-import { useGame, type World } from "./game.ts";
+import type { World } from "./game.ts";
+import { displayName } from "./names.ts";
+import { TileTimer } from "./ui/vocab.tsx";
 
-/** What a card the hider just played means for you, for the notice. */
-export function cardNotice(e: CardEvent): string {
-  const card = CARDS[e.card];
-  switch (e.card) {
-    case "veto":
-      return "The hider played Veto: no answer, and that question is closed for the round. It still cost you the question.";
-    case "randomize":
-      return "The hider played Randomize: your question was swapped for another of the same type.";
-    default:
-      return `The hider played ${card.title}! ${card.toSeeker ?? card.rule}`;
-  }
-}
-
-/** One line on what a curse is doing to you right now. */
-function curseNow(c: ActiveCurse, t: number, ds: Dataset, view: SoloView): string {
-  const title = CARDS[c.card].title;
+/** What a curse is doing to you right now, and how long it has left (in game minutes). */
+function curseLine(
+  c: ActiveCurse,
+  t: number,
+  world: World,
+  view: SoloView,
+): { what: string; minutesLeft: number | null; total: number | null } {
+  const def = CARDS[c.card];
   switch (c.card) {
     case "fog":
     case "signalLoss":
-    case "shed":
-      return `${title} · ${Math.max(1, Math.ceil((c.until - t) / 60))} min left`;
-    case "wrongWay":
-      return `${title} · your next train has to run the other way`;
+    case "shed": {
+      const left = Math.max(1, Math.ceil((c.until - t) / 60));
+      const what =
+        c.card === "fog"
+          ? "Street View is blurred"
+          : c.card === "signalLoss"
+            ? "Your map is hidden"
+            : "Walking at half speed";
+      return {
+        what: `${what} · ${left} min`,
+        minutesLeft: left,
+        total: (def.durationSeconds ?? 600) / 60,
+      };
+    }
+    case "wrongWay": {
+      const s = resolve(view.seeker, t, world.idx);
+      const station = s.kind === "platform" ? world.ds.stations[s.station] : undefined;
+      const way = station ? (c.dir === 0 ? station.northLabel : station.southLabel) : null;
+      return {
+        what: way
+          ? `Your next train runs ${way.toLowerCase()}`
+          : "Your next train runs the other way",
+        minutesLeft: null,
+        total: null,
+      };
+    }
     case "tourist": {
-      const off = ds.stations[c.station]?.name ?? "the next stop";
-      return view.seeker.kind === "train"
-        ? `${title} · off at ${off}, then walk ${TOURIST_WALK_M} m`
-        : `${title} · walk ${TOURIST_WALK_M} m on the street before going back in`;
+      const off = displayName(world.ds.stations[c.station]?.name ?? "the next stop");
+      return {
+        what:
+          view.seeker.kind === "train"
+            ? `Off at ${off}, then walk ${TOURIST_WALK_M} m`
+            : `Walk ${TOURIST_WALK_M} m on the street before going back in`,
+        minutesLeft: null,
+        total: null,
+      };
     }
   }
 }
 
 /**
- * Under the round bar: any curse on you. How many cards the hider holds stays secret
- * (DESIGN.md, Hidden information), like the cards themselves.
+ * The curses on you, each a chip with its tile timer, in the panel and never over the
+ * photo (DESIGN.md, Street endgame). Terra cotta is the curse's color. How many cards
+ * the hider holds stays secret (Hidden information).
  */
-export function HiderStrip({ world, t }: { world: World; t: number }) {
-  const view = useGame((s) => s.view);
-  if (!view || view.result || view.curses.length === 0) return null;
+export function CurseChips({ world, t, view }: { world: World; t: number; view: SoloView }) {
+  if (view.result || view.curses.length === 0) return null;
   return (
-    <div className="mx-4 mb-3 -mt-1 space-y-1">
-      {view.curses.map((c) => (
-        <div
-          key={`${c.card}-${c.at}`}
-          className="rounded-md bg-orange-100 px-2.5 py-1.5 text-xs font-semibold text-orange-900"
-        >
-          {curseNow(c, t, world.ds, view)}
-        </div>
-      ))}
+    <div className="mx-4 mt-2.5 flex flex-col gap-1.5">
+      {view.curses.map((c) => {
+        const line = curseLine(c, t, world, view);
+        return (
+          <div
+            key={`${c.card}-${c.at}`}
+            className="flex items-center gap-2.5 bg-glaze-hi px-2.5 py-2 shadow-[inset_0_0_0_1.5px_var(--color-ink)]"
+          >
+            <span
+              className="sc-sq"
+              style={
+                { "--c": "var(--color-terra)", "--t": "var(--color-ink)" } as React.CSSProperties
+              }
+            />
+            <div className="min-w-0 flex-1">
+              <b className="block font-display text-[12px] font-bold uppercase tracking-[0.08em]">
+                {CARDS[c.card].title}
+              </b>
+              <span className="text-[11.5px] text-ink-2">{line.what}</span>
+            </div>
+            {line.total !== null && line.minutesLeft !== null && (
+              <TileTimer total={line.total} left={line.minutesLeft} size={7} lastTerra />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 /** At the end: what the hider was holding, and what the time bonuses added. */
 export function HandReveal({ hand }: { hand: CardId[] }) {
-  if (hand.length === 0)
-    return <p className="mt-2 text-xs text-stone-600">The hider held no cards.</p>;
+  if (hand.length === 0) return <p className="text-[12px] text-ink-2">The hider held no cards.</p>;
   const bonus = handBonusSeconds(hand) / 60;
   return (
-    <p className="mt-2 text-xs text-stone-600">
+    <p className="text-[12px] text-ink-2">
       The hider held {hand.map((c) => CARDS[c].title).join(", ")}
       {bonus > 0 ? ` · time bonuses +${bonus} min` : ""}
     </p>

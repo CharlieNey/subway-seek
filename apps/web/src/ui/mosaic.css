@@ -924,6 +924,7 @@
 /* ---------- Photo plaque: a glaze mat with an ink edge and a violet caption ---------- */
 .sc-plq {
   position: relative;
+  color: var(--color-ink);
   background: var(--color-glaze-hi);
   padding: 6px;
   box-shadow: inset 0 0 0 1.5px var(--color-ink);

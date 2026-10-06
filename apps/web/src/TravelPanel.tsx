@@ -1,319 +1,415 @@
-import type { Direction } from "@stand-clear/data";
+/**
+ * The Travel tab (DESIGN.md, Sidebar; the Deck page, parts four and five): where you are
+ * as the station's name tablet, the departures as the platform's countdown clock, the stop
+ * list on a train with your stop in the express band and the connections there, and the
+ * exit on the street. Each state's one main action sits on the wainscot (travelAction).
+ */
 import {
-  departures,
   ENTER_SECONDS,
+  EXIT_SECONDS,
   type OnPlatform,
   type OnStreet,
   type OnTrain,
   resolve,
+  type SoloView,
   streetPoint,
   type Walking,
   walkSeconds,
 } from "@stand-clear/engine";
-import { cn } from "./cn.ts";
+import { type ReactNode, useState } from "react";
+import { hhmm } from "./ask.ts";
+import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
 import { useGame, type World } from "./game.ts";
-import { RouteBullet } from "./RouteBullet.tsx";
-import { ActionButton, Section, StationName } from "./ui.tsx";
-import { formatClock, formatIn } from "./useGameTime.ts";
+import { displayName } from "./names.ts";
+import { routesFor } from "./routes.ts";
+import { NameTablet } from "./ui/NameTablet.tsx";
+import {
+  Bullets,
+  Button,
+  CountdownBoard,
+  CountdownHeader,
+  CountdownRow,
+  RouteBullet,
+  Rule,
+  TileTimer,
+  WainscotText,
+} from "./ui/vocab.tsx";
 
-/** Fast-forward to the next thing that happens. Score is game time, so it never helps or hurts. */
-function SkipButton({ to, children }: { to: "next" | "end"; children: React.ReactNode }) {
-  const { send, busy } = useGame();
+const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
+/** Where-you-are tablets share one tile size, so a short name makes a short tablet. */
+export const TABLET_TILE = 3.1;
+
+/** Where you are: the station's mosaic name tablet on a tile field, with its bullets. */
+function Where({
+  world,
+  complex,
+  sub,
+  routes,
+}: {
+  world: World;
+  complex: number;
+  sub: ReactNode;
+  routes?: string[];
+}) {
+  const c = world.ds.complexes[complex];
+  if (!c) return null;
   return (
-    <ActionButton quiet disabled={busy} onClick={() => send({ type: "skip", to })}>
-      ⏩ {children}
-    </ActionButton>
-  );
-}
-
-// --- Platform -------------------------------------------------------------------
-
-function PlatformView({ world, state, t }: { world: World; state: OnPlatform; t: number }) {
-  const { send, busy, view } = useGame();
-  const wrongWay = view?.curses.find((c) => c.card === "wrongWay");
-  const tourist = view?.curses.some((c) => c.card === "tourist") ?? false;
-  const st = world.ds.stations[state.station];
-  const complex = st ? world.ds.complexes[st.complex] : undefined;
-  if (!st || !complex) return null;
-  const board = departures(world.idx, state.station, t, { horizon: 30 * 60, limit: 60 });
-  const changeBy = state.since + (world.idx.selfTransfer[state.station] ?? 0);
-  const transfers = world.idx.transfersFrom[state.station] ?? [];
-  // Nearest exit to this platform.
-  let nearestExit = 0;
-  let best = Number.POSITIVE_INFINITY;
-  complex.exits.forEach(([lat, lon], i) => {
-    const d = (lat - st.lat) ** 2 + (lon - st.lon) ** 2;
-    if (d < best) {
-      best = d;
-      nearestExit = i;
-    }
-  });
-
-  const directionList = (dir: Direction, label: string) => {
-    const list = board.filter((d) => d.dir === dir).slice(0, 8);
-    return (
-      <Section title={label}>
-        {list.length === 0 && (
-          <p className="text-sm text-stone-500">No trains in the next 30 min.</p>
-        )}
-        <ul className="space-y-1.5">
-          {list.map((d) => {
-            const tooSoon =
-              state.arrivedDir !== null && state.arrivedDir !== d.dir && d.dep < changeBy;
-            // Curses: Wrong way allows only the other direction; Tourist, nothing yet.
-            const cursedOut = tourist || (wrongWay?.card === "wrongWay" && wrongWay.dir !== d.dir);
-            return (
-              <li key={`${d.trip}-${d.stop}`} className="flex items-center gap-2">
-                <RouteBullet route={d.route} />
-                <div className={cn("min-w-0 flex-1", cursedOut && "line-through opacity-50")}>
-                  <div className="truncate text-sm font-medium">{d.headsign}</div>
-                  <div className="text-xs text-stone-500">
-                    {formatClock(d.dep).slice(0, 5)} · {formatIn(d.dep, t)}
-                    {tooSoon && " · too soon to change platforms"}
-                  </div>
-                </div>
-                <ActionButton
-                  disabled={busy || tooSoon || cursedOut}
-                  onClick={() => send({ type: "board", trip: d.trip, stop: d.stop })}
-                >
-                  Board
-                </ActionButton>
-              </li>
-            );
-          })}
-        </ul>
-      </Section>
-    );
-  };
-
-  return (
-    <>
-      <div className="px-4 pb-3">
-        <div className="text-xs text-stone-500">On the platform at</div>
-        <div className="text-lg font-semibold">
-          <StationName world={world} station={state.station} />
-        </div>
-      </div>
-      {directionList(0, st.northLabel)}
-      {directionList(1, st.southLabel)}
-      {transfers.length > 0 && (
-        <Section title="Transfer on foot">
-          <ul className="space-y-1.5">
-            {transfers.map((x) => (
-              <li key={x.to} className="flex items-center gap-2 text-sm">
-                <div className="flex-1">
-                  <StationName world={world} station={x.to} />
-                </div>
-                <span className="text-xs text-stone-500">{Math.ceil(x.seconds / 60)} min</span>
-                <ActionButton
-                  quiet
-                  disabled={busy}
-                  onClick={() => send({ type: "transfer", to: x.to })}
-                >
-                  Walk
-                </ActionButton>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-      <Section title="Street">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="flex-1">Go up to the street at {complex.name}</span>
-          <span className="text-xs text-stone-500">2 min</span>
-          <ActionButton
-            quiet
-            disabled={busy}
-            onClick={() => send({ type: "exit", exit: nearestExit })}
-          >
-            Exit
-          </ActionButton>
-        </div>
-      </Section>
-    </>
-  );
-}
-
-// --- Train ----------------------------------------------------------------------
-
-function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
-  const { send, busy } = useGame();
-  const trip = world.ds.trips[state.trip];
-  const route = trip && world.ds.routes[trip.route];
-  if (!trip || !route) return null;
-  const waiting = t < (trip.dep[state.from] as number);
-  const last = trip.stops.length - 1;
-  // Index of the next stop the train will reach (or is standing at).
-  let next = state.from + 1;
-  while (next < last && (trip.arr[next] as number) <= t) next++;
-  const prev = next - 1;
-  const dwelling =
-    !waiting &&
-    prev > state.from &&
-    (trip.arr[prev] as number) <= t &&
-    t < (trip.dep[prev] as number);
-  const nameOf = (k: number) => world.ds.stations[trip.stops[k] as number]?.name ?? "";
-  const leavesIn = formatIn(trip.dep[state.from] as number, t);
-  const status = waiting
-    ? leavesIn === "now"
-      ? "leaves now"
-      : `leaves in ${leavesIn}`
-    : dwelling
-      ? `at ${nameOf(prev)} · doors open`
-      : (trip.arr[next] as number) - t < 60
-        ? `arriving at ${nameOf(next)}`
-        : `next: ${nameOf(next)} in ${formatIn(trip.arr[next] as number, t)}`;
-  const dirLabel =
-    trip.dir === 0
-      ? world.ds.stations[trip.stops[state.from] as number]?.northLabel
-      : world.ds.stations[trip.stops[state.from] as number]?.southLabel;
-
-  return (
-    <>
-      <div className="flex items-center gap-3 px-4 pb-3">
-        <RouteBullet route={route} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-lg font-semibold">{trip.headsign}</div>
-          <div className="text-xs text-stone-500">
-            {dirLabel} · {status}
-          </div>
-        </div>
-        {waiting && (
-          <ActionButton quiet disabled={busy} onClick={() => send({ type: "cancelBoard" })}>
-            Cancel
-          </ActionButton>
-        )}
-      </div>
-      <div className="flex gap-2 px-4 pb-3">
-        <SkipButton to="next">{waiting ? "Until it leaves" : "Next stop"}</SkipButton>
-        {(waiting || next < state.to) && <SkipButton to="end">My stop</SkipButton>}
-      </div>
-      <Section title="Stops">
-        <ol className="space-y-1">
-          {trip.stops.map((s, k) => {
-            if (k <= state.from) return null;
-            const arr = trip.arr[k] as number;
-            const leaves = k === last ? Number.POSITIVE_INFINITY : (trip.dep[k] as number);
-            const passed = t >= leaves;
-            const getOff = k === state.to;
-            return (
-              <li
-                // biome-ignore lint/suspicious/noArrayIndexKey: a stop's index is its identity within the trip
-                key={k}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1 text-sm",
-                  passed && "text-stone-400",
-                  getOff && "bg-amber-100",
-                )}
-              >
-                <span className="w-11 text-xs tabular-nums text-stone-500">
-                  {formatClock(arr).slice(0, 5)}
-                </span>
-                <span className="flex-1">
-                  <StationName world={world} station={s} />
-                </span>
-                {getOff ? (
-                  <span className="text-xs font-semibold text-amber-800">Getting off</span>
-                ) : (
-                  !passed && (
-                    <ActionButton
-                      quiet
-                      disabled={busy}
-                      onClick={() => send({ type: "alightAt", stop: k })}
-                    >
-                      Get off
-                    </ActionButton>
-                  )
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </Section>
-    </>
-  );
-}
-
-// --- Walking / street -------------------------------------------------------------
-
-function WalkingView({ world, state, t }: { world: World; state: Walking; t: number }) {
-  const left = Math.max(0, state.end - t);
-  const pct = Math.min(100, ((t - state.start) / Math.max(1, state.end - state.start)) * 100);
-  const dest = state.dest;
-  const what =
-    state.reason === "exit" ? (
-      "Heading up to the street"
-    ) : state.reason === "street" ? (
-      "Walking"
-    ) : dest.kind === "platform" ? (
-      <>
-        Walking to <StationName world={world} station={dest.station} />
-      </>
-    ) : (
-      "Walking"
-    );
-  return (
-    <div className="px-4 pb-4">
-      <div className="text-lg font-semibold">{what}</div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded bg-stone-200">
-        <div className="h-full bg-stone-900" style={{ width: `${pct}%` }} />
-      </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-stone-500">
-        {Math.ceil(left / 60)} game min left
-        <SkipButton to="end">Skip</SkipButton>
+    <div className="sc-tilefield mx-4 mt-3 flex flex-col items-center gap-2 px-2.5 pt-3 pb-2.5 shadow-[inset_0_0_0_1px_var(--color-grout)]">
+      <NameTablet text={displayName(c.name)} tile={TABLET_TILE} maxWidth={320} />
+      <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">
+        {routes && <Bullets routes={routesFor(world, routes)} size={18} />}
+        <span>{sub}</span>
       </div>
     </div>
   );
 }
 
-function StreetPanel({ world, state }: { world: World; state: OnStreet }) {
-  const { send, busy, view, setTab } = useGame();
-  const complex = world.ds.complexes[state.complex];
-  if (!complex) return null;
-  // Going back down means walking to the nearest exit first.
-  const here = streetPoint(state, world.idx);
-  const backMin = Math.ceil(
-    (Math.min(...complex.exits.map(([lat, lon]) => walkSeconds(here, { lat, lon }))) +
-      ENTER_SECONDS) /
-      60,
+function Row({
+  line,
+  onBoard,
+  keys,
+}: {
+  line: CountdownLine;
+  onBoard?: () => void;
+  keys?: string;
+}) {
+  return (
+    <CountdownRow
+      route={line.route}
+      dest={line.dest}
+      time={line.note ? `${hhmm(line.first.dep)} · ${line.note}` : hhmm(line.first.dep)}
+      minutes={line.minutes}
+      then={line.thenMinutes}
+      reason={line.reason}
+      struck={line.struck}
+      onBoard={onBoard}
+      keys={keys}
+    />
   );
+}
+
+// --- Platform -------------------------------------------------------------------------
+
+function PlatformView({
+  world,
+  state,
+  t,
+  view,
+}: {
+  world: World;
+  state: OnPlatform;
+  t: number;
+  view: SoloView;
+}) {
+  const { send, busy } = useGame();
+  const st = world.ds.stations[state.station];
+  if (!st) return null;
+  const groups = platformBoard(world.idx, state, t, view.curses);
+  const transfers = world.idx.transfersFrom[state.station] ?? [];
+  const firstBoardable = groups.flatMap((g) => g.lines).find((l) => !l.reason);
   return (
     <>
-      <div className="px-4 pb-3">
-        <div className="text-xs text-stone-500">On foot near</div>
-        <div className="text-lg font-semibold">{complex.name}</div>
-        <p className="mt-1 text-sm text-stone-600">
-          {view?.hasSpot
-            ? "If the hider's here, they're inside the circle on the map, within ¼ mile of the station. Walk with the arrows or by clicking the map: you'll stop as soon as they're in sight (40 m), and the shading shows where they could still be."
-            : "Look around in Street View; walk with the arrows or by clicking the map."}
-        </p>
-        {view?.hasSpot && (
-          <div className="mt-2">
-            <ActionButton quiet onClick={() => setTab("ask")}>
-              Ask about their exact spot
-            </ActionButton>
-          </div>
-        )}
-      </div>
-      <Section title="Go back down">
-        <ul className="space-y-1.5">
-          {complex.stations.map((s) => (
-            <li key={s} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">
-                <StationName world={world} station={s} />
-              </span>
-              <span className="text-xs text-stone-500">{backMin} min</span>
-              <ActionButton
-                quiet
-                disabled={busy}
-                onClick={() => send({ type: "enter", station: s })}
+      <Where world={world} complex={st.complex} sub="On the platform" routes={st.routes} />
+      {groups.length === 0 ? (
+        <p className="mx-4 mt-3 text-[13px] text-ink-2">No trains in the next 30 min.</p>
+      ) : (
+        <div className="mx-4 mt-2.5">
+          <CountdownBoard label="Departures">
+            {groups.map((g, i) => (
+              <div key={g.dir}>
+                <CountdownHeader note={i === 0 ? "Next two" : undefined}>
+                  {g.dir === 0 ? "↑" : "↓"} {g.label}
+                </CountdownHeader>
+                {g.lines.map((l) => (
+                  <Row
+                    key={`${l.route.id}|${l.dir}`}
+                    line={l}
+                    keys={l === firstBoardable ? "B" : undefined}
+                    onBoard={
+                      busy
+                        ? undefined
+                        : () => send({ type: "board", trip: l.first.trip, stop: l.first.stop })
+                    }
+                  />
+                ))}
+              </div>
+            ))}
+          </CountdownBoard>
+        </div>
+      )}
+      {transfers.length > 0 && (
+        <section className="px-4 pt-4">
+          <Rule>Change on foot</Rule>
+          {transfers.map((x) => {
+            const to = world.ds.stations[x.to];
+            if (!to) return null;
+            return (
+              <div
+                key={x.to}
+                className="flex items-center gap-2.5 border-b border-dashed border-grout py-1.5 text-[13.5px]"
               >
-                Enter
-              </ActionButton>
-            </li>
-          ))}
-        </ul>
-      </Section>
+                <span className="min-w-0 flex-1 font-semibold">{displayName(to.name)}</span>
+                <Bullets routes={routesFor(world, to.routes)} size={18} />
+                <span className="text-[12px] text-ink-2 tabular-nums">
+                  {minutes(x.seconds)} min
+                </span>
+                <Button small disabled={busy} onClick={() => send({ type: "transfer", to: x.to })}>
+                  Walk
+                </Button>
+              </div>
+            );
+          })}
+        </section>
+      )}
+    </>
+  );
+}
+
+/** The exit nearest the platform: where "Up to the street" comes up. */
+function nearestExit(world: World, station: number): number {
+  const st = world.ds.stations[station];
+  const complex = st ? world.ds.complexes[st.complex] : undefined;
+  if (!st || !complex) return 0;
+  let best = 0;
+  let bestD = Number.POSITIVE_INFINITY;
+  complex.exits.forEach(([lat, lon], i) => {
+    const d = (lat - st.lat) ** 2 + (lon - st.lon) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+// --- Train ----------------------------------------------------------------------------
+
+/** The next stop the train will reach, or is standing at. */
+function nextStop(world: World, state: OnTrain, t: number): number {
+  const trip = world.ds.trips[state.trip];
+  if (!trip) return state.to;
+  const last = trip.stops.length - 1;
+  let next = state.from + 1;
+  while (next < last && (trip.arr[next] as number) <= t) next++;
+  return next;
+}
+
+function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
+  const { send, busy } = useGame();
+  const [allStops, setAllStops] = useState(false);
+  const trip = world.ds.trips[state.trip];
+  const route = trip && world.ds.routes[trip.route];
+  if (!trip || !route) return null;
+  const nameOf = (k: number) => displayName(world.ds.stations[trip.stops[k] as number]?.name ?? "");
+  const waiting = t < (trip.dep[state.from] as number);
+  const next = nextStop(world, state, t);
+  const from = world.ds.stations[trip.stops[state.from] as number];
+  const dirLabel = trip.dir === 0 ? from?.northLabel : from?.southLabel;
+  const status = waiting
+    ? `leaves in ${minutes((trip.dep[state.from] as number) - t)} min`
+    : (trip.arr[next] as number) - t < 60
+      ? `arriving at ${nameOf(next)}`
+      : `next: ${nameOf(next)} in ${minutes((trip.arr[next] as number) - t)} min`;
+  const connections = connectionsBoard(world.idx, state);
+  const last = trip.stops.length - 1;
+  // The stops up to yours and three after, so the connections stay in view; the rest fold.
+  const first = waiting ? state.from + 1 : next;
+  const shownTo = Math.min(last, Math.max(state.to === last ? first + 5 : state.to + 3, first + 3));
+  const stops: number[] = [];
+  for (let k = first; k <= (allStops ? last : shownTo); k++) stops.push(k);
+  const folded = last - shownTo;
+  return (
+    <>
+      <div className="flex items-center gap-3 px-4 pt-3.5">
+        <RouteBullet route={route} size={30} />
+        <div className="min-w-0">
+          <b className="block truncate text-[17px] leading-tight font-bold">
+            {displayName(trip.headsign)}
+          </b>
+          <span className="text-[12px] text-ink-2">
+            {dirLabel} · {status}
+          </span>
+        </div>
+      </div>
+      <section className="px-4 pt-3">
+        <Rule>Stops</Rule>
+        {stops.map((k) => {
+          const st = world.ds.stations[trip.stops[k] as number];
+          const time = hhmm(trip.arr[k] as number);
+          if (k === state.to) {
+            // The stop you're getting off at is the one express band.
+            return (
+              <div
+                key={k}
+                className="sc-grid-lines -mx-1.5 my-1.5 flex min-h-9 items-center gap-2.5 bg-ink px-2.5 py-3 text-[13.5px] text-glaze-hi shadow-[0_-4px_0_var(--color-buff-deep),0_4px_0_var(--color-buff-deep)] [--grid:0.12]"
+              >
+                <span className="w-[38px] flex-none text-[12px] text-[#cfc6b4] tabular-nums">
+                  {time}
+                </span>
+                <b className="font-semibold">{nameOf(k)}</b>
+                <span className="ml-auto font-display text-[12px] font-bold tracking-[0.08em] uppercase">
+                  {k === last ? "Last stop" : "Getting off"}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={k}
+              className="flex min-h-9 items-center gap-2.5 border-b border-dashed border-grout py-1.5 text-[13.5px]"
+            >
+              <span className="w-[38px] flex-none text-[12px] text-ink-2 tabular-nums">{time}</span>
+              <b className="min-w-0 truncate font-semibold">{nameOf(k)}</b>
+              <span className="flex-1 [&_.sc-rbs]:flex-nowrap">
+                {st && <Bullets routes={routesFor(world, st.routes)} size={18} />}
+              </span>
+              <Button small disabled={busy} onClick={() => send({ type: "alightAt", stop: k })}>
+                Get off
+              </Button>
+            </div>
+          );
+        })}
+        {folded > 0 && (
+          <button
+            type="button"
+            className="sc-focus w-full py-2 text-left text-[12.5px] text-ink-2 underline decoration-grout underline-offset-2"
+            onClick={() => setAllStops(!allStops)}
+          >
+            {allStops
+              ? "Fewer stops"
+              : `${folded} more ${folded === 1 ? "stop" : "stops"} to ${nameOf(last)}`}
+          </button>
+        )}
+      </section>
+      {connections && connections.lines.length > 0 && (
+        <div className="mx-4 mt-3">
+          <CountdownBoard label={`Connections at ${nameOf(state.to)}`}>
+            <CountdownHeader note={`around ${hhmm(connections.arrival)}`}>
+              Connections at {nameOf(state.to)}
+            </CountdownHeader>
+            {connections.lines.map((l) => (
+              <Row key={`${l.route.id}|${l.dir}|${l.first.stop}`} line={l} />
+            ))}
+          </CountdownBoard>
+        </div>
+      )}
+    </>
+  );
+}
+
+// --- Walking --------------------------------------------------------------------------
+
+/** Stair treads that fill one per 10 game-s while you go up or down (Motion: Up to the street). */
+function Treads({ state, t }: { state: Walking; t: number }) {
+  const total = Math.max(1, Math.round((state.end - state.start) / 10));
+  const done = Math.min(total, Math.floor((t - state.start) / 10));
+  return <TileTimer total={total} left={done} size={11} />;
+}
+
+function WalkingView({ world, state, t }: { world: World; state: Walking; t: number }) {
+  const left = Math.max(0, Math.ceil(state.end - t));
+  const dest = state.dest;
+  const complex = dest.kind === "street" ? dest.complex : world.ds.stations[dest.station]?.complex;
+  const title =
+    state.reason === "exit"
+      ? "Up to the street"
+      : state.reason === "enter"
+        ? "Back down"
+        : state.reason === "street"
+          ? "Walking"
+          : `Walking to ${displayName(dest.kind === "platform" ? (world.ds.stations[dest.station]?.name ?? "") : "")}`;
+  return (
+    <>
+      {complex !== undefined && (
+        <Where
+          world={world}
+          complex={complex}
+          sub={dest.kind === "street" ? `Exit ${dest.exit + 1}` : "Heading in"}
+        />
+      )}
+      <section className="px-4 pt-4">
+        <Rule>{title}</Rule>
+        <div className="flex items-center justify-between gap-2.5 text-[13px]">
+          {state.reason === "street" ? (
+            <span className="text-ink-2">Every step is timed at walking speed.</span>
+          ) : (
+            <Treads state={state} t={t} />
+          )}
+          <span className="text-ink-2 tabular-nums">{left} s</span>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// --- Street ---------------------------------------------------------------------------
+
+/** Back down: the walk to the nearest exit and the 2 minutes in. */
+function backDownMinutes(world: World, state: OnStreet): number {
+  const complex = world.ds.complexes[state.complex];
+  if (!complex) return minutes(ENTER_SECONDS);
+  const here = streetPoint(state, world.idx);
+  const walk = Math.min(...complex.exits.map(([lat, lon]) => walkSeconds(here, { lat, lon })));
+  return minutes(walk + ENTER_SECONDS);
+}
+
+/** The platform to go back down to: the nearest one to where you stand. */
+function nearestStation(world: World, state: OnStreet): number | null {
+  const complex = world.ds.complexes[state.complex];
+  if (!complex) return null;
+  const here = streetPoint(state, world.idx);
+  let best: number | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const s of complex.stations) {
+    const st = world.ds.stations[s];
+    if (!st) continue;
+    const d = (st.lat - here.lat) ** 2 + (st.lon - here.lon) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
+function StreetPanel({ world, state, view }: { world: World; state: OnStreet; view: SoloView }) {
+  const { send, busy } = useGame();
+  const complex = world.ds.complexes[state.complex];
+  if (!complex) return null;
+  const others = complex.stations.length > 1 ? complex.stations : [];
+  return (
+    <>
+      <Where world={world} complex={state.complex} sub={`On the street · Exit ${state.exit + 1}`} />
+      <p className="px-4 pt-3 text-[13px] leading-[1.45] text-ink-2">
+        {view.hasSpot
+          ? "Pick a direction on Street View, or click the map, to walk. Every step is timed at walking speed. The hider appears once you pass within 40 m, and you catch them within 25 m."
+          : "Look around in Street View. Walk with the direction tiles or by clicking the map."}
+      </p>
+      {others.length > 0 && (
+        <section className="px-4 pt-4">
+          <Rule>Back down to</Rule>
+          {others.map((s) => {
+            const st = world.ds.stations[s];
+            if (!st) return null;
+            return (
+              <div
+                key={s}
+                className="flex items-center gap-2.5 border-b border-dashed border-grout py-1.5 text-[13.5px]"
+              >
+                <span className="flex-1">
+                  <Bullets routes={routesFor(world, st.routes)} size={18} />
+                </span>
+                <span className="text-[12px] text-ink-2 tabular-nums">
+                  {backDownMinutes(world, state)} min
+                </span>
+                <Button small disabled={busy} onClick={() => send({ type: "enter", station: s })}>
+                  Enter
+                </Button>
+              </div>
+            );
+          })}
+        </section>
+      )}
     </>
   );
 }
@@ -325,12 +421,98 @@ export function TravelPanel({ world, t }: { world: World; t: number }) {
   const s = resolve(view.seeker, t, world.idx);
   switch (s.kind) {
     case "platform":
-      return <PlatformView world={world} state={s} t={t} />;
+      return <PlatformView world={world} state={s} t={t} view={view} />;
     case "train":
       return <TrainView world={world} state={s} t={t} />;
     case "walking":
       return <WalkingView world={world} state={s} t={t} />;
     case "street":
-      return <StreetPanel world={world} state={s} />;
+      return <StreetPanel world={world} state={s} view={view} />;
+  }
+}
+
+/**
+ * The one main action for where you are, for the wainscot: Up to the street, Get off at
+ * the next stop (or Stay on past it), Back down. Back down is white, because staying up
+ * is usually the point.
+ */
+export function TravelAction({ world, t }: { world: World; t: number }) {
+  const { view, send, busy } = useGame();
+  if (!view) return null;
+  const s = resolve(view.seeker, t, world.idx);
+  switch (s.kind) {
+    case "platform":
+      return (
+        <>
+          <Button
+            kind="ink"
+            disabled={busy}
+            onClick={() => send({ type: "exit", exit: nearestExit(world, s.station) })}
+          >
+            Up to the street
+          </Button>
+          <WainscotText>{minutes(EXIT_SECONDS)} min</WainscotText>
+        </>
+      );
+    case "train": {
+      const trip = world.ds.trips[s.trip];
+      if (!trip) return null;
+      const nameOf = (k: number) =>
+        displayName(world.ds.stations[trip.stops[k] as number]?.name ?? "");
+      const last = trip.stops.length - 1;
+      if (t < (trip.dep[s.from] as number)) {
+        return (
+          <>
+            <Button disabled={busy} onClick={() => send({ type: "cancelBoard" })}>
+              Get off
+            </Button>
+            <WainscotText>
+              It leaves in {minutes((trip.dep[s.from] as number) - t)} min
+            </WainscotText>
+          </>
+        );
+      }
+      const next = nextStop(world, s, t);
+      if (s.to === next && next < last) {
+        return (
+          <Button disabled={busy} onClick={() => send({ type: "alightAt", stop: last })}>
+            Stay on past {nameOf(next)}
+          </Button>
+        );
+      }
+      if (s.to === next) return <WainscotText>Last stop: {nameOf(next)}</WainscotText>;
+      return (
+        <Button kind="ink" disabled={busy} onClick={() => send({ type: "alightAt", stop: next })}>
+          Get off at {nameOf(next)}
+        </Button>
+      );
+    }
+    case "walking":
+      return (
+        <WainscotText>
+          {s.reason === "exit"
+            ? "Going up"
+            : s.reason === "enter"
+              ? "Going down"
+              : s.reason === "street"
+                ? "Walking"
+                : "Changing on foot"}{" "}
+          · {Math.max(0, Math.ceil(s.end - t))} s
+        </WainscotText>
+      );
+    case "street": {
+      const station = nearestStation(world, s);
+      return (
+        <>
+          <Button
+            disabled={busy || station === null}
+            onClick={() => station !== null && send({ type: "enter", station })}
+          >
+            Back down
+          </Button>
+          <WainscotText>{backDownMinutes(world, s)} min</WainscotText>
+        </>
+      );
+    }
   }
 }

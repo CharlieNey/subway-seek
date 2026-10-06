@@ -6,7 +6,8 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const LOG_DIR = fileURLToPath(new URL("../logs/", import.meta.url));
+// MATCH_LOG_DIR keeps test rounds (headless checks) out of the playtest logs.
+const LOG_DIR = process.env.MATCH_LOG_DIR ?? fileURLToPath(new URL("../logs/", import.meta.url));
 
 export class MatchLog {
   readonly id =

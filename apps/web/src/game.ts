@@ -22,15 +22,17 @@ import {
   type ClientIntent,
   type ClockSync,
   Geometry,
+  type Question,
   SESSION_PARAM,
   type ServerMessage,
   type SoloView,
   syncedGameTime,
+  TENTACLE_MILES,
   type TimetableIndex,
 } from "@stand-clear/engine";
 import { create } from "zustand";
+import { keepArmed } from "./ask.ts";
 import { ATTEMPT_TIMEOUT_MS, attemptFailed, type Link, startAttempt } from "./connection.ts";
-import { cardNotice } from "./HiderCards.tsx";
 import { type DailyResult, loadResults, saveResult } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
@@ -77,23 +79,25 @@ interface GameStore {
   /** This daily was already finished in this browser: playing it again doesn't count. */
   alreadyPlayed: boolean;
   results: Record<string, DailyResult>;
-  /** Last rejection, shown as a toast. */
+  /** A refused action, in the notice row until dismissed. */
   notice: string | null;
-  /** The last card the hider played, as a notice. */
-  cardNotice: string | null;
   /** An intent is in flight (disable buttons until the server answers). */
   busy: boolean;
   follow: boolean;
-  /** Landmarks to show on the map while choosing a question about them. */
+  /** The question armed for asking: the wainscot confirms it (DESIGN.md, Interaction). */
+  armed: Question | null;
+  /** The question under the pointer: previewed without arming. */
+  hovered: Question | null;
+  /** Landmarks to show on the map for the hovered or armed question. */
   preview: LandmarkPreview | null;
   /** Why the base map didn't load, while it hasn't. */
   mapFailed: string | null;
   send: (intent: ClientIntent) => void;
   dismissNotice: () => void;
-  dismissCardNotice: () => void;
   setFollow: (follow: boolean) => void;
   setTab: (tab: "travel" | "ask") => void;
-  setPreview: (preview: LandmarkPreview | null) => void;
+  arm: (q: Question | null) => void;
+  hover: (q: Question | null) => void;
   /** Try the server now instead of waiting for the next try. */
   retryNow: () => void;
   /** Take the round back from another tab. */
@@ -106,6 +110,21 @@ interface GameStore {
 export interface LandmarkPreview {
   kind: LandmarkKind;
   rangeMiles?: number;
+}
+
+/** The landmarks a question is about, to pin while it's hovered or armed. */
+function previewFor(q: Question | null): LandmarkPreview | null {
+  if (!q) return null;
+  if (q.kind === "matching" || q.kind === "measuring") return { kind: q.landmark };
+  if (q.kind === "tentacles") return { kind: q.landmark, rangeMiles: TENTACLE_MILES[q.landmark] };
+  return null;
+}
+
+/** A new view keeps the armed question unless it was just asked or closed (ask.ts). */
+function armedFor(view: SoloView, fresh: boolean): Partial<GameStore> {
+  const { armed, hovered, view: prev } = useGame.getState();
+  const next = fresh ? null : keepArmed(armed, prev, view);
+  return next === armed ? {} : { armed: next, preview: previewFor(hovered ?? next) };
 }
 
 let socket: WebSocket | null = null;
@@ -129,9 +148,10 @@ export const useGame = create<GameStore>((set) => ({
   alreadyPlayed: false,
   results: loadResults(),
   notice: null,
-  cardNotice: null,
   busy: false,
   follow: true,
+  armed: null,
+  hovered: null,
   preview: null,
   mapFailed: null,
   send: (intent) => {
@@ -144,10 +164,10 @@ export const useGame = create<GameStore>((set) => ({
     set({ busy: true, notice: null });
   },
   dismissNotice: () => set({ notice: null }),
-  dismissCardNotice: () => set({ cardNotice: null }),
   setFollow: (follow) => set({ follow }),
   setTab: (tab) => set({ tab }),
-  setPreview: (preview) => set({ preview }),
+  arm: (armed) => set((s) => ({ armed, preview: previewFor(s.hovered ?? armed) })),
+  hover: (hovered) => set((s) => ({ hovered, preview: previewFor(hovered ?? s.armed) })),
   retryNow: () => {
     const { link } = useGame.getState();
     if (link.kind === "connecting" || link.kind === "waiting") connect();
@@ -217,14 +237,6 @@ function onView(view: SoloView): Partial<GameStore> {
   return { results: loadResults() };
 }
 
-/** A notice when the hider plays a card (and none when a new round starts). */
-function cardNoticeFor(view: SoloView, fresh: boolean): Partial<GameStore> {
-  const before = useGame.getState().view?.cardEvents.length ?? 0;
-  if (fresh) return { cardNotice: null };
-  const last = view.cardEvents.at(-1);
-  return last && view.cardEvents.length > before ? { cardNotice: cardNotice(last) } : {};
-}
-
 /** The server has answered intents up to `upTo`. */
 function settled(upTo: number): Partial<GameStore> {
   pending = pending.filter((p) => p.seq > upTo);
@@ -254,11 +266,12 @@ function handle(msg: ServerMessage) {
         status: "ready",
         link: { kind: "open" },
         everOpen: true,
+        ...armedFor(msg.view, fresh),
         sync: msg.clock,
         view: msg.view,
         busy: pending.length > 0,
         ...(lost ? { notice: "Your last round wasn't kept, so this one starts fresh." } : {}),
-        ...(fresh ? { follow: true, tab: "travel" as const, cardNotice: null } : {}),
+        ...(fresh ? { follow: true, tab: "travel" as const } : {}),
         ...onView(msg.view),
       });
       break;
@@ -269,10 +282,10 @@ function handle(msg: ServerMessage) {
       awaitingNewRound = false;
       if (fresh) useReplay.getState().close();
       useGame.setState({
+        ...armedFor(msg.view, fresh),
         sync: msg.clock,
         view: msg.view,
         ...settled(msg.seq),
-        ...cardNoticeFor(msg.view, fresh),
         ...onView(msg.view),
         ...(fresh ? { follow: true, tab: "travel" as const } : {}),
       });
@@ -280,11 +293,11 @@ function handle(msg: ServerMessage) {
     }
     case "rejected":
       useGame.setState({
+        ...armedFor(msg.view, false),
         sync: msg.clock,
         view: msg.view,
         ...settled(msg.seq),
         notice: msg.error,
-        ...cardNoticeFor(msg.view, false),
         ...onView(msg.view),
       });
       break;

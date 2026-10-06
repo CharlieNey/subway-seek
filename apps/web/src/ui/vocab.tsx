@@ -299,6 +299,7 @@ export function Chip({
     <button
       type="button"
       className={cn("sc-chip sc-focus", pict && "lm")}
+      data-chip=""
       data-state={state}
       data-hover={hover || undefined}
       aria-pressed={state === "armed"}
@@ -725,6 +726,7 @@ export function PhotoPlaque({
   onZoom,
   failed,
   onRetry,
+  onError,
   small,
 }: {
   /** Null: the empty frame (waiting, or vetoed). */
@@ -734,6 +736,8 @@ export function PhotoPlaque({
   onZoom?: () => void;
   failed?: boolean;
   onRetry?: () => void;
+  /** The image didn't load: the caller shows the failed frame. */
+  onError?: () => void;
   small?: boolean;
 }) {
   return (
@@ -748,7 +752,7 @@ export function PhotoPlaque({
           )}
         </div>
       ) : src ? (
-        <img src={src} alt={`${from}, facing ${facing}`} />
+        <img src={src} alt={`${from}, facing ${facing}`} onError={onError} />
       ) : (
         <div className="sc-plq-empty" />
       )}
