@@ -7,7 +7,7 @@
 import type { Layer } from "@deck.gl/core";
 import { PathStyleExtension, type PathStyleExtensionProps } from "@deck.gl/extensions";
 import { PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
-import type { LonLat, SoloView } from "@stand-clear/engine";
+import { type LonLat, offsetMeters, type SoloView } from "@stand-clear/engine";
 import type { World } from "../game.ts";
 
 export type RGBA = [number, number, number, number];
@@ -61,12 +61,12 @@ export interface RoundData {
   thermometer: LonLat | null;
 }
 
+/** A ring of `meters` around (lat, lon), measured as the engine measures. */
 export function circle(lat: number, lon: number, meters: number): [number, number][] {
-  const dLat = meters / 110_540;
-  const dLon = meters / (111_320 * Math.cos((lat * Math.PI) / 180));
   return Array.from({ length: 65 }, (_, i) => {
     const a = (i / 64) * 2 * Math.PI;
-    return [lon + dLon * Math.cos(a), lat + dLat * Math.sin(a)];
+    const p = offsetMeters({ lat, lon }, meters * Math.cos(a), meters * Math.sin(a));
+    return [p.lon, p.lat];
   });
 }
 

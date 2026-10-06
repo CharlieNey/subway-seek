@@ -2,6 +2,7 @@ import {
   type LonLat,
   milesToMeters,
   nearestLandmark,
+  offsetMeters,
   questionOrigin,
   ZONE_RADIUS_M,
 } from "@stand-clear/engine";
@@ -170,9 +171,9 @@ export function MapView() {
           if (search && search.complex !== framed) {
             const c = world.ds.complexes[search.complex];
             if (c) {
-              const dLat = ZONE_RADIUS_M / 110_540;
-              const dLon = ZONE_RADIUS_M / (111_320 * Math.cos((c.lat * Math.PI) / 180));
-              base.fitBounds([c.lon - dLon, c.lat - dLat], [c.lon + dLon, c.lat + dLat]);
+              const sw = offsetMeters(c, -ZONE_RADIUS_M, -ZONE_RADIUS_M);
+              const ne = offsetMeters(c, ZONE_RADIUS_M, ZONE_RADIUS_M);
+              base.fitBounds([sw.lon, sw.lat], [ne.lon, ne.lat]);
             }
           }
           framed = search?.complex ?? null;

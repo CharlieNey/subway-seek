@@ -44,17 +44,20 @@ export function ActionButton({
   onClick,
   disabled,
   quiet,
+  title,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   quiet?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={cn(
         "shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         quiet

@@ -15,11 +15,9 @@ export function cardNotice(e: CardEvent): string {
   const card = CARDS[e.card];
   switch (e.card) {
     case "veto":
-      return "The hider played Veto: no answer to that one. It still cost you the question.";
+      return "The hider played Veto: no answer, and that question is closed for the round. It still cost you the question.";
     case "randomize":
       return "The hider played Randomize: your question was swapped for another of the same type.";
-    case "redraw":
-      return "The hider swapped two cards for three.";
     default:
       return `The hider played ${card.title}! ${card.toSeeker ?? card.rule}`;
   }
@@ -44,16 +42,15 @@ function curseNow(c: ActiveCurse, t: number, ds: Dataset, view: SoloView): strin
   }
 }
 
-/** Under the round bar: the hider's hand size and any curse on you. */
+/**
+ * Under the round bar: any curse on you. How many cards the hider holds stays secret
+ * (DESIGN.md, Hidden information), like the cards themselves.
+ */
 export function HiderStrip({ world, t }: { world: World; t: number }) {
   const view = useGame((s) => s.view);
-  if (!view || view.result) return null;
+  if (!view || view.result || view.curses.length === 0) return null;
   return (
     <div className="mx-4 mb-3 -mt-1 space-y-1">
-      <div className="text-xs text-stone-500">
-        The hider holds {view.hiderHandSize} {view.hiderHandSize === 1 ? "card" : "cards"}
-        {view.cardEvents.length > 0 && ` · played ${view.cardEvents.length}`}
-      </div>
       {view.curses.map((c) => (
         <div
           key={`${c.card}-${c.at}`}

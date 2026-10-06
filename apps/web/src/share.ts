@@ -30,7 +30,8 @@ export function shareText(view: SoloView, startName?: string): string {
   if (!view.result) return "";
   const elapsed = view.result.at - view.seekStart;
   const n = view.asked.length;
-  const title = `${view.daily ? `Stand Clear #${view.daily.number}` : "Stand Clear (practice)"}${startName ? ` · from ${startName}` : ""}`;
+  const practice = view.difficulty === "normal" ? "practice" : `practice · ${view.difficulty}`;
+  const title = `${view.daily ? `Stand Clear #${view.daily.number}` : `Stand Clear (${practice})`}${startName ? ` · from ${startName}` : ""}`;
   const qs = `${n} ${n === 1 ? "question" : "questions"}`;
   const line =
     view.result.kind === "found"

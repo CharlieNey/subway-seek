@@ -4,6 +4,7 @@ import { shareText } from "./share.ts";
 
 const view = (over: Partial<SoloView>): SoloView => ({
   mode: "daily",
+  difficulty: "normal",
   daily: { date: "2026-10-05", number: 1 },
   hub: 0,
   hideStart: 36_000,
@@ -23,7 +24,6 @@ const view = (over: Partial<SoloView>): SoloView => ({
   spotNearby: null,
   footThermometer: null,
   footpath: [],
-  hiderHandSize: 0,
   hiderHand: null,
   curses: [],
   cardEvents: [],
@@ -34,6 +34,7 @@ const asked = (kind: "radar" | "borough") => ({
   ctx: { origin: { lat: 0, lon: 0, complex: 0 }, baseline: null },
   answer: false,
   at: 0,
+  answerAt: 60,
   remaining: 1,
 });
 

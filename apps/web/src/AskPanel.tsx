@@ -2,6 +2,7 @@ import type { LandmarkKind, Route } from "@stand-clear/data";
 import {
   type AskContext,
   askReadyAt,
+  closedQuestions,
   describeAnswer,
   describeQuestion,
   LANDMARK_KINDS,
@@ -15,6 +16,7 @@ import {
   type Question,
   type QuestionCategory,
   questionError,
+  questionKey,
   questionOrigin,
   RADAR_MILES,
   resolve,
@@ -30,7 +32,7 @@ import { RouteBullet } from "./RouteBullet.tsx";
 import { searchScene } from "./searchArea.ts";
 import { onStreet, photoUrl } from "./street.ts";
 import { ActionButton, Section } from "./ui.tsx";
-import { formatClock } from "./useGameTime.ts";
+import { formatClock, useGameTime } from "./useGameTime.ts";
 
 const radarLabel = (m: number) => (m === 0.25 ? "¼ mi" : m === 0.5 ? "½ mi" : `${m} mi`);
 const LOOK_LABEL: Record<PhotoLook, string> = {
@@ -100,6 +102,41 @@ function Category({
   );
 }
 
+/** What a vetoed question's chip says: it stays in place, but can't be asked again. */
+const CLOSED = "Vetoed · closed this round";
+
+/** Whether the hider has vetoed this question (DESIGN.md, "Veto closes the question"). */
+function useClosed(question: Question): boolean {
+  const view = useGame((s) => s.view);
+  return view ? closedQuestions(view.asked).has(questionKey(question)) : false;
+}
+
+/** A question button. A vetoed one is struck through and can't be chosen. */
+function AskChip({
+  question,
+  disabled,
+  quiet = true,
+  children,
+}: {
+  question: Question;
+  disabled: boolean;
+  quiet?: boolean;
+  children: ReactNode;
+}) {
+  const send = useGame((s) => s.send);
+  const closed = useClosed(question);
+  return (
+    <ActionButton
+      quiet={quiet}
+      disabled={disabled || closed}
+      title={closed ? CLOSED : undefined}
+      onClick={() => send({ type: "ask", question })}
+    >
+      {closed ? <s>{children}</s> : children}
+    </ActionButton>
+  );
+}
+
 /** A question button about landmarks: hovering pins them on the map. */
 function LandmarkChip({
   question,
@@ -115,11 +152,12 @@ function LandmarkChip({
   title: string;
 }) {
   const { send, setPreview } = useGame();
+  const closed = useClosed(question);
   return (
     <button
       type="button"
-      title={title}
-      disabled={disabled}
+      title={closed ? CLOSED : title}
+      disabled={disabled || closed}
       onMouseEnter={() => setPreview(preview)}
       onMouseLeave={() => setPreview(null)}
       onFocus={() => setPreview(preview)}
@@ -127,7 +165,25 @@ function LandmarkChip({
       onClick={() => send({ type: "ask", question })}
       className="shrink-0 rounded-md border border-stone-300 px-2.5 py-1 text-xs font-semibold text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
     >
-      {children}
+      {closed ? <s>{children}</s> : children}
+    </button>
+  );
+}
+
+/** "Does the ___ stop there?" as the line's bullet. */
+function RouteChip({ route, disabled, ds }: { route: Route; disabled: boolean; ds: World["ds"] }) {
+  const send = useGame((s) => s.send);
+  const question: Question = { kind: "route", letter: route.letter };
+  const closed = useClosed(question);
+  return (
+    <button
+      type="button"
+      disabled={disabled || closed}
+      title={closed ? CLOSED : describeQuestion(question, ds)}
+      onClick={() => send({ type: "ask", question })}
+      className="rounded-full p-0.5 hover:ring-2 hover:ring-stone-300 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <RouteBullet route={route} size="sm" />
     </button>
   );
 }
@@ -142,7 +198,6 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
   const ctx: AskContext = { origin, baseline: null };
   const blocked = (category: QuestionCategory) =>
     busy || over || t < askReadyAt(view.asked, category);
-  const ask = (question: Question) => send({ type: "ask", question });
   const thermoError = questionError(
     ds,
     { kind: "thermometer" },
@@ -199,14 +254,13 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
           <div className="mb-1 text-xs text-stone-500">Is your spot within … of me?</div>
           <div className="flex flex-wrap gap-1.5">
             {SPOT_RADAR_METERS.map((meters) => (
-              <ActionButton
+              <AskChip
                 key={meters}
-                quiet
+                question={{ kind: "spotRadar", meters }}
                 disabled={blocked("onFoot") || !standing}
-                onClick={() => ask({ kind: "spotRadar", meters })}
               >
                 {meters} m
-              </ActionButton>
+              </AskChip>
             ))}
           </div>
           <div className="mt-2.5 mb-1 text-xs text-stone-500">
@@ -223,12 +277,13 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
             >
               {view.footThermometer ? "Restart here" : "Start here (free)"}
             </ActionButton>
-            <ActionButton
+            <AskChip
+              quiet={false}
+              question={{ kind: "spotThermometer" }}
               disabled={blocked("onFoot") || !standing || footThermoError !== null}
-              onClick={() => ask({ kind: "spotThermometer" })}
             >
               Am I closer?
-            </ActionButton>
+            </AskChip>
           </div>
         </Category>
       )}
@@ -253,32 +308,15 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
         </div>
         <div className="mt-2.5 mb-1 text-xs text-stone-500">Your station</div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <ActionButton
-            quiet
-            disabled={blocked("matching")}
-            onClick={() => ask({ kind: "borough" })}
-          >
+          <AskChip question={{ kind: "borough" }} disabled={blocked("matching")}>
             Same borough?
-          </ActionButton>
-          <ActionButton
-            quiet
-            disabled={blocked("matching")}
-            onClick={() => ask({ kind: "express" })}
-          >
+          </AskChip>
+          <AskChip question={{ kind: "express" }} disabled={blocked("matching")}>
             {ds.complexes[origin.complex]?.express ? "Express stop too?" : "Local-only too?"}
-          </ActionButton>
+          </AskChip>
           <span className="ml-1 text-xs text-stone-500">Stops there:</span>
           {linesHere(world, origin.complex).map((r) => (
-            <button
-              key={r.letter}
-              type="button"
-              disabled={blocked("matching")}
-              title={describeQuestion({ kind: "route", letter: r.letter }, ds)}
-              onClick={() => ask({ kind: "route", letter: r.letter })}
-              className="rounded-full p-0.5 hover:ring-2 hover:ring-stone-300 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <RouteBullet route={r} size="sm" />
-            </button>
+            <RouteChip key={r.letter} route={r} disabled={blocked("matching")} ds={ds} />
           ))}
         </div>
         <p className="mt-1.5 text-[11px] text-stone-400">
@@ -303,27 +341,18 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
               </LandmarkChip>
             );
           })}
-          <ActionButton
-            quiet
-            disabled={blocked("measuring")}
-            onClick={() => ask({ kind: "moreRoutes" })}
-          >
+          <AskChip question={{ kind: "moreRoutes" }} disabled={blocked("measuring")}>
             More lines than mine?
-          </ActionButton>
+          </AskChip>
         </div>
       </Category>
 
       <Category category="radar" t={t}>
         <div className="flex flex-wrap gap-1.5">
           {RADAR_MILES.map((miles) => (
-            <ActionButton
-              key={miles}
-              quiet
-              disabled={blocked("radar")}
-              onClick={() => ask({ kind: "radar", miles })}
-            >
+            <AskChip key={miles} question={{ kind: "radar", miles }} disabled={blocked("radar")}>
               {radarLabel(miles)}
-            </ActionButton>
+            </AskChip>
           ))}
         </div>
       </Category>
@@ -342,12 +371,13 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
           >
             {view.thermometer ? "Restart here" : "Start here (free)"}
           </ActionButton>
-          <ActionButton
+          <AskChip
+            quiet={false}
+            question={{ kind: "thermometer" }}
             disabled={blocked("thermometer") || thermoError !== null}
-            onClick={() => ask({ kind: "thermometer" })}
           >
             Am I closer?
-          </ActionButton>
+          </AskChip>
         </div>
       </Category>
 
@@ -387,14 +417,13 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
             <div className="mb-1 text-xs text-stone-500">From their station's exit</div>
             <div className="flex flex-wrap gap-1.5">
               {PHOTO_LOOKS.map((look) => (
-                <ActionButton
+                <AskChip
                   key={look}
-                  quiet
+                  question={{ kind: "photo", from: "exit", look }}
                   disabled={blocked("photo")}
-                  onClick={() => ask({ kind: "photo", from: "exit", look })}
                 >
                   {LOOK_LABEL[look]}
-                </ActionButton>
+                </AskChip>
               ))}
             </div>
           </div>
@@ -406,14 +435,13 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {PHOTO_LOOKS.map((look) => (
-                  <ActionButton
+                  <AskChip
                     key={look}
-                    quiet
+                    question={{ kind: "photo", from: "spot", look }}
                     disabled={blocked("photo") || t < spotOpensAt}
-                    onClick={() => ask({ kind: "photo", from: "spot", look })}
                   >
                     {LOOK_LABEL[look]}
-                  </ActionButton>
+                  </AskChip>
                 ))}
               </div>
             </div>
@@ -429,18 +457,26 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
 
 export function QuestionLog({ world }: { world: World }) {
   const view = useGame((s) => s.view);
+  const speed = useGame((s) => s.sync?.speed ?? 1);
+  const t = useGameTime(4) ?? 0;
   const [enlarged, setEnlarged] = useState<string | null>(null);
   if (!view || view.asked.length === 0) return null;
   return (
     <Section title={`Asked (${view.asked.length})`}>
       <ol className="space-y-2.5">
         {[...view.asked].reverse().map((a) => {
+          const answer = a.answer;
           const positive =
-            a.answer === true ||
-            a.answer === "hotter" ||
-            (typeof a.answer === "object" && "landmark" in a.answer && a.answer.landmark !== null);
+            answer === true ||
+            answer === "hotter" ||
+            (typeof answer === "object" &&
+              answer !== null &&
+              "landmark" in answer &&
+              answer.landmark !== null);
           const photo =
-            typeof a.answer === "object" && "photo" in a.answer ? photoUrl(a.answer.photo) : null;
+            typeof answer === "object" && answer !== null && "photo" in answer
+              ? photoUrl(answer.photo)
+              : null;
           return (
             <li key={a.at} className="text-sm">
               <div className="flex items-start gap-2">
@@ -451,7 +487,10 @@ export function QuestionLog({ world }: { world: World }) {
                     positive ? "bg-amber-100 text-amber-900" : "bg-stone-100 text-stone-700",
                   )}
                 >
-                  {describeAnswer(a.answer, a.q, world.ds)}
+                  {answer === null
+                    ? // The answer window (real seconds, as the clock runs).
+                      `Answer in ${Math.max(1, Math.ceil((a.answerAt - t) / speed))} s`
+                    : describeAnswer(answer, a.q, world.ds)}
                 </span>
               </div>
               {photo && (
@@ -475,8 +514,9 @@ export function QuestionLog({ world }: { world: World }) {
               )}
               <div className="text-xs text-stone-500">
                 {formatClock(a.at).slice(0, 5)} from{" "}
-                {world.ds.complexes[a.ctx.origin.complex]?.name} · {a.remaining}{" "}
-                {a.remaining === 1 ? "station" : "stations"} left
+                {world.ds.complexes[a.ctx.origin.complex]?.name}
+                {a.remaining !== null &&
+                  ` · ${a.remaining} ${a.remaining === 1 ? "station" : "stations"} left`}
               </div>
             </li>
           );

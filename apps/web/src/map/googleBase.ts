@@ -16,6 +16,7 @@ import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import type { LonLat } from "@stand-clear/engine";
 import type { BaseMap } from "./baseMap.ts";
 import { loadGoogleMaps } from "./loadGoogle.ts";
+import { zoomHold } from "./zoomHold.ts";
 
 /** Quiet base map: no POIs or transit icons, muted colors, so the game's layers read. */
 const STYLES: google.maps.MapTypeStyle[] = [
@@ -41,6 +42,7 @@ export function createGoogleBase(
     if (map) fn(map);
     else pending.push(() => map && fn(map));
   };
+  const zoom = zoomHold(container);
 
   const ready = loadGoogleMaps()
     .then(() => google.maps.importLibrary("maps"))
@@ -56,6 +58,7 @@ export function createGoogleBase(
         gestureHandling: "greedy",
       });
       overlay.setMap(map);
+      listeners.push(map.addListener("idle", zoom.release));
       if (import.meta.env.DEV) {
         const w = window as unknown as Record<string, unknown>;
         w.__gmap = map;
@@ -70,7 +73,10 @@ export function createGoogleBase(
   return {
     ready,
     setLayers: (layers: Layer[]) => overlay.setProps({ layers }),
-    setCenter: (p) => whenMap((m) => m.setCenter({ lat: p[1], lng: p[0] })),
+    setCenter: (p) =>
+      whenMap((m) => {
+        if (!zoom.held()) m.setCenter({ lat: p[1], lng: p[0] });
+      }),
     flyTo: (p, zoom) =>
       whenMap((m) => {
         m.setZoom(zoom);
@@ -91,6 +97,7 @@ export function createGoogleBase(
     remove: () => {
       removed = true;
       for (const l of listeners) l.remove();
+      zoom.remove();
       overlay.finalize();
       container.replaceChildren();
     },

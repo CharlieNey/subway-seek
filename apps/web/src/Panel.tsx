@@ -1,4 +1,4 @@
-import { questionBonusSeconds } from "@stand-clear/engine";
+import { DIFFICULTIES, type Difficulty, questionBonusSeconds } from "@stand-clear/engine";
 import { useState } from "react";
 import { AskPanel, QuestionLog } from "./AskPanel.tsx";
 import { cn } from "./cn.ts";
@@ -70,14 +70,63 @@ function RoundBar({ t }: { t: number }) {
   );
 }
 
-/** Start a daily or practice round; confirms before abandoning one in progress. */
+/**
+ * Start a daily or practice round; confirms before abandoning one in progress. Practice
+ * takes a difficulty (the band of stations the bot hides in, and how hard it plays its
+ * cards; DESIGN.md "Bot hider difficulty"); the daily is always Normal.
+ */
 function useNewRound() {
   const { view, send } = useGame();
-  return (mode: "daily" | "practice") => {
+  return (mode: "daily" | "practice", difficulty?: Difficulty) => {
     const inProgress = view && !view.result && view.asked.length > 0;
     if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
-    send({ type: "newRound", mode });
+    send(mode === "practice" ? { type: "newRound", mode, difficulty } : { type: "newRound", mode });
   };
+}
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: "Easy",
+  normal: "Normal",
+  hard: "Hard",
+};
+const DIFFICULTY_HINT: Record<Difficulty, string> = {
+  easy: "A station 3–4 good questions find, and the hider plays no curses.",
+  normal: "5–6 questions, like the daily. Curses once you're closing in.",
+  hard: "7–8 questions, often a station with a look-alike. Curses from the first ride.",
+};
+
+/** Easy · Normal · Hard for the next practice round. */
+function DifficultyPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Difficulty;
+  onChange: (d: Difficulty) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="text-xs text-stone-600">
+      <div className="inline-flex overflow-hidden rounded-md border border-stone-300">
+        {DIFFICULTIES.map((d) => (
+          <button
+            key={d}
+            type="button"
+            disabled={disabled}
+            aria-pressed={d === value}
+            onClick={() => onChange(d)}
+            className={cn(
+              "px-2.5 py-1 font-semibold transition-colors disabled:opacity-40",
+              d === value ? "bg-stone-900 text-white" : "text-stone-700 hover:bg-stone-100",
+            )}
+          >
+            {DIFFICULTY_LABEL[d]}
+          </button>
+        ))}
+      </div>
+      <div className="mt-1 text-[11px] text-stone-500">{DIFFICULTY_HINT[value]}</div>
+    </div>
+  );
 }
 
 function ShareButton() {
@@ -107,6 +156,7 @@ function ShareButton() {
 function ResultCard({ world }: { world: World }) {
   const { view, busy, results, alreadyPlayed } = useGame();
   const newRound = useNewRound();
+  const [difficulty, setDifficulty] = useState<Difficulty>(view?.difficulty ?? "normal");
   if (!view?.result || view.hider === null) return null;
   const hider = world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
@@ -153,7 +203,7 @@ function ResultCard({ world }: { world: World }) {
           </ActionButton>
         )}
         <ShareButton />
-        <ActionButton quiet disabled={busy} onClick={() => newRound("practice")}>
+        <ActionButton quiet disabled={busy} onClick={() => newRound("practice", difficulty)}>
           {view.daily ? "Practice round" : "Play again"}
         </ActionButton>
         {!view.daily && (
@@ -161,6 +211,9 @@ function ResultCard({ world }: { world: World }) {
             Today's daily
           </ActionButton>
         )}
+      </div>
+      <div className="mt-2">
+        <DifficultyPicker value={difficulty} onChange={setDifficulty} disabled={busy} />
       </div>
     </div>
   );
@@ -201,7 +254,7 @@ function ModeLine() {
       <div>
         {view.daily
           ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
-          : "Practice round"}
+          : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`}
       </div>
       <div className="flex flex-wrap items-center gap-x-1.5">
         {startName && <span>from {startName}</span>}

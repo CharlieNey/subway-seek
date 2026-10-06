@@ -5,7 +5,7 @@
  * time too, so the whole city rewinds.
  */
 import type { LonLat, SoloView } from "@stand-clear/engine";
-import { describeAnswer, sampleTrail } from "@stand-clear/engine";
+import { describeAnswer, isAnswered, sampleTrail } from "@stand-clear/engine";
 import { create } from "zustand";
 import type { World } from "./game.ts";
 
@@ -68,7 +68,8 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       t: start,
       hider: sampleTrail(world.geo, view.replay.hider, start, end, 10),
       seeker: sampleTrail(world.geo, view.replay.seeker, start, end, 10),
-      events: view.asked.map((a) => ({
+      // The round is over, so every answer has landed.
+      events: view.asked.filter(isAnswered).map((a) => ({
         t: a.at,
         p: [a.ctx.origin.lon, a.ctx.origin.lat] as LonLat,
         // A photo's answer is just "Photo", so don't say it twice.

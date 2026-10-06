@@ -11,6 +11,7 @@ import * as maplibregl from "maplibre-gl";
 // MapLibre runs tile parsing in an ES-module worker that imports a sibling chunk
 // (see vite.config.ts for how the build keeps them together).
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { zoomHold } from "./zoomHold.ts";
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -49,17 +50,24 @@ export function createMapLibreBase(
   const overlay = new MapboxOverlay({ interleaved: false, layers: [], getTooltip });
   map.addControl(overlay as unknown as maplibregl.IControl);
   if (import.meta.env.DEV) (window as unknown as { __map: maplibregl.Map }).__map = map;
+  const zoom = zoomHold(container);
+  map.on("moveend", zoom.release);
 
   return {
     ready: new Promise((resolve) => map.on("load", () => resolve())),
     setLayers: (layers) => overlay.setProps({ layers }),
-    setCenter: (p) => map.setCenter(p),
+    setCenter: (p) => {
+      if (!zoom.held()) map.setCenter(p);
+    },
     flyTo: (p, zoom) => map.flyTo({ center: p, zoom }),
     fitBounds: (sw, ne) => map.fitBounds([sw, ne], { padding: 80, maxZoom: 15, duration: 600 }),
     getZoom: () => map.getZoom(),
     onUserDrag: (cb) => map.on("dragstart", cb),
     onClick: (cb) => map.on("click", (e) => cb([e.lngLat.lng, e.lngLat.lat])),
-    remove: () => map.remove(),
+    remove: () => {
+      zoom.remove();
+      map.remove();
+    },
   };
 }
 
