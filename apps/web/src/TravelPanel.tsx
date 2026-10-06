@@ -307,7 +307,9 @@ function Treads({ state, t }: { state: Walking; t: number }) {
 }
 
 function WalkingView({ world, state, t }: { world: World; state: Walking; t: number }) {
-  const left = Math.max(0, Math.ceil(state.end - t));
+  // Seconds count down in real time, like the walking band and the answer window.
+  const speed = useGame((s) => s.sync?.speed ?? 6);
+  const left = Math.max(0, Math.ceil((state.end - t) / speed));
   const dest = state.dest;
   const complex = dest.kind === "street" ? dest.complex : world.ds.stations[dest.station]?.complex;
   const title =
@@ -497,7 +499,7 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
               : s.reason === "street"
                 ? "Walking"
                 : "Changing on foot"}{" "}
-          · {Math.max(0, Math.ceil(s.end - t))} s
+          · {Math.max(0, Math.ceil((s.end - t) / (useGame.getState().sync?.speed ?? 6)))} s
         </WainscotText>
       );
     case "street": {

@@ -185,6 +185,7 @@ async function newRound(
     daily: round.daily,
     hub: dataset.stations[round.hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
+    hiderComplex: round.hider,
     spot: spot ? { lat: spot.lat, lon: spot.lon } : null,
     photoExit: round.photoExit !== null,
     reachable: round.reachable.length,

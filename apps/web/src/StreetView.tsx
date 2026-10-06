@@ -1,12 +1,12 @@
-import { resolve, streetPoint } from "@stand-clear/engine";
+import { resolve, streetPoint, type Walking } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
-import { cn } from "./cn.ts";
+import { bearing, compassArrow, compassLetters, compassWord } from "./compass.ts";
 import { useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
-import { compass, nearestPano, panoPoint } from "./street.ts";
-import { Button, Plaque } from "./ui/vocab.tsx";
+import { nearestPano, panoPoint } from "./street.ts";
+import { Button, Caption, Num, Plaque, TileTimer } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 /**
@@ -36,6 +36,8 @@ export function StreetView({ visible }: { visible: boolean }) {
   const expectedRef = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [links, setLinks] = useState<google.maps.StreetViewLink[]>([]);
+  /** Which way you're looking, for the "Facing N" caption. */
+  const [heading, setHeading] = useState(0);
   /** Why the imagery didn't arrive, while it hasn't. */
   const [failed, setFailed] = useState<string | null>(null);
   /** Bumped by "Try again". */
@@ -61,6 +63,7 @@ export function StreetView({ visible }: { visible: boolean }) {
           const status = p.getStatus();
           setFailed(status === google.maps.StreetViewStatus.OK ? null : `Status ${status}`);
         });
+        p.addListener("pov_changed", () => setHeading(p.getPov().heading ?? 0));
         p.addListener("links_changed", () =>
           setLinks((p.getLinks() ?? []).filter((l): l is google.maps.StreetViewLink => !!l?.pano)),
         );
@@ -71,6 +74,7 @@ export function StreetView({ visible }: { visible: boolean }) {
           if (expected && p.getPano() !== expected) p.setPano(expected);
         });
         panoRef.current = p;
+        if (import.meta.env.DEV) (window as unknown as { __pano: typeof p }).__pano = p;
         setReady(true);
       })
       .catch((err: unknown) => {
@@ -122,10 +126,17 @@ export function StreetView({ visible }: { visible: boolean }) {
     markerRef.current?.setMap(null);
     markerRef.current = null;
     if (!ready || spotLat === null || spotLon === null || !panoRef.current) return;
+    // A gold square tile with a deep-gold border: squares are game information, so it
+    // replaces Google's red pin.
     const m = new google.maps.Marker({
       position: { lat: spotLat, lng: spotLon },
       map: panoRef.current,
-      title: "The hider — click to catch",
+      title: "The hider: click to catch",
+      icon: {
+        url: GOLD_SQUARE,
+        scaledSize: new google.maps.Size(30, 30),
+        anchor: new google.maps.Point(15, 15),
+      },
     });
     m.addListener("click", () => useGame.getState().send({ type: "catch" }));
     markerRef.current = m;
@@ -136,26 +147,54 @@ export function StreetView({ visible }: { visible: boolean }) {
     if (pt) send({ type: "walkTo", lat: pt.lat, lon: pt.lon, pano: pt.pano });
   };
 
-  const walking = s?.kind === "walking";
-  const status =
-    s?.kind === "walking"
-      ? s.reason === "exit"
-        ? "Heading up to the street…"
-        : `Walking… ${Math.max(0, Math.ceil(s.end - (t ?? 0)))} s`
-      : null;
+  const walking = s?.kind === "walking" ? s : null;
+  const shed = view?.curses.some(
+    (c) => c.card === "shed" && t !== null && "until" in c && t < c.until,
+  );
+  const speed = useGame.getState().sync?.speed ?? 6;
 
   if (!usesGoogle) {
     return (
-      <div className="flex h-full items-center justify-center bg-stone-200 p-6 text-center text-sm text-stone-600">
+      <div className="sc-tilefield-dark flex h-full items-center justify-center p-6 text-center text-[13px] text-glaze-hi">
         Street View needs the Google map. Unset VITE_MAP_PROVIDER to use it.
       </div>
     );
   }
 
   return (
-    <div className="relative h-full w-full bg-stone-300">
+    <div className="relative h-full w-full bg-[#3a3732]">
       {/* Its own stacking context, so Google's internal z-indexes stay below our overlays. */}
       <div ref={el} className="absolute inset-0 z-0" />
+      {/* Fog: the panorama blurs, ramping in and out (Motion: Curse lands). */}
+      <div
+        className="pointer-events-none absolute inset-0 z-[5] transition-[backdrop-filter] duration-[600ms] ease-[var(--ease-decel)]"
+        style={{ backdropFilter: cursed(view, "fog", t) ? "blur(6px)" : "blur(0px)" }}
+      />
+      {standing && (
+        // The only text on the photo: addresses and road labels stay off.
+        <div className="absolute top-3 left-3 z-10">
+          <Caption>Facing {compassLetters(heading)}</Caption>
+        </div>
+      )}
+      {spot && <CatchBand />}
+      {walking && walking.reason !== "street" && (
+        <Stairs state={walking} t={t ?? 0} speed={speed} />
+      )}
+      {walking && walking.reason === "street" && (
+        <WalkingBand state={walking} t={t ?? 0} speed={speed} halfSpeed={!!shed} />
+      )}
+      <div className="absolute inset-x-0 bottom-[30px] z-10 flex flex-wrap justify-center gap-1.5 px-3">
+        {[...links]
+          .sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0))
+          .map((l) => (
+            <WalkTile
+              key={l.pano}
+              heading={l.heading ?? 0}
+              disabled={busy || !!walking}
+              onClick={() => l.pano && void step(l.pano)}
+            />
+          ))}
+      </div>
       {failed && visible && (
         <StreetViewFailed
           reason={failed}
@@ -165,40 +204,115 @@ export function StreetView({ visible }: { visible: boolean }) {
           }}
         />
       )}
-      {cursed(view, "fog", t) && (
-        // Fog: blurred, but you can still walk (and the marker still shows when you're close).
-        <div className="pointer-events-none absolute inset-0 z-[5] backdrop-blur-md" />
-      )}
-      {spot && (
-        <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
-          <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white shadow">
-            Someone's here — click them to catch
-          </span>
-        </div>
-      )}
-      {status && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/25">
-          <span className="rounded-md bg-white/95 px-3 py-1.5 text-sm font-semibold">{status}</span>
-        </div>
-      )}
-      <div className="absolute inset-x-0 bottom-9 z-10 flex flex-wrap justify-center gap-1.5 px-3">
-        {[...links]
-          .sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0))
-          .map((l) => (
-            <button
-              key={l.pano}
-              type="button"
-              disabled={busy || walking}
-              onClick={() => l.pano && void step(l.pano)}
-              className={cn(
-                "rounded-md bg-white/95 px-2.5 py-1 text-xs font-semibold text-stone-800 shadow",
-                "hover:bg-white disabled:cursor-not-allowed disabled:opacity-40",
-              )}
-            >
-              Walk {compass(l.heading ?? 0)}
-            </button>
-          ))}
+    </div>
+  );
+}
+
+/** The hider's marker: a gold square tile with a deep-gold border and a glaze edge. */
+const GOLD_SQUARE = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect x="0" y="0" width="30" height="30" fill="#FBF8F1"/><rect x="2" y="2" width="26" height="26" fill="#8E6A14"/><rect x="5" y="5" width="20" height="20" fill="#C99A3A"/></svg>',
+)}`;
+
+/** One square tile per street you can take, with its arrow and compass point. */
+function WalkTile({
+  heading,
+  disabled,
+  onClick,
+}: {
+  heading: number;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={`Walk ${compassWord(heading)}`}
+      className="sc-focus flex h-[50px] w-[56px] flex-col items-center justify-center gap-0.5 bg-glaze-hi text-[18px] leading-none text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-opacity duration-[var(--dur-step)] ease-[var(--ease-decel)] active:translate-y-[2px] disabled:opacity-40"
+    >
+      {compassArrow(heading)}
+      <b className="font-display text-[12px] font-bold tracking-[0.08em]">
+        {compassLetters(heading)}
+      </b>
+    </button>
+  );
+}
+
+/**
+ * Walking: a band fills along the bottom at walking speed, linear (Motion rule 1), under
+ * a caption with the way and the time left. Under Sidewalk shed it's hatched like
+ * scaffold planks and fills at half speed: slower walking is drawn slower.
+ */
+function WalkingBand({
+  state,
+  t,
+  speed,
+  halfSpeed,
+}: {
+  state: Walking;
+  t: number;
+  speed: number;
+  halfSpeed: boolean;
+}) {
+  const f = Math.min(1, Math.max(0, (t - state.start) / Math.max(1, state.end - state.start)));
+  const left = Math.max(0, Math.ceil((state.end - t) / speed));
+  const way = compassWord(bearing(state.fromPoint, state.toPoint));
+  return (
+    <div className="absolute right-3.5 bottom-[96px] left-3.5 z-10 flex flex-col items-start gap-1.5">
+      <Caption>
+        Walking {way} · <Num>{left} s</Num>
+        {halfSpeed && " · half speed"}
+      </Caption>
+      <div className="h-3.5 w-full bg-[rgb(36_32_27/0.45)] shadow-[inset_0_0_0_1px_rgb(251_248_241/0.4)]">
+        <i
+          className="block h-full bg-glaze-hi"
+          style={{
+            width: `${f * 100}%`,
+            backgroundImage: halfSpeed
+              ? "repeating-linear-gradient(135deg, transparent 0 6px, rgb(47 91 69 / 0.55) 6px 9px)"
+              : "repeating-linear-gradient(90deg, transparent 0 13px, rgb(36 32 27 / 0.18) 13px 14px)",
+          }}
+        />
       </div>
+    </div>
+  );
+}
+
+/** Going up or down: stair treads fill, one per 10 game-s, on the dark pane. */
+function Stairs({ state, t, speed }: { state: Walking; t: number; speed: number }) {
+  const total = Math.max(1, Math.round((state.end - state.start) / 10));
+  const done = Math.min(total, Math.floor((t - state.start) / 10));
+  const left = Math.max(0, Math.ceil((state.end - t) / speed));
+  return (
+    <div className="sc-tilefield-dark absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5">
+      <Caption>
+        {state.reason === "exit"
+          ? "Up to the street"
+          : state.reason === "enter"
+            ? "Back down"
+            : "Changing on foot"}{" "}
+        · <Num>{left} s</Num>
+      </Caption>
+      <TileTimer total={total} left={done} size={11} onDark />
+    </div>
+  );
+}
+
+/**
+ * Someone's here: the screen's one express band, ink with gold trim, at the top center.
+ * The seeker gets it only within 40 m; the hider's gold marker sets beside it.
+ */
+function CatchBand() {
+  return (
+    <div
+      role="status"
+      className="sc-grid-lines absolute top-0 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-0.5 bg-ink px-[22px] pt-3 pb-2.5 text-glaze-hi [--grid:0.1] shadow-[inset_0_-5px_0_var(--color-gold),inset_0_5px_0_var(--color-gold)]"
+    >
+      <b className="font-display text-[15px] font-bold tracking-[0.12em] uppercase">
+        Someone's here
+      </b>
+      <span className="text-[12px] opacity-[0.82]">Click them to catch</span>
     </div>
   );
 }

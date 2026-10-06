@@ -9,12 +9,16 @@
  */
 import {
   type Answer,
+  distanceMeters,
   isAnswered,
   type LonLat,
   type Question,
   questionKey,
   resolve,
   type SoloView,
+  STREET_RADIUS_M,
+  streetPoint,
+  walkSeconds,
   ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
@@ -29,7 +33,6 @@ import {
   buildLayers,
   buildRound,
   buildStatic,
-  frameAround,
   type ReplayScene,
   type RoundData,
   type SearchScene,
@@ -40,7 +43,7 @@ import { displayName } from "./names.ts";
 import { pathUntil, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
-import { Button, FollowToggle, Plaque } from "./ui/vocab.tsx";
+import { Button, Caption, FollowToggle, Plaque } from "./ui/vocab.tsx";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
 
@@ -122,6 +125,8 @@ export function MapView() {
   const setFollow = useGame((s) => s.setFollow);
   const hasView = useGame((s) => s.view !== null);
   const [base, setBase] = useState<BaseMap | null>(null);
+  /** The pointer over the map: on the street, where a click would walk to. */
+  const [pointer, setPointer] = useState<{ at: LonLat; x: number; y: number } | null>(null);
   /** Bumped by "Reload the map". */
   const [attempt, setAttempt] = useState(0);
   const worldRef = useRef(world);
@@ -155,6 +160,7 @@ export function MapView() {
       (err: unknown) => failed(err instanceof Error ? err.message : String(err)),
     );
     b.onUserDrag(() => useGame.getState().setFollow(false));
+    b.onPointer((p) => setPointer(p));
     // On the street, clicking the map means "walk there".
     b.onClick(([lon, lat]) => void walkToward(lat, lon));
     return () => {
@@ -251,10 +257,11 @@ export function MapView() {
           if (following) base.setCenter(position);
           search = searchScene(world, view, t);
           shape = shapeFor(world, view, t, search);
-          // Coming up to the street: frame the search circle (the design's "Search area").
+          // Coming up to the street: frame the search circle (the design's "Search area"),
+          // so it nearly fills the strip. Again whenever the strip resizes (below).
           if (search && search.complex !== framed) {
             const c = world.ds.complexes[search.complex];
-            if (c) base.fitBounds(...frameAround(c, ZONE_RADIUS_M));
+            if (c) base.frameCircle(c, ZONE_RADIUS_M);
           }
           framed = search?.complex ?? null;
         }
@@ -284,8 +291,15 @@ export function MapView() {
       );
     };
     tick();
+    // The map shrinks to a strip under Street View: frame the search area again once it has.
+    const resized = new ResizeObserver(() => {
+      const c = framed === null ? undefined : world.ds.complexes[framed];
+      if (c) base.frameCircle(c, ZONE_RADIUS_M);
+    });
+    if (container.current) resized.observe(container.current);
 
     return () => {
+      resized.disconnect();
       cancelAnimationFrame(raf);
       unsubscribeGame();
       unsubscribeReplay();
@@ -298,6 +312,7 @@ export function MapView() {
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" />
       {world && hasView && !mapFailed && <MapLegend world={world} />}
+      {world && pointer && <WalkHere world={world} pointer={pointer} />}
       {hasView && (
         // "Following you" is a map state, so it's a toggle on the map, beside the zoom buttons.
         <div className="absolute right-[58px] bottom-[28px] z-10">
@@ -341,6 +356,40 @@ function MapFailed({ reason, onReload }: { reason: string; onReload: () => void 
             : "The map tiles didn't answer, or this browser can't draw them."}
         </p>
       </Plaque>
+    </div>
+  );
+}
+
+/**
+ * On the street, hovering the map shows a square target and how long the walk takes, so a
+ * click is never a surprise (DESIGN.md, Street endgame: the map strip).
+ */
+function WalkHere({
+  world,
+  pointer,
+}: {
+  world: World;
+  pointer: { at: LonLat; x: number; y: number };
+}) {
+  const view = useGame((s) => s.view);
+  const speed = useGame((s) => s.sync?.speed ?? 6);
+  const t = nowGameTime();
+  if (!view || t === null || view.result) return null;
+  const s = resolve(view.seeker, t, world.idx);
+  if (s.kind !== "street") return null;
+  const here = streetPoint(s, world.idx);
+  const to = { lat: pointer.at[1], lon: pointer.at[0] };
+  const station = world.ds.complexes[s.complex];
+  const tooFar = station && distanceMeters(station, to) > STREET_RADIUS_M;
+  const seconds = Math.max(1, Math.round(walkSeconds(here, to) / speed));
+  return (
+    <div className="pointer-events-none absolute z-10" style={{ left: pointer.x, top: pointer.y }}>
+      <i className="absolute -top-[9px] -left-[9px] block h-[18px] w-[18px] shadow-[inset_0_0_0_2px_var(--color-ink),0_0_0_2px_var(--color-glaze-hi)]" />
+      <span className="absolute -top-3 left-4">
+        <Caption tone="light">
+          {tooFar ? "Too far from your station" : `Walk here · ${seconds} s`}
+        </Caption>
+      </span>
     </div>
   );
 }

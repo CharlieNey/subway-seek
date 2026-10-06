@@ -18,6 +18,8 @@ export function zoomHold(container: HTMLElement) {
   return {
     /** A zoom the player started is still settling: don't recenter. */
     held: () => performance.now() < until,
+    /** The game is moving the camera itself (fitting a frame): hold recentering too. */
+    hold,
     /** The map has settled after the zoom. */
     release: () => {
       until = 0;

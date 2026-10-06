@@ -309,3 +309,9 @@ export function answeredShape(
   if (s.yourCell.length > 0) s.yourCell.push(s.yourCell[0] as LonLat);
   return s;
 }
+
+/** The Google-style zoom (256 px tiles) at which a circle of `meters` spans `px` pixels. */
+export function fitZoom(lat: number, meters: number, px: number): number {
+  const metersPerPixelAtZ0 = 156_543.033_92 * Math.cos((lat * Math.PI) / 180);
+  return Math.log2((Math.max(1, px) * metersPerPixelAtZ0) / (2 * meters));
+}

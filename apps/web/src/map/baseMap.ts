@@ -11,6 +11,7 @@ import * as maplibregl from "maplibre-gl";
 // MapLibre runs tile parsing in an ES-module worker that imports a sibling chunk
 // (see vite.config.ts for how the build keeps them together).
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { fitZoom } from "./shapes.ts";
 import { zoomHold } from "./zoomHold.ts";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -32,12 +33,17 @@ export interface BaseMap {
   setLayers(layers: Layer[]): void;
   setCenter(p: LonLat): void;
   flyTo(p: LonLat, zoom: number): void;
-  fitBounds(sw: LonLat, ne: LonLat): void;
+  /** Frame a box; `padding` in px (default 80). */
+  fitBounds(sw: LonLat, ne: LonLat, padding?: number): void;
+  /** Frame a circle so it nearly fills the map, at once (the search area on foot). */
+  frameCircle(center: { lat: number; lon: number }, meters: number, padding?: number): void;
   getZoom(): number;
   /** Called when the player starts dragging the map (stop following them). */
   onUserDrag(cb: () => void): void;
   /** Called with [lon, lat] when the player clicks the map. */
   onClick(cb: (p: LonLat) => void): void;
+  /** The pointer over the map, as [lon, lat] and container pixels; null when it leaves. */
+  onPointer(cb: (p: { at: LonLat; x: number; y: number } | null) => void): void;
   remove(): void;
 }
 
@@ -100,10 +106,26 @@ export function createMapLibreBase(
       if (!zoom.held()) map.setCenter(p);
     },
     flyTo: (p, zoom) => map.flyTo({ center: p, zoom }),
-    fitBounds: (sw, ne) => map.fitBounds([sw, ne], { padding: 80, maxZoom: 15, duration: 600 }),
+    fitBounds: (sw, ne, padding = 80) => {
+      zoom.hold();
+      map.fitBounds([sw, ne], { padding, maxZoom: 17, duration: 600 });
+    },
     getZoom: () => map.getZoom(),
+    frameCircle: (c, meters, padding = 12) => {
+      const el = map.getContainer();
+      // MapLibre's zoom counts 512 px tiles: one level below Google's.
+      const z = fitZoom(c.lat, meters, Math.min(el.clientWidth, el.clientHeight) - 2 * padding) - 1;
+      zoom.hold();
+      map.jumpTo({ center: [c.lon, c.lat], zoom: z });
+    },
     onUserDrag: (cb) => map.on("dragstart", cb),
     onClick: (cb) => map.on("click", (e) => cb([e.lngLat.lng, e.lngLat.lat])),
+    onPointer: (cb) => {
+      map.on("mousemove", (e) =>
+        cb({ at: [e.lngLat.lng, e.lngLat.lat], x: e.point.x, y: e.point.y }),
+      );
+      map.on("mouseout", () => cb(null));
+    },
     remove: () => {
       clearTimeout(timeout);
       zoom.remove();
@@ -203,3 +225,5 @@ function mosaicPositron(map: maplibregl.Map) {
     }
   }
 }
+
+export { fitZoom } from "./shapes.ts";

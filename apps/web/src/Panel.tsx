@@ -221,9 +221,10 @@ function loadSeen(): Set<HintId> {
 }
 
 /** The first round's three hints: shown once each in the notice row, remembered here. */
-function useHint(view: SoloView | null) {
+function useHint(view: SoloView | null, onFoot: boolean) {
   const [seen, setSeen] = useState(loadSeen);
-  const hint = currentHint(seen, view);
+  // On the first arrival at the street, "What counts" comes first.
+  const hint: HintId | null = onFoot && !seen.has("counts") ? "counts" : currentHint(seen, view);
   const shown = useRef<HintId | null>(null);
   const markSeen = (id: HintId) =>
     setSeen((s) => {
@@ -244,15 +245,17 @@ function useHint(view: SoloView | null) {
 }
 
 /** The notice row: a refused action, then the first round's hints. Dismissed by clicking. */
-function NoticeRow({ view }: { view: SoloView }) {
+function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
   const { notice, dismissNotice, alreadyPlayed } = useGame();
-  const { hint, dismiss } = useHint(view);
+  const { hint, dismiss } = useHint(view, onFoot);
   const [playedSeen, setPlayedSeen] = useState(false);
   const text = notice ?? (hint ? HINTS[hint] : null);
   if (text) {
     return (
       <div className="mx-4 mt-2.5">
-        <Notice onDismiss={notice ? dismissNotice : dismiss}>{text}</Notice>
+        <Notice onDismiss={notice ? dismissNotice : dismiss}>
+          <span className="whitespace-pre-line">{text}</span>
+        </Notice>
       </div>
     );
   }
@@ -380,7 +383,7 @@ export function Panel() {
             </div>
           </>
         )}
-        <NoticeRow view={view} />
+        <NoticeRow view={view} onFoot={onFoot && !over} />
         <CurseChips world={world} t={t} view={view} />
         {lookingFor && (
           <LookingFor p={lookingFor} onOpen={() => setZoom(photos.indexOf(lookingFor))} />

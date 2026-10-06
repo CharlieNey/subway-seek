@@ -15,7 +15,7 @@ import type { Layer } from "@deck.gl/core";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import type { LonLat } from "@stand-clear/engine";
 import type { BaseMap } from "./baseMap.ts";
-import { createVeil, eastOf } from "./baseMap.ts";
+import { createVeil, eastOf, fitZoom } from "./baseMap.ts";
 import { loadGoogleMaps, onGoogleAuthFailure } from "./loadGoogle.ts";
 import mosaicStyle from "./mosaicStyle.json";
 import { zoomHold } from "./zoomHold.ts";
@@ -126,14 +126,32 @@ export function createGoogleBase(
       whenMap((m) => {
         if (!zoom.held()) m.setCenter({ lat: p[1], lng: p[0] });
       }),
-    flyTo: (p, zoom) =>
+    flyTo: (p, z) =>
       whenMap((m) => {
-        m.setZoom(zoom);
+        zoom.hold();
+        m.setZoom(z);
         m.panTo({ lat: p[1], lng: p[0] });
       }),
-    fitBounds: (sw, ne) =>
-      whenMap((m) => m.fitBounds({ south: sw[1], west: sw[0], north: ne[1], east: ne[0] }, 80)),
+    // Following you recenters every frame, which would cancel Google's animated fit.
+    fitBounds: (sw, ne, padding = 80) =>
+      whenMap((m) => {
+        zoom.hold();
+        m.fitBounds({ south: sw[1], west: sw[0], north: ne[1], east: ne[0] }, padding);
+      }),
     getZoom: () => map?.getZoom() ?? 13.5,
+    // Instant, so following you can't cancel it; raster maps take whole zoom levels.
+    frameCircle: (c, meters, padding = 12) =>
+      whenMap((m) => {
+        const d = m.getDiv();
+        const z = Math.floor(
+          fitZoom(c.lat, meters, Math.min(d.clientWidth, d.clientHeight) - 2 * padding),
+        );
+        // moveCamera jumps: setZoom animates, and following you (recentering every frame)
+        // cuts that animation short, leaving the picture at the old scale while getZoom()
+        // reports the new one.
+        zoom.hold();
+        m.moveCamera({ center: { lat: c.lat, lng: c.lon }, zoom: z });
+      }),
     onUserDrag: (cb) => whenMap((m) => listeners.push(m.addListener("dragstart", cb))),
     onClick: (cb) =>
       whenMap((m) =>
@@ -143,6 +161,22 @@ export function createGoogleBase(
           }),
         ),
       ),
+    onPointer: (cb) =>
+      whenMap((m) => {
+        listeners.push(
+          m.addListener("mousemove", (e: google.maps.MapMouseEvent) => {
+            const dom = e.domEvent as MouseEvent | undefined;
+            if (!e.latLng || !dom) return;
+            const r = container.getBoundingClientRect();
+            cb({
+              at: [e.latLng.lng(), e.latLng.lat()],
+              x: dom.clientX - r.left,
+              y: dom.clientY - r.top,
+            });
+          }),
+          m.addListener("mouseout", () => cb(null)),
+        );
+      }),
     remove: () => {
       removed = true;
       stopAuth();

@@ -30,6 +30,8 @@ export function App() {
         <div className={cn("relative min-h-0", street ? "flex-[3]" : "hidden")}>
           <StreetView visible={street} />
         </div>
+        {/* The trim band between street and map, like the trim line on a platform wall. */}
+        {street && <div className="sc-trim h-2.5 flex-none" />}
         <div className={cn("relative min-h-0", street ? "flex-[2]" : "flex-1")}>
           <MapView />
           {veiled && <span className="sc-veil strong z-20" />}

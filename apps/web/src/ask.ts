@@ -312,13 +312,18 @@ export function questionText(q: Question, idx: TimetableIndex, ctx?: AskContext)
 
 // --- The onboarding hints ------------------------------------------------------------
 
-export type HintId = "hover" | "ride" | "three";
+export type HintId = "hover" | "ride" | "three" | "counts";
 
-/** Three hints, eight words or fewer, shown once each and remembered in the browser. */
+/**
+ * Three hints, eight words or fewer, shown once each and remembered in the browser; and
+ * "What counts", three lines on the first arrival at the street (Interaction).
+ */
 export const HINTS: Record<HintId, string> = {
   hover: "Hover a question to see what it does.",
   ride: "Ride toward what's left. Get off anywhere.",
   three: "Three left. Go up and look.",
+  counts:
+    "If this is their station, the hider is inside your circle.\nYou see them once you pass within 40 m.\nYou catch them within 25 m, standing still.",
 };
 
 /**

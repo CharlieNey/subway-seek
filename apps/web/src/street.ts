@@ -56,14 +56,6 @@ export async function panoPoint(pano: string): Promise<PanoPoint | null> {
   }
 }
 
-const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
-const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"] as const;
-
-export function compass(heading: number): string {
-  const i = Math.round((((heading % 360) + 360) % 360) / 45) % 8;
-  return `${ARROWS[i]} ${COMPASS[i]}`;
-}
-
 /** You're on the street (standing, or walking up/along it): Street View takes over. */
 export function onStreet(view: SoloView | null, t: number | null, world: World | null): boolean {
   if (!view || t === null || !world || view.result) return false;
