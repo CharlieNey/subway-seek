@@ -17,9 +17,10 @@ import { answerWord, radarLabel } from "./ask.ts";
 import { useNow } from "./Connection.tsx";
 import { useGame, type World } from "./game.ts";
 import { shapeQuestion } from "./MapView.tsx";
+import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { FAMILY_COLORS, type Family, familyOf } from "./ui/family.ts";
-import { Caption, Pict } from "./ui/vocab.tsx";
+import { Caption, FamilySquare, Pict } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 /** How long a legend's key shows before it folds into its caption. */
@@ -66,7 +67,38 @@ function questionTitle(q: Question): string {
   }
 }
 
+/** The replay's key: the two players, and the questions as family squares. */
+function ReplayKey() {
+  const dot = (bg: string) => (
+    <i
+      className="inline-block h-2.5 w-2.5 flex-none rounded-full"
+      style={{
+        background: bg,
+        boxShadow: "0 0 0 2px var(--color-glaze-hi), 0 0 0 3px var(--color-grout)",
+      }}
+    />
+  );
+  return (
+    <div className="pointer-events-auto absolute top-3 left-3 z-10 flex flex-col gap-1 bg-glaze-hi px-2.5 py-[7px] text-[12px] text-ink-2 shadow-[inset_0_0_0_1px_var(--color-grout)] [&>span]:flex [&>span]:items-center [&>span]:gap-[7px]">
+      <span>{dot("var(--color-terra)")} Hider</span>
+      <span>{dot("var(--color-ink)")} You</span>
+      <span>
+        <FamilySquare family="radar" size={10} /> Questions, by family
+      </span>
+      <span>
+        <FamilySquare family="radar" size={10} vetoed /> Vetoed
+      </span>
+    </div>
+  );
+}
+
 export function MapLegend({ world }: { world: World }) {
+  const replaying = useReplay((s) => s.active);
+  if (replaying) return <ReplayKey />;
+  return <RoundLegend world={world} />;
+}
+
+function RoundLegend({ world }: { world: World }) {
   const view = useGame((s) => s.view);
   useGame((s) => s.hovered);
   useGame((s) => s.armed);

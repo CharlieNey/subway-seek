@@ -1131,3 +1131,233 @@
   color: var(--color-ink-2);
   padding-top: 6px;
 }
+
+/* ---------- The replay (the Deck page, part eight) ---------- */
+/* One bar over the map: play as an ink square, the clock as a caption tile, the scrubber, Close. */
+.sc-rp-bar {
+  position: absolute;
+  left: 12px;
+  right: 60px;
+  bottom: 30px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 14px;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+.sc-rp-play {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.sc-rp-play > i {
+  width: 4px;
+  height: 14px;
+  background: var(--color-glaze-hi);
+  display: block;
+}
+/* Play: a square-cornered triangle. */
+.sc-rp-play > b {
+  width: 0;
+  height: 0;
+  border-left: 13px solid var(--color-glaze-hi);
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  margin-left: 3px;
+}
+.sc-rp-bar .sc-cap {
+  font-size: 15px;
+  padding: 0.45em 0.5em 0.32em;
+}
+.sc-rp-scrub {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  cursor: pointer;
+  touch-action: none;
+}
+.sc-rp-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 12px;
+}
+.sc-rp-ticks > i {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--c);
+  box-shadow: inset 0 0 0 2px var(--t);
+}
+.sc-rp-ticks > i.veto {
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 2px var(--c);
+}
+.sc-rp-ticks > i.curse {
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  top: 1px;
+  background: var(--color-terra);
+  box-shadow: none;
+}
+.sc-rp-ticks > i.found {
+  background: var(--color-gold);
+  box-shadow: inset 0 0 0 2px var(--color-gold-deep);
+}
+.sc-rp-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20px;
+  height: 12px;
+  display: flex;
+  gap: 2px;
+}
+.sc-rp-track > span {
+  height: 100%;
+}
+.sc-rp-track > .hide {
+  background: var(--color-buff);
+}
+.sc-rp-track > .seek {
+  background: var(--color-grout);
+}
+.sc-rp-track > .foot {
+  background: #bfb49e;
+}
+.sc-rp-fill {
+  position: absolute;
+  left: 0;
+  top: 20px;
+  height: 12px;
+  width: 100%;
+  background: rgb(36 32 27 / 0.55);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+.sc-rp-head {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  width: 4px;
+  height: 24px;
+  margin-left: -2px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 2px var(--color-glaze-hi);
+  pointer-events: none;
+}
+.sc-rp-phl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 36px;
+  display: flex;
+  gap: 2px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+.sc-rp-phl > span {
+  white-space: nowrap;
+  overflow: hidden;
+  padding-top: 3px;
+}
+/* The log follows the scrubber: the current event is the express band, later ones dim. */
+.sc-rp-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 29px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px dashed var(--color-grout);
+  background: none;
+  color: var(--color-ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-rp-row > .t {
+  width: 36px;
+  flex: none;
+  font-size: 12px;
+  color: var(--color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.sc-rp-row > .m {
+  width: 12px;
+  display: flex;
+  justify-content: center;
+  flex: none;
+}
+.sc-rp-row > b {
+  font-weight: 600;
+  min-width: 0;
+}
+.sc-rp-row > em {
+  margin-left: auto;
+  padding-left: 6px;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.sc-rp-row.fut {
+  opacity: 0.42;
+}
+.sc-rp-row.now {
+  margin: 5px -6px;
+  width: calc(100% + 12px);
+  padding: 9px 10px;
+  border-bottom: 0;
+  color: var(--color-glaze-hi);
+  background-color: var(--color-ink);
+  box-shadow:
+    0 -4px 0 var(--color-buff-deep),
+    0 4px 0 var(--color-buff-deep);
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 13px, rgb(251 248 241 / 0.12) 13px 14px),
+    repeating-linear-gradient(180deg, transparent 0 13px, rgb(251 248 241 / 0.12) 13px 14px);
+}
+.sc-rp-row.now > .t,
+.sc-rp-row.now > em {
+  color: #cfc6b4;
+}
+.sc-rp-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-terra);
+}
+.sc-rp-dot.ink {
+  background: var(--color-ink);
+}
+.sc-rp-row.now .sc-rp-dot.ink {
+  background: var(--color-glaze-hi);
+}
+.sc-rp-tile {
+  width: 11px;
+  height: 11px;
+  background: var(--c);
+  box-shadow: inset 0 0 0 2.5px var(--t);
+}

@@ -33,6 +33,8 @@ import {
   buildLayers,
   buildRound,
   buildStatic,
+  circle,
+  frameAround,
   type ReplayScene,
   type RoundData,
   type SearchScene,
@@ -40,9 +42,10 @@ import {
 } from "./map/layers.ts";
 import { answeredShape, questionShape, type Shape } from "./map/shapes.ts";
 import { displayName } from "./names.ts";
-import { pathUntil, stepReplay, useReplay } from "./replay.ts";
+import { pathUntil, REPLAY_REAL_SECONDS, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
+import { paintAt, tablet } from "./ui/tablet.ts";
 import { Button, Caption, FollowToggle, Plaque } from "./ui/vocab.tsx";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
@@ -106,6 +109,83 @@ function shapeFor(
     : questionShape(world.ds, q, ctx, circle);
   shapeCache = { key, shape };
   return shape;
+}
+
+/** Real ms since the replay reached its end, for the tablet's set; 0 while it hasn't. */
+let replayEndedAt = 0;
+const tablets = new Map<string, { url: string; width: number; height: number }>();
+
+/** The hider's station tablet as an image for the map, drawn once per name. */
+function tabletImage(name: string) {
+  let img = tablets.get(name);
+  if (!img) {
+    const c = document.createElement("canvas");
+    // 3 px tiles, like the panel's tablets, so a long name stays readable.
+    const model = tablet(name, "irt");
+    paintAt(c, model, Math.min(320, model.W * 3));
+    img = { url: c.toDataURL(), width: c.width, height: c.height };
+    tablets.set(name, img);
+  }
+  return img;
+}
+
+/**
+ * The replay at game time t (DESIGN.md, Motion › Replay): game time runs linearly, each
+ * question sets as its family square where it was asked (stacking from one place), the
+ * zone ring draws out once the hider settles, and the station tablet sets at the end.
+ */
+function replaySceneAt(
+  world: World,
+  replay: ReturnType<typeof useReplay.getState>,
+  t: number,
+  now: number,
+): ReplayScene {
+  const reduced = reducedMotion();
+  const decel = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
+  // Game seconds per real second at replay speed; paused or scrubbed, everything is set.
+  const rate = (replay.end - replay.start) / REPLAY_REAL_SECONDS;
+  const since = (gt: number) => (replay.playing ? ((t - gt) / rate) * 1000 : 1e9);
+  const set = (gt: number, ms: number) => (reduced ? 1 : decel(since(gt) / ms));
+  const stacks = new Map<string, number>();
+  const questions: ReplayScene["questions"] = [];
+  for (const e of replay.log) {
+    if (e.mark.kind !== "question" || !e.p || e.t > t) continue;
+    const key = `${e.p[0].toFixed(4)},${e.p[1].toFixed(4)}`;
+    const stack = stacks.get(key) ?? 0;
+    stacks.set(key, stack + 1);
+    questions.push({
+      position: e.p,
+      icon: `${e.mark.vetoed ? "veto" : "fam"}-${e.mark.family}`,
+      label: e.text.replace(": ", " · "),
+      stack,
+      set: set(e.t, 160),
+    });
+  }
+  const view = useGame.getState().view;
+  const hider = view?.hider == null ? undefined : world.ds.complexes[view.hider];
+  const zone =
+    hider && replay.settled !== null && t >= replay.settled
+      ? circle(hider.lat, hider.lon, ZONE_RADIUS_M * set(replay.settled, 400))
+      : null;
+  if (t >= replay.end) replayEndedAt ||= now;
+  else replayEndedAt = 0;
+  const tabletSet = reduced ? 1 : decel((now - replayEndedAt) / 900);
+  return {
+    hiderPath: pathUntil(replay.hider, t),
+    seekerPath: pathUntil(replay.seeker, t),
+    hiderFull: replay.hider.map((x) => x.p),
+    seekerFull: replay.seeker.map((x) => x.p),
+    questions,
+    zone,
+    tablet:
+      hider && replayEndedAt > 0
+        ? {
+            position: [hider.lon, hider.lat],
+            ...tabletImage(displayName(hider.name)),
+            set: tabletSet,
+          }
+        : null,
+  };
 }
 
 /** "You", or "You · on the Q" while you ride. */
@@ -214,12 +294,18 @@ export function MapView() {
       if (!r.active || prev.active) return;
       useGame.getState().setFollow(false);
       const pts = [...r.hider, ...r.seeker].map((s) => s.p);
+      // The hider's zone too, which draws once they settle.
+      const hider = useGame.getState().view?.hider;
+      const c = hider == null ? undefined : world.ds.complexes[hider];
+      if (c) pts.push(...frameAround(c, ZONE_RADIUS_M));
       if (pts.length === 0) return;
       const lons = pts.map((p) => p[0]);
       const lats = pts.map((p) => p[1]);
+      // Clear of the legend at the top left and the replay's bar at the bottom.
       base.fitBounds(
         [Math.min(...lons), Math.min(...lats)],
         [Math.max(...lons), Math.max(...lats)],
+        { top: 60, right: 70, bottom: 130, left: 40 },
       );
     });
 
@@ -248,16 +334,9 @@ export function MapView() {
       let shape: Shape | null = null;
       let search: SearchScene | null = null;
       if (replay.active) {
-        const seekerPath = pathUntil(replay.seeker, t);
-        replayScene = {
-          seekerPath,
-          hiderPath: pathUntil(replay.hider, t),
-          events: replay.events
-            .filter((e) => e.t <= t)
-            .map((e) => ({ position: e.p, label: e.label })),
-        };
-        const head = seekerPath.at(-1);
-        me = head ? { position: head, label: "Seeker" } : null;
+        replayScene = replaySceneAt(world, replay, t, now);
+        const head = replayScene.seekerPath.at(-1);
+        me = head ? { position: head, label: "You" } : null;
       } else {
         const { view, follow: following } = useGame.getState();
         if (view) {
@@ -288,7 +367,11 @@ export function MapView() {
         lastShape = shape;
       }
       const { view: v } = useGame.getState();
-      const spot = v?.result?.kind === "found" ? v.spotNearby : null;
+      // In the replay the find is at the end, so the spot waits for it.
+      const spot =
+        v?.result?.kind === "found" && (!replay.active || replay.t >= replay.end)
+          ? v.spotNearby
+          : null;
       if (spot && foundSince === 0) foundSince = now;
       if (!spot) foundSince = 0;
       const motion = useMotion.getState();

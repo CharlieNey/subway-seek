@@ -1,45 +1,134 @@
+/**
+ * The replay's bar over the map (the Deck page, part eight): play as an ink square, the
+ * clock as a caption tile, the scrubber, and Close. The scrubber's band shows the three
+ * phases (Hide, Seek, On foot); questions sit above it as family squares, curses as small
+ * terra cotta squares, and the find in gold. It floats above Google's logo and
+ * attribution and leaves room for the zoom buttons.
+ */
+import { type KeyboardEvent, type PointerEvent, useRef } from "react";
+import { hhmm } from "./ask.ts";
 import { useReplay } from "./replay.ts";
-import { formatClock } from "./useGameTime.ts";
+import { FAMILY_COLORS } from "./ui/family.ts";
+import { Button, Caption } from "./ui/vocab.tsx";
 
-/** Play/pause, scrubber and legend over the map while a replay is open. */
 export function ReplayControls() {
-  const { active, playing, start, end, t, toggle, seek, close } = useReplay();
+  const { active, playing, start, end, t, toggle, seek, close, log, seekStart, footStart } =
+    useReplay();
+  const scrub = useRef<HTMLDivElement>(null);
   if (!active) return null;
+  const span = Math.max(1, end - start);
+  const at = (x: number) => `${(((x - start) / span) * 100).toFixed(3)}%`;
+  const share = (t - start) / span;
+  const phases: [string, string, number][] = [
+    ["hide", "Hide", seekStart - start],
+    ["seek", "Seek", (footStart ?? end) - seekStart],
+    ...(footStart !== null
+      ? [["foot", "On foot", end - footStart] as [string, string, number]]
+      : []),
+  ];
+  const seekTo = (e: PointerEvent<HTMLDivElement>) => {
+    const r = scrub.current?.getBoundingClientRect();
+    if (!r) return;
+    useReplay.setState({ playing: false });
+    seek(start + ((e.clientX - r.left) / r.width) * span);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    // A game minute a press; Shift for ten.
+    const step =
+      (e.shiftKey ? 600 : 60) * (e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0);
+    if (!step) return;
+    e.preventDefault();
+    useReplay.setState({ playing: false });
+    seek(t + step);
+  };
+  const finished = t >= end;
   return (
-    // right-16 keeps clear of the map's zoom buttons in the bottom-right corner.
-    <div className="absolute bottom-8 left-4 right-16 z-10 flex items-center gap-3 rounded-lg bg-white/95 px-3 py-2 shadow">
+    <div className="sc-rp-bar z-10">
       <button
         type="button"
+        className="sc-rp-play sc-focus"
         onClick={toggle}
-        className="w-16 rounded-md bg-stone-900 px-2 py-1 text-xs font-semibold text-white"
+        aria-label={playing ? "Pause" : finished ? "Play again" : "Play"}
       >
-        {playing ? "Pause" : t >= end ? "Replay" : "Play"}
+        {playing ? (
+          <>
+            <i />
+            <i />
+          </>
+        ) : (
+          <b />
+        )}
       </button>
-      <span className="w-16 font-mono text-sm tabular-nums">{formatClock(t).slice(0, 5)}</span>
-      <input
-        type="range"
-        min={start}
-        max={end}
-        step={1}
-        value={t}
-        onChange={(e) => {
-          useReplay.setState({ playing: false });
-          seek(Number(e.target.value));
-        }}
-        className="min-w-0 flex-1 accent-stone-900"
+      <Caption>
+        <span className="tabular-nums">{hhmm(t)}</span>
+      </Caption>
+      <div
+        ref={scrub}
+        className="sc-rp-scrub sc-focus"
+        role="slider"
+        tabIndex={0}
         aria-label="Replay time"
-      />
-      <span className="flex items-center gap-1 text-xs text-stone-600">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-600" /> Hider
-        <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-stone-900" /> You
-      </span>
-      <button
-        type="button"
-        onClick={close}
-        className="rounded-md border border-stone-300 px-2 py-1 text-xs font-semibold text-stone-700"
+        aria-valuemin={0}
+        aria-valuemax={Math.round(span / 60)}
+        aria-valuenow={Math.round((t - start) / 60)}
+        aria-valuetext={hhmm(t)}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          seekTo(e);
+        }}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e);
+        }}
+        onKeyDown={onKey}
       >
-        Close
-      </button>
+        <div className="sc-rp-ticks">
+          {log.map((e) => {
+            const m = e.mark;
+            if (m.kind === "question") {
+              const { fill, trim } = FAMILY_COLORS[m.family];
+              return (
+                <i
+                  key={`${e.t}-${e.text}`}
+                  className={m.vetoed ? "veto" : undefined}
+                  style={{ left: at(e.t), "--c": fill, "--t": trim } as React.CSSProperties}
+                  title={`${e.text} · ${hhmm(e.t)}`}
+                />
+              );
+            }
+            if (m.kind === "curse" || m.kind === "found")
+              return (
+                <i
+                  key={`${e.t}-${e.text}`}
+                  className={m.kind}
+                  style={{ left: at(e.t) }}
+                  title={`${e.text} · ${hhmm(e.t)}`}
+                />
+              );
+            return null;
+          })}
+        </div>
+        <div className="sc-rp-track">
+          {phases.map(([k, , w]) => (
+            <span key={k} className={k} style={{ flex: Math.max(0, w) }} />
+          ))}
+        </div>
+        <div className="sc-rp-fill" style={{ transform: `scaleX(${share})` }} />
+        {/* The head moves by transform: a wrapper as wide as the scrubber slides along it. */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ transform: `translateX(${(share * 100).toFixed(3)}%)` }}
+        >
+          <div className="sc-rp-head" />
+        </div>
+        <div className="sc-rp-phl">
+          {phases.map(([k, label, w]) => (
+            <span key={k} style={{ flex: Math.max(0, w) }}>
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <Button onClick={close}>Close</Button>
     </div>
   );
 }

@@ -6,6 +6,7 @@
  */
 import type { LandmarkKind } from "@stand-clear/data";
 import { LANDMARK_KINDS } from "@stand-clear/engine";
+import { FAMILIES, FAMILY_COLORS } from "../ui/family.ts";
 import { pictCells } from "../ui/pict.ts";
 
 export interface IconDef {
@@ -127,3 +128,34 @@ export function plaqueAtlas(): Atlas {
 
 export const plaqueKey = (kind: LandmarkKind, nearest: boolean) =>
   `${kind}${nearest ? ":near" : ""}`;
+
+let families: Atlas | null = null;
+
+/**
+ * The replay's question squares: each family's fill on its trim, with a glaze edge, and a
+ * vetoed one hollow in its family color (the log's and the scrubber's squares, on the map).
+ */
+export function familyAtlas(): Atlas {
+  if (families) return families;
+  const cell = 14 * SCALE;
+  const [c, x] = canvas(cell * FAMILIES.length, cell * 2);
+  const mapping: Record<string, IconDef> = {};
+  const u = SCALE;
+  FAMILIES.forEach((f, i) => {
+    const { fill, trim } = FAMILY_COLORS[f];
+    for (const row of [0, 1]) {
+      const ox = i * cell;
+      const oy = row * cell;
+      const square = (inset: number, color: string) => {
+        x.fillStyle = color;
+        x.fillRect(ox + inset * u, oy + inset * u, cell - 2 * inset * u, cell - 2 * inset * u);
+      };
+      square(0, C.glazeHi);
+      square(1.5, row === 0 ? trim : fill);
+      square(3.5, row === 0 ? fill : C.glazeHi);
+      mapping[`${row === 0 ? "fam" : "veto"}-${f}`] = { x: ox, y: oy, width: cell, height: cell };
+    }
+  });
+  families = { url: c.toDataURL(), mapping };
+  return families;
+}

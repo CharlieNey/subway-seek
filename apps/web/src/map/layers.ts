@@ -23,7 +23,7 @@ import type { World } from "../game.ts";
 import { displayName } from "../names.ts";
 import { FAMILY_COLORS, type Family, familyOf } from "../ui/family.ts";
 import { boundaryProgress, type Clearing, liftOf } from "./eliminate.ts";
-import { plaqueAtlas, plaqueKey, type StationIcon, stationAtlas } from "./icons.ts";
+import { familyAtlas, plaqueAtlas, plaqueKey, type StationIcon, stationAtlas } from "./icons.ts";
 import { bisector, type Path, type Plaque, questionShape, ring, type Shape } from "./shapes.ts";
 
 export type RGBA = [number, number, number, number];
@@ -136,10 +136,20 @@ export interface Train {
   color: RGBA;
 }
 
+/**
+ * The replay (DESIGN.md, the Deck page, part eight): both trails as square tesserae side
+ * by side, solid for what has happened and faint for the rest; each question a family
+ * square where it was asked, stacked when asked from one place; the hider's zone once
+ * they settle; the hider's station tablet at the end.
+ */
 export interface ReplayScene {
   hiderPath: LonLat[];
   seekerPath: LonLat[];
-  events: { position: LonLat; label: string }[];
+  hiderFull: LonLat[];
+  seekerFull: LonLat[];
+  questions: { position: LonLat; icon: string; label: string; stack: number; set: number }[];
+  zone: [number, number][] | null;
+  tablet: { position: LonLat; url: string; width: number; height: number; set: number } | null;
 }
 
 /** On foot: your search circle, and where in it the hider could still be. */
@@ -187,6 +197,7 @@ function labelled(stations: StationDatum[], round: RoundData): StationDatum[] {
 }
 
 const dashes = new PathStyleExtension({ dash: true });
+const tesserae = new PathStyleExtension({ dash: true, offset: true });
 
 /** A station square's size in px: a tile that grows with the zoom, within bounds. */
 function squarePx(zoom: number, status: StationStatus): number {
@@ -489,36 +500,90 @@ export function buildLayers(scene: Scene): Layer[] {
   }
 
   if (replay) {
-    layers.push(
-      new PathLayer<{ path: LonLat[]; color: RGBA }>({
-        id: "replay-paths",
-        data: [
-          { path: replay.hiderPath, color: TERRA },
-          { path: replay.seekerPath, color: INK },
-        ].filter((p) => p.path.length > 1),
-        getPath: (p) => p.path,
-        getColor: (p) => [p.color[0], p.color[1], p.color[2], 217],
+    const trail = (id: string, path: LonLat[], color: RGBA, alpha: number, offset: number) =>
+      new PathLayer<LonLat[], PathStyleExtensionProps<LonLat[]>>({
+        id,
+        data: path.length > 1 ? [path] : [],
+        getPath: (p) => p,
+        getColor: [color[0], color[1], color[2], alpha],
         getWidth: 4,
         widthUnits: "pixels",
-        capRounded: true,
-        jointRounded: true,
+        // Square tesserae, offset so two trails on one track run side by side.
+        getDashArray: [1, 0.7],
+        dashJustified: false,
+        getOffset: offset,
+        extensions: [tesserae],
+        updateTriggers: { getPath: path.length },
+      });
+    const fams = familyAtlas();
+    layers.push(
+      trail("replay-hider-all", replay.hiderFull, TERRA, 64, 0.8),
+      trail("replay-seeker-all", replay.seekerFull, INK, 56, -0.8),
+      trail("replay-hider", replay.hiderPath, TERRA, 255, 0.8),
+      trail("replay-seeker", replay.seekerPath, INK, 255, -0.8),
+    );
+    if (replay.zone) {
+      layers.push(
+        new PathLayer<[number, number][]>({
+          id: "replay-zone",
+          data: [replay.zone],
+          getPath: (p) => p,
+          getColor: TERRA,
+          getWidth: 2,
+          widthUnits: "pixels",
+        }),
+      );
+    }
+    layers.push(
+      new IconLayer<ReplayScene["questions"][number]>({
+        id: "replay-questions",
+        data: replay.questions,
+        iconAtlas: fams.url,
+        iconMapping: fams.mapping,
+        getIcon: (q) => q.icon,
+        getPosition: (q) => q.position,
+        getSize: (q) => 14 * (0.6 + 0.4 * q.set),
+        getColor: (q) => [0, 0, 0, Math.round(255 * q.set)],
+        getPixelOffset: (q) => [0, -15 * q.stack],
+        sizeUnits: "pixels",
+        updateTriggers: { getSize: replay.questions, getColor: replay.questions },
       }),
-      new TextLayer<ReplayScene["events"][number]>({
-        id: "replay-events",
-        data: replay.events,
-        getPosition: (e) => e.position,
-        getText: (e) => e.label,
-        getSize: 12,
-        getColor: INK,
-        getPixelOffset: [0, -18],
+      new TextLayer<ReplayScene["questions"][number]>({
+        id: "replay-question-labels",
+        data: replay.questions,
+        getPosition: (q) => q.position,
+        getText: (q) => q.label,
+        getSize: 11.5,
+        getColor: (q) => [INK[0], INK[1], INK[2], Math.round(255 * q.set)],
+        getPixelOffset: (q) => [-11, -15 * q.stack],
+        getTextAnchor: "end",
+        getAlignmentBaseline: "center",
         fontFamily: FONT,
         fontWeight: 700,
         characterSet: "auto",
         fontSettings: { sdf: true },
         outlineWidth: 4,
         outlineColor: GLAZE_HI,
+        updateTriggers: { getColor: replay.questions },
       }),
     );
+    if (replay.tablet) {
+      const tb = replay.tablet;
+      layers.push(
+        new IconLayer<LonLat>({
+          id: "replay-tablet",
+          data: [tb.position],
+          iconAtlas: tb.url,
+          iconMapping: { t: { x: 0, y: 0, width: tb.width, height: tb.height } },
+          getIcon: () => "t",
+          getPosition: (p) => p,
+          getSize: tb.height / Math.min(2, window.devicePixelRatio || 1),
+          getPixelOffset: [0, tb.height / Math.min(2, window.devicePixelRatio || 1) / 2 + 16],
+          sizeUnits: "pixels",
+          opacity: tb.set,
+        }),
+      );
+    }
     const hiderHead = replay.hiderPath.at(-1);
     if (hiderHead) layers.push(dot("replay-hider", hiderHead, TERRA));
   }

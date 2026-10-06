@@ -4,7 +4,12 @@
  * score tally bar, the daily stats line, then Watch replay in ink with Share and Practice
  * round in white. Practice takes a difficulty: three Buttons, the chosen one ink.
  */
-import { DIFFICULTIES, type Difficulty, questionBonusSeconds } from "@stand-clear/engine";
+import {
+  DIFFICULTIES,
+  type Difficulty,
+  questionBonusSeconds,
+  type SoloView,
+} from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
@@ -46,7 +51,7 @@ export function useNewRound() {
   };
 }
 
-function Numbers({ items }: { items: [string, string][] }) {
+export function Numbers({ items }: { items: [string, string][] }) {
   return (
     <div className="mt-2.5 grid w-full grid-cols-3 border-t-2 border-ink">
       {items.map(([value, label], i) => (
@@ -128,21 +133,13 @@ function Tally({ tiles, play, delay }: { tiles: TallyTile[]; play: boolean; dela
   );
 }
 
-export function ResultCard({ world }: { world: World }) {
-  const { view, busy, results, alreadyPlayed } = useGame();
-  const newRound = useNewRound();
-  const [difficulty, setDifficulty] = useState<Difficulty>(view?.difficulty ?? "normal");
-  const live = useEndedLive();
-  const tiles = view?.result ? tallyTiles(view) : [];
-  const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
-  const tallied = useTallyCount(tiles.length, live, tallyDelay);
-  if (!view?.result || view.hider === null) return null;
-  const hider = world.ds.complexes[view.hider];
-  const elapsed = view.result.at - view.seekStart;
-  const kind = view.result.kind;
-  const stats = dailyStats(results);
-  const questionMin = questionBonusSeconds(view.asked) / 60;
-  // A replayed daily doesn't count, so share the result that does.
+/** Share the result: a replayed daily shares the result that counts. "Copied" for 2 s. */
+export function shareFor(
+  world: World,
+  view: SoloView,
+  results: ReturnType<typeof useGame.getState>["results"],
+  alreadyPlayed: boolean,
+) {
   const counted = view.daily && alreadyPlayed ? results[view.daily.date]?.share : undefined;
   const share = () => {
     const text = counted ?? shareText(view, hubName(world, view));
@@ -157,6 +154,24 @@ export function ResultCard({ world }: { world: World }) {
       .then(copied)
       .catch(() => window.prompt("Copy your result:", text));
   };
+  return { share, counted };
+}
+
+export function ResultCard({ world }: { world: World }) {
+  const { view, busy, results, alreadyPlayed } = useGame();
+  const newRound = useNewRound();
+  const [difficulty, setDifficulty] = useState<Difficulty>(view?.difficulty ?? "normal");
+  const live = useEndedLive();
+  const tiles = view?.result ? tallyTiles(view) : [];
+  const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
+  const tallied = useTallyCount(tiles.length, live, tallyDelay);
+  if (!view?.result || view.hider === null) return null;
+  const hider = world.ds.complexes[view.hider];
+  const elapsed = view.result.at - view.seekStart;
+  const kind = view.result.kind;
+  const stats = dailyStats(results);
+  const questionMin = questionBonusSeconds(view.asked) / 60;
+  const { share, counted } = shareFor(world, view, results, alreadyPlayed);
   return (
     <div className="flex flex-col items-center gap-2 border-b border-grout px-4 pt-3.5 pb-3">
       <NameTablet

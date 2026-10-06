@@ -32,7 +32,9 @@ import { CurseChips } from "./HiderCards.tsx";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
+import { ReplayPanel } from "./ReplayPanel.tsx";
 import { hm, ResultCard } from "./Result.tsx";
+import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { onStreet } from "./street.ts";
 import { TravelAction, TravelPanel } from "./TravelPanel.tsx";
@@ -320,7 +322,8 @@ function useAskKeys(world: World | null, view: SoloView | null, t: number | null
 }
 
 export function Panel() {
-  const { status, world, view, tab, setTab, everOpen, armed, hover } = useGame();
+  const { status, world, view, tab, setTab, everOpen, armed, hover, alreadyPlayed } = useGame();
+  const replaying = useReplay((s) => s.active);
   const t = useGameTime(4);
   const now = useNow(4);
   const screen = useLinkScreen();
@@ -354,6 +357,15 @@ export function Panel() {
             <BootWainscot />
           </>
         )}
+      </aside>
+    );
+  }
+
+  // The replay takes the panel: its own header, the summary and the log.
+  if (replaying) {
+    return (
+      <aside className={aside}>
+        <ReplayPanel world={world} roundLine={roundLine(view, alreadyPlayed)} />
       </aside>
     );
   }

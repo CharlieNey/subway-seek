@@ -16,6 +16,9 @@ import { zoomHold } from "./zoomHold.ts";
 
 maplibregl.setWorkerUrl(workerUrl);
 
+/** Pixels to keep clear on each side, or one number for all four. */
+export type Padding = number | { top: number; right: number; bottom: number; left: number };
+
 export interface BaseMap {
   /**
    * Resolves once the map can draw (it only paints while the page is visible). Rejects
@@ -34,7 +37,7 @@ export interface BaseMap {
   setCenter(p: LonLat): void;
   flyTo(p: LonLat, zoom: number): void;
   /** Frame a box; `padding` in px (default 80). */
-  fitBounds(sw: LonLat, ne: LonLat, padding?: number): void;
+  fitBounds(sw: LonLat, ne: LonLat, padding?: Padding): void;
   /** Frame a circle so it nearly fills the map, at once (the search area on foot). */
   frameCircle(center: { lat: number; lon: number }, meters: number, padding?: number): void;
   getZoom(): number;

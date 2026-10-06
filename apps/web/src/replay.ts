@@ -4,18 +4,18 @@
  * The map reads `useReplay` each frame; while it's active, trains are drawn at replay
  * time too, so the whole city rewinds.
  */
-import type { LonLat, SoloView } from "@stand-clear/engine";
-import { describeAnswer, isAnswered, sampleTrail } from "@stand-clear/engine";
+import {
+  type LonLat,
+  possibleSpots,
+  type SoloView,
+  sampleTrail,
+  searchGrid,
+} from "@stand-clear/engine";
 import { create } from "zustand";
 import type { World } from "./game.ts";
+import { type LogEvent, replayLog } from "./replayLog.ts";
 
 export const REPLAY_REAL_SECONDS = 25;
-
-export interface ReplayEvent {
-  t: number;
-  p: LonLat;
-  label: string;
-}
 
 interface ReplayStore {
   active: boolean;
@@ -25,27 +25,18 @@ interface ReplayStore {
   t: number;
   hider: { t: number; p: LonLat }[];
   seeker: { t: number; p: LonLat }[];
-  events: ReplayEvent[];
+  /** Everything that happened, for the log, the map's question squares and the ticks. */
+  log: LogEvent[];
+  /** When the seek began and when you first came up at their station (null if never). */
+  seekStart: number;
+  footStart: number | null;
+  /** When the hider reached their spot, for the zone ring (null if they never did). */
+  settled: number | null;
   open: (world: World, view: SoloView) => void;
   close: () => void;
   toggle: () => void;
   seek: (t: number) => void;
 }
-
-const QUESTION_NAME: Record<string, string> = {
-  radar: "Radar",
-  thermometer: "Thermometer",
-  route: "Route",
-  borough: "Borough",
-  express: "Express",
-  moreRoutes: "More lines",
-  matching: "Matching",
-  measuring: "Measuring",
-  tentacles: "Tentacles",
-  spotRadar: "Street radar",
-  spotThermometer: "Hotter/colder",
-  photo: "Photo",
-};
 
 export const useReplay = create<ReplayStore>((set, get) => ({
   active: false,
@@ -55,11 +46,25 @@ export const useReplay = create<ReplayStore>((set, get) => ({
   t: 0,
   hider: [],
   seeker: [],
-  events: [],
+  log: [],
+  seekStart: 0,
+  footStart: null,
+  settled: null,
   open: (world, view) => {
     if (!view.replay || !view.result) return;
     const start = view.hideStart;
     const end = view.result.at;
+    // What share of the search circle each on-foot answer left.
+    const spotsLeft = (at: number) => {
+      const a = view.asked.find((x) => x.answerAt === at);
+      const c = a ? world.ds.complexes[a.ctx.origin.complex] : undefined;
+      if (!c) return null;
+      const asked = view.asked.filter((x) => x.answerAt <= at);
+      const left = possibleSpots(world.ds, c, asked, view.candidates, view.footpath, at + 0.001);
+      return left.length / Math.max(1, searchGrid(c).length);
+    };
+    const log = replayLog(world.ds, world.idx, view, spotsLeft);
+    const reached = log.find((e) => e.text === "Hider reaches their spot");
     set({
       active: true,
       playing: true,
@@ -68,25 +73,22 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       t: start,
       hider: sampleTrail(world.geo, view.replay.hider, start, end, 10),
       seeker: sampleTrail(world.geo, view.replay.seeker, start, end, 10),
-      // The round is over, so every answer has landed.
-      events: view.asked.filter(isAnswered).map((a) => ({
-        t: a.at,
-        p: [a.ctx.origin.lon, a.ctx.origin.lat] as LonLat,
-        // A photo's answer is just "Photo", so don't say it twice.
-        label:
-          a.q.kind === "photo"
-            ? "Photo"
-            : `${QUESTION_NAME[a.q.kind] ?? "?"}: ${describeAnswer(a.answer, a.q, world.ds)}`,
-      })),
+      log,
+      seekStart: view.seekStart,
+      footStart: view.stationFoundAt,
+      settled: reached?.t ?? null,
     });
   },
-  close: () => set({ active: false, playing: false, hider: [], seeker: [], events: [] }),
+  close: () => set({ active: false, playing: false, hider: [], seeker: [], log: [] }),
   toggle: () => {
     const { playing, t, end, start } = get();
     // Play from the start again once it has finished.
     set({ playing: !playing, t: !playing && t >= end ? start : t });
   },
-  seek: (t) => set({ t }),
+  seek: (t) => {
+    const { start, end } = get();
+    set({ t: Math.min(end, Math.max(start, t)) });
+  },
 }));
 
 if (import.meta.env.DEV) (window as unknown as { __replay: typeof useReplay }).__replay = useReplay;
