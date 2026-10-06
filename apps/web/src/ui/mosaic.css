@@ -323,6 +323,7 @@
   padding: 12px 12px 14px;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 10px;
   font-size: 13.5px;
   line-height: 1.45;
@@ -420,4 +421,583 @@
 .sc-frozen {
   opacity: 0.42;
   pointer-events: none;
+}
+
+/* ---------- Family colors: the question categories ---------- */
+.fam-radar {
+  --c: var(--color-radar);
+  --t: var(--color-radar-trim);
+}
+.fam-thermo {
+  --c: var(--color-thermo);
+  --t: var(--color-thermo-trim);
+}
+.fam-match {
+  --c: var(--color-match);
+  --t: var(--color-match-trim);
+}
+.fam-measure {
+  --c: var(--color-measure);
+  --t: var(--color-measure-trim);
+}
+.fam-tent {
+  --c: var(--color-tent);
+  --t: var(--color-tent-trim);
+}
+.fam-photo {
+  --c: var(--color-photo);
+  --t: var(--color-photo-trim);
+}
+.fam-ink {
+  --c: var(--color-ink);
+  --t: var(--color-buff-deep);
+}
+
+/* ---------- Family square: game information is square; hollow when vetoed ---------- */
+.sc-sq {
+  display: inline-block;
+  flex: none;
+  width: var(--s, 12px);
+  height: var(--s, 12px);
+  background: var(--c);
+  box-shadow: inset 0 0 0 calc(var(--s, 12px) * 0.2) var(--t);
+}
+.sc-sq.vetoed {
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 2px var(--c);
+}
+
+/* ---------- Tab: square tiles in a row, the active one ink, never more than three ---------- */
+.sc-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sc-tab {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.7em 0.9em 0.52em;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  cursor: pointer;
+}
+.sc-tab[aria-selected="true"] {
+  background: var(--color-ink);
+  color: var(--color-glaze-hi);
+}
+
+/* "Following you": a square toggle on the map, a map state rather than a view. */
+.sc-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px 6px;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.sc-follow > i {
+  width: 9px;
+  height: 9px;
+  background: var(--color-ink);
+}
+.sc-follow[aria-pressed="false"] > i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+.sc-follow:disabled {
+  color: var(--color-ink-3);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink-3);
+  cursor: default;
+}
+.sc-follow:disabled > i {
+  display: none;
+}
+
+/* ---------- Chip: a light tile, a 2 px rule, a family square at its left edge ---------- */
+.sc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+.sc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px 6px 7px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+  font: 600 12.5px / 1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-step) var(--ease-decel),
+    color var(--dur-step) var(--ease-decel);
+}
+.sc-chip > .sc-sq {
+  --s: 9px;
+}
+.sc-chip:hover:not(:disabled):not([data-state="armed"]),
+.sc-chip[data-hover="true"] {
+  background: var(--color-glaze);
+  box-shadow: inset 0 0 0 3px var(--color-ink);
+}
+.sc-chip[data-state="armed"] {
+  background: var(--color-ink);
+  color: var(--color-glaze-hi);
+}
+.sc-chip[data-state="armed"] .sc-chip-n {
+  color: #cfc6b4;
+}
+.sc-chip[data-state="armed"] .sc-kbd {
+  color: inherit;
+  box-shadow: inset 0 0 0 1.2px currentColor;
+  opacity: 0.7;
+}
+/* Cooling: dimmed, still previews on hover for planning. */
+.sc-chip[data-state="cooling"] {
+  opacity: 0.4;
+}
+/* Closed for the round after a veto: hollow, struck through, a hollow square. */
+.sc-chip[data-state="closed"] {
+  background: transparent;
+  color: var(--color-ink-3);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-ink-3);
+  cursor: not-allowed;
+}
+.sc-chip-n {
+  color: var(--color-ink-2);
+  font-weight: 500;
+}
+.sc-chip.lm {
+  padding: 4px 8px 4px 4px;
+}
+
+/* ---------- Pictogram: a landmark's small buff-framed plaque ---------- */
+.sc-pict {
+  display: block;
+  flex: none;
+}
+
+/* ---------- Lamp: a 10 px square dot and a plain label ---------- */
+.sc-lamps {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sc-lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 12.5px / 1.2 var(--font-text);
+  color: var(--color-ink-3);
+}
+.sc-lamp::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink-3);
+  transition:
+    background-color var(--dur-step) var(--ease-decel),
+    box-shadow var(--dur-step) var(--ease-decel);
+}
+.sc-lamp.lit {
+  color: var(--color-ink);
+}
+.sc-lamp.lit::before {
+  background: var(--c, var(--color-ink));
+  box-shadow: none;
+}
+
+/* ---------- Bands: local heads a category; express is the one thing that matters now ---------- */
+.sc-band-local {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 28px;
+  padding: 8px 10px 6px;
+  background-color: var(--c);
+  color: var(--color-glaze-hi);
+  --grid: 0.28;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.fam-measure.sc-band-local,
+.fam-measure.sc-band-express {
+  color: var(--color-ink);
+}
+.sc-band-price {
+  font-family: var(--font-text);
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.sc-band-express {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 42px;
+  padding: 11px 12px 10px;
+  background-color: var(--c);
+  color: var(--color-glaze-hi);
+  --grid: 0.2;
+  /* The express trim: two rules of the family's deep color, above and below. */
+  box-shadow:
+    0 -4px 0 var(--t),
+    0 4px 0 var(--t);
+  margin-block: 4px;
+}
+.sc-band-express > small {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+.sc-band-express > p {
+  font-size: 13px;
+  line-height: 1.35;
+}
+.sc-band-answer {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sc-answer-window {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* A cooling category collapses to one rule-row with its next time. */
+.sc-cool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0 5px;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-cool > .sc-sq {
+  --s: 10px;
+}
+.sc-cool > b {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+.sc-cool > span {
+  font-size: 12px;
+  color: var(--color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- The countdown clock: a black field, glaze type, minutes largest ---------- */
+.sc-cc {
+  padding: 2px 10px 4px;
+  background-color: var(--color-ink);
+  color: var(--color-glaze-hi);
+  --grid: 0.07;
+}
+.sc-cc-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bdb4a3;
+  border-bottom: 1px solid rgb(251 248 241 / 0.22);
+}
+.sc-cc-h + .sc-cc-h,
+.sc-cc-row + .sc-cc-h {
+  margin-top: 6px;
+}
+.sc-cc-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  gap: 0 10px;
+  align-items: center;
+  width: calc(100% + 8px);
+  margin: 0 -4px;
+  padding: 7px 4px 6px;
+  border: 0;
+  border-bottom: 1px solid rgb(251 248 241 / 0.12);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.sc-cc-row:last-child {
+  border-bottom: 0;
+}
+.sc-cc-row > div {
+  min-width: 0;
+}
+.sc-cc-dest {
+  display: block;
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sc-cc-row small,
+.sc-cc-min small {
+  display: block;
+  font-size: 11px;
+  color: #bdb4a3;
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+.sc-cc-min {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.sc-cc-min > b {
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.sc-cc-min > em {
+  font-style: normal;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-left: 3px;
+}
+.sc-cc-min > small {
+  margin-top: 3px;
+}
+/* "Board" shows on hover and focus: the whole row is the button. */
+.sc-cc-go {
+  display: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.6em 0.8em 0.4em;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+}
+.sc-cc-row:not(:disabled):hover,
+.sc-cc-row:not(:disabled):focus-visible,
+.sc-cc-row[data-hover="true"] {
+  background: rgb(251 248 241 / 0.1);
+  outline: none;
+}
+.sc-cc-row:not(:disabled):hover .sc-cc-go,
+.sc-cc-row:not(:disabled):focus-visible .sc-cc-go,
+.sc-cc-row[data-hover="true"] .sc-cc-go {
+  display: inline-flex;
+  align-items: center;
+}
+/* A row you can't make is dimmed, with its reason in words. */
+.sc-cc-row:disabled {
+  cursor: default;
+}
+.sc-cc-row:disabled > *:not(.sc-cc-min),
+.sc-cc-row:disabled > .sc-cc-min {
+  opacity: 0.45;
+}
+.sc-cc-row.struck .sc-cc-dest {
+  text-decoration: line-through;
+}
+
+/* ---------- Fast-forward beside the clock: square buttons ---------- */
+.sc-ff {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: var(--color-glaze-hi);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  font-size: 11px;
+  letter-spacing: -0.04em;
+  cursor: pointer;
+}
+.sc-ff:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.sc-ff:active:not(:disabled) {
+  transform: translateY(2px);
+}
+/* Pause, in practice rounds: two bars on the tile's left. */
+.sc-ff.pause::before,
+.sc-ff.pause::after {
+  content: "";
+  width: 3px;
+  height: 11px;
+  background: currentColor;
+  margin: 0 1.5px;
+}
+
+/* ---------- Route bullets: MTA circles (trains), diamonds for express variants ---------- */
+.sc-rb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--b, 22px);
+  height: var(--b, 22px);
+  border-radius: 50%;
+  font:
+    700 calc(var(--b, 22px) * 0.52) / 1 "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+.sc-rb.diamond {
+  border-radius: 0;
+  transform: rotate(45deg) scale(0.78);
+}
+.sc-rb.diamond > span {
+  transform: rotate(-45deg);
+}
+.sc-rbs {
+  display: inline-flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Photo plaque: a glaze mat with an ink edge and a violet caption ---------- */
+.sc-plq {
+  position: relative;
+  background: var(--color-glaze-hi);
+  padding: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+}
+.sc-plq img,
+.sc-plq-empty {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+.sc-plq-empty {
+  background: rgb(36 32 27 / 0.06);
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 11px, rgb(36 32 27 / 0.06) 11px 12px),
+    repeating-linear-gradient(180deg, transparent 0 11px, rgb(36 32 27 / 0.06) 11px 12px);
+}
+.sc-plq-c {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 7px 8px 5px;
+  background-color: var(--color-photo);
+  color: var(--color-glaze-hi);
+  --grid: 0.24;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sc-plq-c > span:last-child {
+  font-family: var(--font-text);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+  font-size: 11px;
+}
+.sc-plq-zoom {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  padding: 0;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+}
+.sc-plq-zoom::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+.sc-plq-fail {
+  aspect-ratio: 16 / 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 13px;
+  padding: 12px;
+}
+
+/* A plaque's buttons sit at their own width. */
+.sc-err-b > .sc-btn {
+  align-self: flex-start;
 }
