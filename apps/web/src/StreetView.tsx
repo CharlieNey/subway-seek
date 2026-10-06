@@ -1,14 +1,23 @@
 import { resolve, streetPoint, type Walking } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn.ts";
-import { bearing, compassArrow, compassLetters, compassWord } from "./compass.ts";
+import {
+  ARROW_GLYPH,
+  arrowLinks,
+  bearing,
+  compassArrow,
+  compassLetters,
+  compassWord,
+} from "./compass.ts";
 import { useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
+import { ARROWS, type Arrow } from "./keys.ts";
 import { useLanded } from "./landing.ts";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
+import { play } from "./sound.ts";
 import { nearestPano, panoPoint } from "./street.ts";
-import { Button, Caption, Num, Plaque, TileTimer } from "./ui/vocab.tsx";
+import { Button, Caption, Kbd, Num, Plaque, TileTimer } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 /**
@@ -124,6 +133,15 @@ export function StreetView({ visible }: { visible: boolean }) {
   const spot = view?.spotNearby ?? null;
   const spotLat = spot?.lat ?? null;
   const spotLon = spot?.lon ?? null;
+  // "Someone's here" sounds as they come into sight, not when a refresh finds them there.
+  const seen = useRef(spotLat !== null);
+  useEffect(() => {
+    if (spotLat === null) seen.current = false;
+    else if (!seen.current) {
+      seen.current = true;
+      if (!useGame.getState().view?.result) play("someone");
+    }
+  }, [spotLat]);
   useEffect(() => {
     markerRef.current?.setMap(null);
     markerRef.current = null;
@@ -157,6 +175,16 @@ export function StreetView({ visible }: { visible: boolean }) {
   const shed = view?.curses.some(
     (c) => c.card === "shed" && t !== null && "until" in c && t < c.until,
   );
+  // The arrows walk relative to where you face: ↑ is the street ahead.
+  const sortedLinks = [...links].sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0));
+  const arrowOf: Record<number, string> = {};
+  for (const [key, i] of Object.entries(
+    arrowLinks(
+      heading,
+      sortedLinks.map((l) => l.heading ?? 0),
+    ),
+  ))
+    arrowOf[i] = key;
   // Fog ramps in once its card is in its chip (Motion: Curse lands).
   const fog = cursed(view, "fog", t);
   const fogLanded = useLanded(fog ? `fog@${fog.at}` : null);
@@ -170,7 +198,18 @@ export function StreetView({ visible }: { visible: boolean }) {
   }
 
   return (
-    <div className="relative h-full w-full bg-[#3a3732]">
+    // The arrow keys walk through our tiles, timed by the server: caught on the way in, so
+    // a focused panorama never takes a step of its own.
+    <div
+      className="relative h-full w-full bg-[#3a3732]"
+      onKeyDownCapture={(e) => {
+        if (!ARROWS.includes(e.key as Arrow) || e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tile = e.currentTarget.querySelector<HTMLButtonElement>(`[data-key="${e.key}"]`);
+        if (tile && !tile.disabled) tile.click();
+      }}
+    >
       {/* Its own stacking context, so Google's internal z-indexes stay below our overlays. */}
       <div ref={el} className="absolute inset-0 z-0" />
       {/* Fog: the panorama blurs, ramping in and out (Motion: Curse lands). */}
@@ -201,16 +240,15 @@ export function StreetView({ visible }: { visible: boolean }) {
         <WalkingBand state={walking} t={t ?? 0} speed={speed} halfSpeed={!!shed} />
       )}
       <div className="absolute inset-x-0 bottom-[30px] z-10 flex flex-wrap justify-center gap-1.5 px-3">
-        {[...links]
-          .sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0))
-          .map((l) => (
-            <WalkTile
-              key={l.pano}
-              heading={l.heading ?? 0}
-              disabled={busy || !!walking}
-              onClick={() => l.pano && void step(l.pano)}
-            />
-          ))}
+        {sortedLinks.map((l, i) => (
+          <WalkTile
+            key={l.pano}
+            heading={l.heading ?? 0}
+            arrow={arrowOf[i]}
+            disabled={busy || !!walking}
+            onClick={() => l.pano && void step(l.pano)}
+          />
+        ))}
       </div>
       {failed && visible && (
         <StreetViewFailed
@@ -233,10 +271,13 @@ const GOLD_SQUARE = `data:image/svg+xml,${encodeURIComponent(
 /** One square tile per street you can take, with its arrow and compass point. */
 function WalkTile({
   heading,
+  arrow,
   disabled,
   onClick,
 }: {
   heading: number;
+  /** The arrow key that takes it ("ArrowUp"), printed small in its corner. */
+  arrow?: string;
   disabled: boolean;
   onClick: () => void;
 }) {
@@ -245,13 +286,19 @@ function WalkTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      data-key={arrow}
       aria-label={`Walk ${compassWord(heading)}`}
-      className="sc-focus flex h-[50px] w-[56px] flex-col items-center justify-center gap-0.5 bg-glaze-hi text-[18px] leading-none text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-opacity duration-[var(--dur-step)] ease-[var(--ease-decel)] active:translate-y-[2px] disabled:opacity-40"
+      className="sc-focus relative flex h-[50px] w-[56px] flex-col items-center justify-center gap-0.5 bg-glaze-hi text-[18px] leading-none text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-opacity duration-[var(--dur-step)] ease-[var(--ease-decel)] active:translate-y-[2px] disabled:opacity-40"
     >
       {compassArrow(heading)}
       <b className="font-display text-[12px] font-bold tracking-[0.08em]">
         {compassLetters(heading)}
       </b>
+      {arrow && (
+        <span className="absolute top-[3px] right-[3px] scale-90">
+          <Kbd>{ARROW_GLYPH[arrow]}</Kbd>
+        </span>
+      )}
     </button>
   );
 }

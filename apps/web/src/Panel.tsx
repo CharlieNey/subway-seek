@@ -37,6 +37,7 @@ import { ReplayPanel } from "./ReplayPanel.tsx";
 import { hm, ResultCard } from "./Result.tsx";
 import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
+import { SOUNDS, useSound } from "./sound.ts";
 import { onStreet } from "./street.ts";
 import { TravelAction, TravelPanel } from "./TravelPanel.tsx";
 import { useLeaving } from "./ui/useLeaving.ts";
@@ -44,12 +45,15 @@ import {
   Button,
   ClockTile,
   type FastForward,
+  FollowToggle,
+  Line,
   Notice,
   TabRow,
   Wainscot,
   WainscotText,
 } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
+import { LINES, lineFor, roundKey } from "./voice.ts";
 
 const DIFFICULTY_LABEL = { easy: "Easy", normal: "Normal", hard: "Hard" } as const;
 
@@ -78,19 +82,32 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
     return [
       {
         glyph: "▸",
+        key: "Space",
         title: waiting
           ? "Skip to the departure · Space"
           : "Skip to 30 s before the next stop · Space",
         disabled: busy || nextEventTime(view.seeker, t, world.idx, "next") === null,
         onClick: go("next"),
       },
-      { glyph: "▸▸", title: "Skip to your stop · Shift+Space", disabled: busy, onClick: go("end") },
+      {
+        glyph: "▸▸",
+        key: "Shift+Space",
+        title: "Skip to your stop · Shift+Space",
+        disabled: busy,
+        onClick: go("end"),
+      },
     ];
   }
   if (s.kind === "walking") {
     return [
       { glyph: "▸", title: "On a walk, ▸▸ arrives", disabled: true },
-      { glyph: "▸▸", title: "Arrive · Shift+Space", disabled: busy, onClick: go("end") },
+      {
+        glyph: "▸▸",
+        key: "Shift+Space",
+        title: "Arrive · Shift+Space",
+        disabled: busy,
+        onClick: go("end"),
+      },
     ];
   }
   const why = s.kind === "platform" ? "Board a train first" : "Nothing to skip to on foot";
@@ -147,6 +164,7 @@ function useClearingCount(): number {
  */
 function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
   const { send, alreadyPlayed, busy } = useGame();
+  const [soundOpen, setSoundOpen] = useState(false);
   // The count steps down one per square as an answer clears them (Motion: Ask → answer).
   const standing = useClearingCount();
   const onFoot = view.hasSpot && onStreet(view, t, world);
@@ -191,7 +209,15 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
           </div>
         ))}
       </div>
-      <div className="px-4 pt-0.5 text-right text-[12px] text-ink-2">
+      <div className="flex justify-end gap-3 px-4 pt-0.5 text-[12px] text-ink-2">
+        <button
+          type="button"
+          aria-expanded={soundOpen}
+          onClick={() => setSoundOpen(!soundOpen)}
+          className="underline decoration-grout underline-offset-2 hover:text-ink"
+        >
+          Sound
+        </button>
         <button
           type="button"
           disabled={busy}
@@ -201,7 +227,28 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
           Give up
         </button>
       </div>
+      {soundOpen && <SoundSettings />}
     </>
+  );
+}
+
+/**
+ * Which moments make a sound (DESIGN.md, Interaction: Sound is events). "Someone's here"
+ * is on unless you turn it off; the chime and the tock are yours to turn on.
+ */
+function SoundSettings() {
+  const { on, set } = useSound();
+  return (
+    <div className="mx-4 mt-1.5 flex flex-col items-start gap-1.5 bg-glaze px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--color-grout)]">
+      {SOUNDS.map((s) => (
+        <FollowToggle
+          key={s.id}
+          on={on[s.id]}
+          onToggle={() => set(s.id, !on[s.id])}
+          label={s.label}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -290,29 +337,81 @@ function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: numbe
   );
 }
 
-/** Esc disarms; Enter asks the armed question when it can be asked. */
-function useAskKeys(world: World | null, view: SoloView | null, t: number | null) {
+/** The control printed with `key`, if it's on screen and can be pressed. */
+function pressable(key: string): HTMLButtonElement | null {
+  const el = document.querySelector<HTMLButtonElement>(`[data-key="${CSS.escape(key)}"]`);
+  return el && !el.disabled && el.getAttribute("aria-disabled") !== "true" ? el : null;
+}
+
+/**
+ * The keyboard (keys.ts): Esc disarms, Enter asks, and the rest press their printed
+ * control, switching to its tab first when it lives on the other one.
+ */
+function useKeys(world: World | null, view: SoloView | null, t: number | null) {
   const latest = useRef({ world, view, t });
   latest.current = { world, view, t };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const { world: w, view: v, t: now } = latest.current;
-      const { armed, arm, send, busy, link } = useGame.getState();
+      const { armed, arm, send, busy, link, setTab } = useGame.getState();
       if (!w || !v || now === null || link.kind !== "open" || e.defaultPrevented) return;
+      // The replay has its own keys, and typing stays typing.
+      if (useReplay.getState().active || v.result) return;
       const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable]")) return;
       // A focused question chip doesn't own Enter: Enter asks what's armed.
       const onControl =
-        !!target?.closest("button, a, input, textarea, select") && !target?.closest("[data-chip]");
+        !!target?.closest("button, a, [role=slider]") && !target?.closest("[data-chip]");
       const canAsk = !!armed && !busy && askBlocker(armed, v, now, w.idx) === null;
-      const action = keyAction(e.key, { armed: !!armed, canAsk, onControl });
-      if (action === "disarm") arm(null);
-      else if (action === "ask" && armed) send({ type: "ask", question: armed });
-      else return;
+      const action = keyAction(e, { armed: !!armed, canAsk, onControl });
+      if (!action) return;
+      if (action.kind === "disarm") arm(null);
+      else if (action.kind === "ask" && armed) send({ type: "ask", question: armed });
+      else if (action.kind === "press") {
+        const now = pressable(action.key);
+        if (now) now.click();
+        else if (action.tab && useGame.getState().tab !== action.tab) {
+          // It lives on the other tab: open it, then press once React has drawn it (a key
+          // is a discrete event, so the switch commits before the next task).
+          setTab(action.tab);
+          setTimeout(() => pressable(action.key)?.click(), 0);
+        } else return;
+      }
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+}
+
+/**
+ * Each drop of the link, numbered, and the conductor's "moving again" for 6 s once it's
+ * back (Voice). A drop has its number only once it's counted, so the lines can tell one
+ * drop from the next: both belong to the round's first drop only.
+ */
+function useDrops(lostNow: boolean) {
+  const count = useRef(0);
+  const was = useRef(lostNow);
+  const [drop, setDrop] = useState<number | null>(null);
+  const [back, setBack] = useState<{ drop: number; until: number } | null>(null);
+  useEffect(() => {
+    if (lostNow && !was.current) {
+      count.current += 1;
+      setDrop(count.current);
+      setBack(null);
+    }
+    if (!lostNow && was.current) {
+      setDrop(null);
+      setBack({ drop: count.current, until: Date.now() + 6000 });
+    }
+    was.current = lostNow;
+  }, [lostNow]);
+  useEffect(() => {
+    if (!back) return;
+    const id = setTimeout(() => setBack(null), Math.max(0, back.until - Date.now()));
+    return () => clearTimeout(id);
+  }, [back]);
+  return { drop: lostNow ? drop : null, back: lostNow ? null : (back?.drop ?? null) };
 }
 
 export function Panel() {
@@ -323,9 +422,10 @@ export function Panel() {
   const screen = useLinkScreen();
   const [zoom, setZoom] = useState<number | null>(null);
   const lost = useLeaving(screen.kind === "lost" ? screen : null, 280);
+  const drops = useDrops(screen.kind === "lost");
   // The answered band collapses into the log rather than vanishing.
   const band = useLeaving(view && !view.result ? liveQuestion(view, now) : null, 280);
-  useAskKeys(world, view, t);
+  useKeys(world, view, t);
   // Leaving a tab unmounts its chips without a mouseleave: forget the hover.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on tab change only
   useEffect(() => hover(null), [tab]);
@@ -378,6 +478,16 @@ export function Panel() {
       {lost.value && (
         <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
           <LostBand screen={lost.value} />
+          {drops.drop !== null && lineFor(roundKey(view), "lost", drops.drop) && (
+            <div className="mx-4 mt-1.5">
+              <Line>{LINES.lost}</Line>
+            </div>
+          )}
+        </div>
+      )}
+      {drops.back !== null && lineFor(roundKey(view), "back", drops.back) && (
+        <div className="sc-anim-set mx-4 mt-2.5">
+          <Line>{LINES.back}</Line>
         </div>
       )}
       {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}

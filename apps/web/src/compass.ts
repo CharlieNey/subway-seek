@@ -28,3 +28,44 @@ export function bearing(a: LatLon, b: LatLon): number {
   const [dx, dy] = localMeters({ lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] });
   return (Math.atan2(dx, dy) * 180) / Math.PI;
 }
+
+/**
+ * The arrows walk relative to where you're facing (DESIGN.md, Interaction: Keyboard):
+ * ↑ the street ahead, ↓ behind, ← and → either side. Each arrow takes the link nearest its
+ * way, within 60°, and no link takes two arrows.
+ */
+export function arrowLinks(facing: number, headings: readonly number[]): Record<string, number> {
+  const ways: [string, number][] = [
+    ["ArrowUp", 0],
+    ["ArrowRight", 90],
+    ["ArrowDown", 180],
+    ["ArrowLeft", 270],
+  ];
+  const off = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+  const out: Record<string, number> = {};
+  const taken = new Set<number>();
+  for (const [key, rel] of ways) {
+    let best = -1;
+    let bestOff = 60.001;
+    headings.forEach((h, i) => {
+      const d = off(h, facing + rel);
+      // On a tie, the first street keeps it.
+      if (!taken.has(i) && d < bestOff) {
+        best = i;
+        bestOff = d;
+      }
+    });
+    if (best >= 0) {
+      out[key] = best;
+      taken.add(best);
+    }
+  }
+  return out;
+}
+
+export const ARROW_GLYPH: Record<string, string> = {
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+};

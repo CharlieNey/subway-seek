@@ -62,6 +62,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       title={title}
+      data-key={keys === "⏎" ? undefined : keys}
       className={cn("sc-btn", kind !== "white" && kind, small && "sm", className)}
     >
       {children}
@@ -301,6 +302,7 @@ export function Chip({
       type="button"
       className={cn("sc-chip sc-focus", pict && "lm")}
       data-chip=""
+      data-key={keys}
       data-state={state}
       data-hover={hover || undefined}
       aria-pressed={state === "armed"}
@@ -517,6 +519,7 @@ export function CountdownRow({
       type="button"
       className={cn("sc-cc-row", struck && "struck")}
       disabled={!!reason}
+      data-key={keys}
       data-hover={hover || undefined}
       onClick={onBoard}
       aria-label={`${route.display} to ${dest}, ${minutes} min${reason ? `, ${reason}` : ""}`}
@@ -577,6 +580,8 @@ export interface FastForward {
   glyph: string;
   /** What it skips to, said on hover: "Skip to the departure · Space". */
   title: string;
+  /** Its key ("Space", "Shift+Space"): said in the title, as the buttons are one glyph wide. */
+  key?: string;
   disabled?: boolean;
   onClick?: () => void;
 }
@@ -629,6 +634,7 @@ export function ClockTile({
             key={b.glyph}
             type="button"
             className="sc-ff sc-focus"
+            data-key={b.key}
             title={b.title}
             aria-label={b.title}
             disabled={b.disabled}

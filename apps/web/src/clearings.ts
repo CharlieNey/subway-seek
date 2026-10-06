@@ -14,6 +14,7 @@ import { create } from "zustand";
 import { useGame, type World } from "./game.ts";
 import { type Clearing, clearingFor } from "./map/eliminate.ts";
 import { searchScene } from "./searchArea.ts";
+import { play } from "./sound.ts";
 
 interface MotionStore {
   /** Stations clearing after the latest answer. */
@@ -58,6 +59,7 @@ export function watchClearings(getWorld: () => World | null) {
     const answers = landed(prev, next);
     const a = answers.at(-1);
     if (!a) return;
+    play("tock");
     const now = performance.now();
     const reduced = reducedMotion();
     const kept = new Set(next.candidates);

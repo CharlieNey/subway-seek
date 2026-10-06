@@ -22,7 +22,8 @@ import { routesFor } from "./routes.ts";
 import { shareText } from "./share.ts";
 import { FAMILY_COLORS } from "./ui/family.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
-import { Bullets, Button } from "./ui/vocab.tsx";
+import { Bullets, Button, Line } from "./ui/vocab.tsx";
+import { LINES, lineFor, roundKey } from "./voice.ts";
 
 /** "1:32": hours and minutes, as the result's numbers read. */
 export const hm = (seconds: number) => {
@@ -180,7 +181,17 @@ export function ResultCard({ world }: { world: World }) {
         width={kind === "found" ? 170 : 210}
         setMs={live && kind === "found" ? FOUND_SET_MS : undefined}
       />
-      <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
+      {/* The conductor (Voice): last stop on a find; service ended when time runs out. */}
+      {kind === "found" && lineFor(roundKey(view), "found", view.result.at) && (
+        <Line>{LINES.found}</Line>
+      )}
+      {kind === "timeout" && lineFor(roundKey(view), "timeUp", view.result.at) ? (
+        <div className="mt-1.5">
+          <Line>{LINES.timeUp}</Line>
+        </div>
+      ) : (
+        <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
+      )}
       {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={320} />}
       <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">
         {hider && <Bullets routes={routesFor(world, hider.routes)} size={18} />}

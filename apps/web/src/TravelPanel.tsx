@@ -16,12 +16,13 @@ import {
   type Walking,
   walkSeconds,
 } from "@stand-clear/engine";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
 import { useGame, type World } from "./game.ts";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
+import { play } from "./sound.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import {
   Bullets,
@@ -29,11 +30,13 @@ import {
   CountdownBoard,
   CountdownHeader,
   CountdownRow,
+  Line,
   RouteBullet,
   Rule,
   TileTimer,
   WainscotText,
 } from "./ui/vocab.tsx";
+import { LINES, lineFor, roundKey } from "./voice.ts";
 
 const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
 /** Where-you-are tablets share one tile size, so a short name makes a short tablet. */
@@ -45,11 +48,14 @@ function Where({
   complex,
   sub,
   routes,
+  line,
 }: {
   world: World;
   complex: number;
   sub: ReactNode;
   routes?: string[];
+  /** The conductor's line for this moment, if it has one (Voice). */
+  line?: string | null;
 }) {
   const c = world.ds.complexes[complex];
   if (!c) return null;
@@ -60,6 +66,7 @@ function Where({
         {routes && <Bullets routes={routesFor(world, routes)} size={18} />}
         <span>{sub}</span>
       </div>
+      {line && <Line>{line}</Line>}
     </div>
   );
 }
@@ -107,9 +114,19 @@ function PlatformView({
   const groups = platformBoard(world.idx, state, t, view.curses);
   const transfers = world.idx.transfersFrom[state.station] ?? [];
   const firstBoardable = groups.flatMap((g) => g.lines).find((l) => !l.reason);
+  // The round opens: the daily's line, or in practice the trains' (Voice).
+  const opening =
+    view.asked.length === 0 && state.station === view.hub && t < view.seekStart + 15 * 60;
+  const openLine = view.daily ? "dailyOpens" : "trainsOpen";
   return (
     <>
-      <Where world={world} complex={st.complex} sub="On the platform" routes={st.routes} />
+      <Where
+        world={world}
+        complex={st.complex}
+        sub="On the platform"
+        routes={st.routes}
+        line={opening && lineFor(roundKey(view), openLine, "start") ? LINES[openLine] : null}
+      />
       {groups.length === 0 ? (
         <p className="mx-4 mt-3 text-[13px] text-ink-2">No trains in the next 30 min.</p>
       ) : (
@@ -200,6 +217,14 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
   const route = trip && world.ds.routes[trip.route];
+  // The chime, if it's on, as your own train leaves (not when a refresh finds you riding).
+  const depAt = trip?.dep[state.from];
+  const departed = depAt !== undefined && t >= depAt;
+  const heardDep = useRef(departed);
+  useEffect(() => {
+    if (departed && !heardDep.current) play("chime");
+    heardDep.current = departed;
+  }, [departed]);
   if (!trip || !route) return null;
   const nameOf = (k: number) => displayName(world.ds.stations[trip.stops[k] as number]?.name ?? "");
   const waiting = t < (trip.dep[state.from] as number);
@@ -362,6 +387,9 @@ function Treads({ state, t }: { state: Walking; t: number }) {
 function WalkingView({ world, state, t }: { world: World; state: Walking; t: number }) {
   // Seconds count down in real time, like the walking band and the answer window.
   const speed = useGame((s) => s.sync?.speed ?? 6);
+  const view = useGame((s) => s.view);
+  const stairs =
+    state.reason === "exit" && view && lineFor(roundKey(view), "upToStreet", state.start);
   const left = Math.max(0, Math.ceil((state.end - t) / speed));
   const dest = state.dest;
   const complex = dest.kind === "street" ? dest.complex : world.ds.stations[dest.station]?.complex;
@@ -380,6 +408,7 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
           world={world}
           complex={complex}
           sub={dest.kind === "street" ? `Exit ${dest.exit + 1}` : "Heading in"}
+          line={stairs ? LINES.upToStreet : null}
         />
       )}
       <section className="px-4 pt-4">

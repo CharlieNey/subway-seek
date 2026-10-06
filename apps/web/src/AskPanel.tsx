@@ -62,12 +62,14 @@ import {
   CoolRow,
   ExpressBand,
   FamilySquare,
+  Line,
   LocalBand,
   Pict,
   RouteBullet,
   Rule,
   TileTimer,
 } from "./ui/vocab.tsx";
+import { LINES, lineFor, roundKey } from "./voice.ts";
 
 const CATEGORY_TITLE: Record<Exclude<QuestionCategory, "onFoot">, string> = {
   matching: "Matching · same as mine?",
@@ -874,6 +876,16 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
       : photo
         ? `${photo.q.from === "spot" ? "Spot" : "Exit"} photo · arrived ${hhmm(a.answerAt)}`
         : `${FAMILY_NAME[family]} · ${vetoed ? "vetoed" : "answered"}`;
+  // The conductor (Voice): the round's first question on its way, and its first veto.
+  const rk = roundKey(view);
+  const voice =
+    answer === null
+      ? a === view.asked[0] && lineFor(rk, "firstQuestion", a.at)
+        ? LINES.firstQuestion
+        : null
+      : vetoed && lineFor(rk, "veto", a.at)
+        ? LINES.veto
+        : null;
   const tentacle =
     a.q.kind === "tentacles" && answer && typeof answer === "object" && "landmark" in answer
       ? answer.landmark
@@ -926,6 +938,11 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
           </span>
         )}
       </ExpressBand>
+      {voice && (
+        <div className="mx-1.5 mt-1">
+          <Line>{voice}</Line>
+        </div>
+      )}
       {zoom !== null && (
         <Lightbox photos={photos} index={zoom} onIndex={setZoom} onClose={() => setZoom(null)} />
       )}
