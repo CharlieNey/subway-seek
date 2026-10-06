@@ -125,7 +125,13 @@ export type TentacleAnswer = { landmark: number | null };
 export type MapAnswer = boolean | "hotter" | "colder" | TentacleAnswer;
 /** "far": the hider's spot is more than ON_FOOT_RANGE_M from you. */
 export type SpotAnswer = boolean | "hotter" | "colder" | "far";
-export type Answer = MapAnswer | SpotAnswer | { photo: Photo };
+/** The hider played Veto: no answer, though the seeker has still spent the question. */
+export type Vetoed = { vetoed: true };
+export type Answer = MapAnswer | SpotAnswer | { photo: Photo } | Vetoed;
+
+export function isVetoed(a: Answer): a is Vetoed {
+  return typeof a === "object" && "vetoed" in a;
+}
 
 /** Map questions narrow the candidate stations; photos are for you to read. */
 export type MapQuestion = Exclude<Question, { kind: "photo" } | SpotQuestion>;
@@ -325,6 +331,7 @@ export function filterCandidates(
   // answers only say roughly how far the station is (see stationFitsSpotAnswer).
   return candidates.filter((c) =>
     asked.every((a) => {
+      if (isVetoed(a.answer)) return true;
       if (isMapQuestion(a.q)) return sameAnswer(evaluate(ds, a.q, c, a.ctx), a.answer);
       if (isSpotQuestion(a.q)) return stationFitsSpotAnswer(ds, c, a.ctx, a.answer);
       return true;
@@ -429,6 +436,7 @@ export function describeQuestion(q: Question, ds?: Dataset, ctx?: AskContext): s
 
 export function describeAnswer(a: Answer, q?: Question, ds?: Dataset): string {
   if (typeof a === "object") {
+    if ("vetoed" in a) return "Vetoed";
     if ("photo" in a) return "Photo";
     if (a.landmark === null) {
       const miles = q?.kind === "tentacles" ? TENTACLE_MILES[q.landmark] : undefined;

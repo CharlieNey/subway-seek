@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { cn } from "./cn.ts";
 import { startGame, useGame } from "./game.ts";
+import { cursed } from "./HiderCards.tsx";
 import { MapView } from "./MapView.tsx";
 import { Panel } from "./Panel.tsx";
 import { ReplayControls } from "./ReplayControls.tsx";
@@ -27,9 +28,28 @@ export function App() {
         <div className={cn("relative min-h-0", street ? "flex-[2]" : "flex-1")}>
           <MapView />
           <ReplayControls />
+          {cursed(view, "signalLoss", t) && (
+            <SignalLoss until={cursed(view, "signalLoss", t)?.until} t={t} />
+          )}
         </div>
       </div>
       <Panel />
     </main>
+  );
+}
+
+/** The Signal loss curse: the map is covered; the departure boards in the panel still work. */
+function SignalLoss({ until, t }: { until: number | undefined; t: number | null }) {
+  const left = until !== undefined && t !== null ? Math.max(1, Math.ceil((until - t) / 60)) : null;
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-stone-300">
+      <div className="max-w-xs text-center text-sm text-stone-700">
+        <div className="text-base font-semibold">Signal loss</div>
+        <p className="mt-1">
+          The hider cursed your map{left ? ` for ${left} more min` : ""}. Departure boards still
+          work: "Please listen for announcements."
+        </p>
+      </div>
+    </div>
   );
 }

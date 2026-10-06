@@ -23,6 +23,10 @@ const view = (over: Partial<SoloView>): SoloView => ({
   spotNearby: null,
   footThermometer: null,
   footpath: [],
+  hiderHandSize: 0,
+  hiderHand: null,
+  curses: [],
+  cardEvents: [],
   ...over,
 });
 const asked = (kind: "radar" | "borough") => ({

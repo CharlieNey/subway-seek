@@ -29,7 +29,9 @@ function SkipButton({ to, children }: { to: "next" | "end"; children: React.Reac
 // --- Platform -------------------------------------------------------------------
 
 function PlatformView({ world, state, t }: { world: World; state: OnPlatform; t: number }) {
-  const { send, busy } = useGame();
+  const { send, busy, view } = useGame();
+  const wrongWay = view?.curses.find((c) => c.card === "wrongWay");
+  const tourist = view?.curses.some((c) => c.card === "tourist") ?? false;
   const st = world.ds.stations[state.station];
   const complex = st ? world.ds.complexes[st.complex] : undefined;
   if (!st || !complex) return null;
@@ -58,10 +60,12 @@ function PlatformView({ world, state, t }: { world: World; state: OnPlatform; t:
           {list.map((d) => {
             const tooSoon =
               state.arrivedDir !== null && state.arrivedDir !== d.dir && d.dep < changeBy;
+            // Curses: Wrong way allows only the other direction; Tourist, nothing yet.
+            const cursedOut = tourist || (wrongWay?.card === "wrongWay" && wrongWay.dir !== d.dir);
             return (
               <li key={`${d.trip}-${d.stop}`} className="flex items-center gap-2">
                 <RouteBullet route={d.route} />
-                <div className="min-w-0 flex-1">
+                <div className={cn("min-w-0 flex-1", cursedOut && "line-through opacity-50")}>
                   <div className="truncate text-sm font-medium">{d.headsign}</div>
                   <div className="text-xs text-stone-500">
                     {formatClock(d.dep).slice(0, 5)} · {formatIn(d.dep, t)}
@@ -69,7 +73,7 @@ function PlatformView({ world, state, t }: { world: World; state: OnPlatform; t:
                   </div>
                 </div>
                 <ActionButton
-                  disabled={busy || tooSoon}
+                  disabled={busy || tooSoon || cursedOut}
                   onClick={() => send({ type: "board", trip: d.trip, stop: d.stop })}
                 >
                   Board

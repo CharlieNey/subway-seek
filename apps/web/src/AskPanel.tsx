@@ -467,6 +467,12 @@ export function QuestionLog({ world }: { world: World }) {
                   />
                 </button>
               )}
+              {a.randomizedFrom && (
+                <div className="text-xs text-orange-800">
+                  Randomized by the hider · you asked:{" "}
+                  {describeQuestion(a.randomizedFrom, world.ds)}
+                </div>
+              )}
               <div className="text-xs text-stone-500">
                 {formatClock(a.at).slice(0, 5)} from{" "}
                 {world.ds.complexes[a.ctx.origin.complex]?.name} · {a.remaining}{" "}

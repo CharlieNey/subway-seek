@@ -1,7 +1,9 @@
+import { questionBonusSeconds } from "@stand-clear/engine";
 import { useState } from "react";
 import { AskPanel, QuestionLog } from "./AskPanel.tsx";
 import { cn } from "./cn.ts";
 import { hubName, useGame, type World } from "./game.ts";
+import { HandReveal, HiderStrip } from "./HiderCards.tsx";
 import { dailyStats } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { formatMinutes, shareText } from "./share.ts";
@@ -128,7 +130,7 @@ function ResultCard({ world }: { world: World }) {
         <div>
           <dt className="text-[11px] text-stone-500">questions</dt>
           <dd className="font-semibold">
-            {view.asked.length} (+{view.bonusSeconds / 60} min)
+            {view.asked.length} (+{questionBonusSeconds(view.asked) / 60} min)
           </dd>
         </div>
         <div>
@@ -136,6 +138,7 @@ function ResultCard({ world }: { world: World }) {
           <dd className="font-semibold">{formatMinutes(elapsed + view.bonusSeconds)}</dd>
         </div>
       </dl>
+      {view.hiderHand && <HandReveal hand={view.hiderHand} />}
       {view.daily && (
         <p className="mt-2 text-xs text-stone-600">
           {alreadyPlayed
@@ -218,7 +221,18 @@ function ModeLine() {
 }
 
 export function Panel() {
-  const { status, error, world, view, notice, dismissNotice, tab, alreadyPlayed } = useGame();
+  const {
+    status,
+    error,
+    world,
+    view,
+    notice,
+    dismissNotice,
+    cardNotice,
+    dismissCardNotice,
+    tab,
+    alreadyPlayed,
+  } = useGame();
   const t = useGameTime(4);
   const ready = status === "ready" && world && view && t !== null;
 
@@ -242,8 +256,18 @@ export function Panel() {
         </p>
       )}
       {ready && <RoundBar t={t} />}
+      {ready && <HiderStrip world={world} t={t} />}
       {ready && <ResultCard world={world} />}
       {ready && <Tabs />}
+      {cardNotice && !view?.result && (
+        <button
+          type="button"
+          onClick={dismissCardNotice}
+          className="mx-4 mt-3 rounded-md bg-orange-50 px-3 py-2 text-left text-sm text-orange-900"
+        >
+          {cardNotice}
+        </button>
+      )}
       {notice && (
         <button
           type="button"

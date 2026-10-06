@@ -61,6 +61,16 @@ interface Session {
   round: SoloRound;
   lastSeq: number;
   log: MatchLog;
+  /** How many of the hider's card plays are already in the log. */
+  cardsLogged: number;
+}
+
+/** Log any cards the hider has played since last time. */
+function logCards(session: Session) {
+  for (const e of session.round.cardEvents.slice(session.cardsLogged)) {
+    session.log.write("card", { t: e.t, card: e.card, hand: session.round.hand.length });
+  }
+  session.cardsLogged = session.round.cardEvents.length;
 }
 
 async function newRound(
@@ -124,6 +134,8 @@ function logEnd(session: Session) {
     questions: round.asked.length,
     bonusMin: bonusSeconds(round) / 60,
     hiderScoreMin: Math.round((elapsed + bonusSeconds(round)) / 60),
+    hiderHand: round.hand,
+    cardsPlayed: round.cardEvents.map((e) => e.card),
     stationFoundMin:
       round.stationFoundAt === null
         ? null
@@ -134,7 +146,7 @@ function logEnd(session: Session) {
 const wss = new WebSocketServer({ port: PORT });
 
 wss.on("connection", async (socket) => {
-  const session: Session = { ...(await newRound("daily")), lastSeq: -1 };
+  const session: Session = { ...(await newRound("daily")), lastSeq: -1, cardsLogged: 0 };
   /** The seeker's view right now (the hider's marker shows only when they're close). */
   const viewNow = (now: number) => soloViewAt(session.round, gameTime(session.clock, now), idx);
   let markerShown = false;
@@ -161,6 +173,7 @@ wss.on("connection", async (socket) => {
     const next = advanceSolo(session.round, gameTime(session.clock, now), idx);
     const changed = next !== session.round;
     session.round = next;
+    logCards(session);
     if (changed) logEnd(session);
     if (session.round.stationFoundAt !== null && !stationLogged) {
       stationLogged = true;
@@ -203,7 +216,7 @@ wss.on("connection", async (socket) => {
     session.lastSeq = seq;
 
     if (intent.type === "newRound") {
-      Object.assign(session, await newRound(intent.mode));
+      Object.assign(session, await newRound(intent.mode), { cardsLogged: 0 });
       stationLogged = false;
       sendState(seq, Date.now());
       return;
@@ -253,6 +266,7 @@ wss.on("connection", async (socket) => {
       } else {
         session.log.write("intent", { t, type: intent.type });
       }
+      logCards(session);
       logEnd(session);
       sendState(seq, now);
     } else {

@@ -5,8 +5,20 @@
  * The two-player round with a real hiding phase and a spot endgame is M3.
  */
 
-import type { LatLon } from "@stand-clear/data";
-import type { DailyInfo } from "./daily.ts";
+import type { Direction, LatLon } from "@stand-clear/data";
+import {
+  CARDS,
+  type CardId,
+  DRAWS,
+  drawAndKeep,
+  handBonusSeconds,
+  playCard,
+  shuffledDeck,
+  TOURIST_WALK_M,
+  WRONG_WAY_MAX_SECONDS,
+} from "./cards.ts";
+import { type DailyInfo, hashString, seededRandom } from "./daily.ts";
+import { type BotPlay, botCurse, botPowerup, botRedraw, nextStopIndex } from "./hiderBot.ts";
 import {
   type Answer,
   type AskContext,
@@ -15,7 +27,9 @@ import {
   evaluate,
   evaluateSpot,
   filterCandidates,
+  isMapQuestion,
   isSpotQuestion,
+  isVetoed,
   type Place,
   photoCamera,
   type Question,
@@ -86,6 +100,22 @@ export interface AskedQuestion extends Asked {
   at: number;
   /** Stations still possible after this answer. */
   remaining: number;
+  /** The hider swapped the seeker's question for this one (Randomize). */
+  randomizedFrom?: Question;
+}
+
+/** A curse on the seeker, while it lasts (public). */
+export type ActiveCurse =
+  | { card: "fog" | "signalLoss" | "shed"; at: number; until: number }
+  /** Their next train must run in direction `dir`. */
+  | { card: "wrongWay"; at: number; dir: Direction; until: number }
+  /** Off at `station`, then walk TOURIST_WALK_M on the street before going back in. */
+  | { card: "tourist"; at: number; station: number };
+
+/** A card the hider played (public, for the seeker's log and notices). */
+export interface CardEvent {
+  t: number;
+  card: CardId;
 }
 
 export type RoundResult =
@@ -127,6 +157,15 @@ export interface SoloRound {
   stationFoundAt: number | null;
   /** The panorama outside one exit of the hider's station, for "photo from your exit". */
   photoExit: string | null;
+  /** The hider's draw pile and hand (secret; the hand is shown when the round ends). */
+  deck: CardId[];
+  hand: CardId[];
+  /** Seeds the hider's random choices (Randomize). Secret. */
+  rngSeed: number;
+  curses: ActiveCurse[];
+  cardEvents: CardEvent[];
+  /** When the last curse was played, so they come spaced out. */
+  lastCurseAt: number;
 }
 
 export type SoloIntent =
@@ -150,6 +189,9 @@ export function createSoloRound(
   const reachable = reachableComplexes(idx, hub, hideStart, seekStart);
   if (reachable.length === 0) throw new Error("hider can't reach anywhere");
   const hider = reachable[Math.floor(random() * reachable.length)] as number;
+  // After the hider, so the daily's hider doesn't change with the deck.
+  const deck = shuffledDeck(random);
+  const rngSeed = Math.floor(random() * 2 ** 32);
   // The bot takes the fastest route there; the replay shows it once the round is over.
   const targets = idx.ds.complexes[hider]?.stations ?? [];
   const legs = earliestJourney(idx, hub, hideStart, seekStart, targets) ?? [];
@@ -179,6 +221,12 @@ export function createSoloRound(
     spot: null,
     stationFoundAt: null,
     photoExit: null,
+    deck,
+    hand: [],
+    rngSeed,
+    curses: [],
+    cardEvents: [],
+    lastCurseAt: Number.NEGATIVE_INFINITY,
   };
 }
 
@@ -252,6 +300,8 @@ function standingAt(round: SoloRound, t: number, idx: TimetableIndex) {
 export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
   if (round.result) return round;
   round = spotOnTheWay(round, t);
+  round = settleCurses(round, t, idx);
+  round = hiderCurses(round, t, idx);
   const here = standingAt(round, t, idx);
   if (here && here.complex === round.hider && round.stationFoundAt === null) {
     const at = Math.min(here.since, round.seekEnd);
@@ -260,6 +310,142 @@ export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): S
   }
   if (t >= round.seekEnd) return { ...round, result: { kind: "timeout", at: round.seekEnd } };
   return round;
+}
+
+/** Meters walked on the street since game time `since`, up to t (for Tourist). */
+function walkedSince(round: SoloRound, since: number, t: number): number {
+  return footpathOf(round.seekerTrail).reduce((sum, s) => {
+    if (s.start < since || s.start > t) return sum;
+    const f = s.end > s.start ? Math.min(1, (t - s.start) / (s.end - s.start)) : 1;
+    const a = { lat: s.a[0], lon: s.a[1] };
+    return sum + f * metersBetween(a, { lat: s.b[0], lon: s.b[1] });
+  }, 0);
+}
+
+/** Curses run out: timed ones at their time, Tourist once you've walked far enough. */
+function settleCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
+  const curses = round.curses.filter((c) =>
+    c.card === "tourist" ? !touristDone(round, c, t, idx) : t < c.until,
+  );
+  return curses.length === round.curses.length ? round : { ...round, curses };
+}
+
+function touristDone(
+  round: SoloRound,
+  c: Extract<ActiveCurse, { card: "tourist" }>,
+  t: number,
+  idx: TimetableIndex,
+): boolean {
+  // Still on the train to the stop you have to get off at: not yet.
+  if (resolve(round.seeker, t, idx).kind === "train") return false;
+  return walkedSince(round, c.at, t) >= TOURIST_WALK_M;
+}
+
+/** Least time between the hider's curses, so they come spaced out. */
+export const CURSE_GAP_SECONDS = 10 * 60;
+
+/** The hider plays a curse when one fits the moment (one at a time, spaced out). */
+function hiderCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
+  if (round.curses.length > 0 || t < round.lastCurseAt + CURSE_GAP_SECONDS) return round;
+  if (t < round.seekStart) return round;
+  const seeker = resolve(round.seeker, t, idx);
+  const card = botCurse({
+    seeker,
+    t,
+    idx,
+    hider: round.hider,
+    spot: round.spot,
+    candidates: candidates(round, idx).length,
+    hand: round.hand,
+  });
+  if (!card) return round;
+  let curse: ActiveCurse;
+  let next = round;
+  const duration = CARDS[card].durationSeconds ?? 0;
+  if (card === "wrongWay" || card === "tourist") {
+    if (seeker.kind !== "train") return round;
+    const trip = idx.ds.trips[seeker.trip];
+    const k = nextStopIndex(seeker, t, idx);
+    if (!trip || k === null) return round;
+    if (card === "wrongWay") {
+      curse = {
+        card,
+        at: t,
+        dir: trip.dir === 0 ? 1 : 0,
+        until: t + WRONG_WAY_MAX_SECONDS,
+      };
+    } else {
+      // Off at the next stop.
+      const ride = { ...seeker, to: Math.min(seeker.to, k) };
+      next = { ...round, seeker: ride, seekerTrail: [...round.seekerTrail, { t, state: ride }] };
+      curse = { card, at: t, station: trip.stops[k] as number };
+    }
+  } else {
+    curse = { card, at: t, until: t + duration };
+  }
+  return {
+    ...next,
+    hand: playCard(round.hand, round.hand.indexOf(card), CARDS[card].cost ?? 0),
+    curses: [...round.curses, curse],
+    cardEvents: [...round.cardEvents, { t, card }],
+    lastCurseAt: t,
+  };
+}
+
+/** Why a curse stops this move, or null. */
+function curseBlocks(
+  round: SoloRound,
+  intent: TransitIntent,
+  t: number,
+  idx: TimetableIndex,
+): string | null {
+  const { ds } = idx;
+  for (const c of round.curses) {
+    if (c.card === "wrongWay" && intent.type === "board") {
+      const trip = ds.trips[intent.trip];
+      const here = trip && ds.stations[trip.stops[intent.stop] as number];
+      if (trip && trip.dir !== c.dir) {
+        const way = here ? (c.dir === 0 ? here.northLabel : here.southLabel) : "the other way";
+        return `Wrong way: your next train has to run ${way}.`;
+      }
+    }
+    if (c.card === "tourist") {
+      const s = resolve(round.seeker, t, idx);
+      if (intent.type === "alightAt" && s.kind === "train") {
+        const stop = ds.trips[s.trip]?.stops[intent.stop];
+        if (stop !== c.station) return "Tourist: you have to get off at the next stop.";
+      }
+      if (intent.type === "board" || intent.type === "transfer") {
+        return `Tourist: go up to the street and walk ${TOURIST_WALK_M} m before going back in.`;
+      }
+      if (intent.type === "enter") {
+        const left = Math.ceil(TOURIST_WALK_M - walkedSince(round, c.at, t));
+        if (left > 0) return `Tourist: walk ${left} m more before going back in.`;
+      }
+    }
+  }
+  return null;
+}
+
+/** A move's knock-on effects from curses: Sidewalk shed slows walks, boarding ends Wrong way. */
+function underCurses(
+  round: SoloRound,
+  intent: TransitIntent,
+  moved: Transit,
+  t: number,
+): {
+  seeker: Transit;
+  curses: ActiveCurse[];
+} {
+  let seeker = moved;
+  const shed = round.curses.find((c) => c.card === "shed");
+  if (shed && moved.kind === "walking" && moved.reason === "street" && moved.start === t) {
+    const end = t + 2 * (moved.end - moved.start);
+    seeker = { ...moved, end, dest: { ...moved.dest, since: end } };
+  }
+  const curses =
+    intent.type === "board" ? round.curses.filter((c) => c.card !== "wrongWay") : round.curses;
+  return { seeker, curses };
 }
 
 /** Flat-earth meters east/north of `o` (the same metric as metersBetween). */
@@ -321,6 +507,59 @@ function metersToSpot(round: SoloRound, t: number, idx: TimetableIndex): number 
   return metersBetween(streetPoint(s, idx), round.spot);
 }
 
+/**
+ * Record a question and the hider's response: the answer (or a Veto, or Randomize's
+ * replacement question), then the hider's draw. A vetoed question draws nothing.
+ */
+function answerQuestion(
+  round: SoloRound,
+  asked: Asked,
+  play: BotPlay,
+  t: number,
+  idx: TimetableIndex,
+): SoloRound {
+  let entry: Asked & { randomizedFrom?: Question } = asked;
+  let hand = round.hand;
+  let deck = round.deck;
+  const events = [...round.cardEvents];
+  if (play) {
+    hand = playCard(hand, hand.indexOf(play.card));
+    events.push({ t, card: play.card });
+    if (play.card === "veto") {
+      entry = { ...asked, answer: { vetoed: true } };
+    } else if (isMapQuestion(play.question)) {
+      entry = {
+        q: play.question,
+        ctx: asked.ctx,
+        answer: evaluate(idx.ds, play.question, round.hider, asked.ctx),
+        randomizedFrom: asked.q,
+      };
+    }
+  }
+  if (play?.card !== "veto") {
+    const { draw, keep } = DRAWS[categoryOf(entry.q)];
+    ({ hand, deck } = drawAndKeep(hand, deck, draw, keep));
+    if (botRedraw(hand)) {
+      events.push({ t, card: "redraw" });
+      hand = playCard(hand, hand.indexOf("redraw"), 2);
+      ({ hand, deck } = drawAndKeep(hand, deck, 3, 3));
+    }
+  }
+  const remaining = filterCandidates(idx.ds, round.reachable, [...round.asked, entry]).length;
+  const answered = !isVetoed(entry.answer);
+  return {
+    ...round,
+    asked: [...round.asked, { ...entry, at: t, remaining }],
+    hand,
+    deck,
+    cardEvents: events,
+    // A thermometer reading restarts it from here, so you can keep chaining.
+    thermometer: entry.q.kind === "thermometer" && answered ? entry.ctx.origin : round.thermometer,
+    footThermometer:
+      entry.q.kind === "spotThermometer" && answered ? entry.ctx.origin : round.footThermometer,
+  };
+}
+
 export type SoloResult = { ok: true; round: SoloRound } | { ok: false; error: string };
 
 export function applySoloIntent(
@@ -370,18 +609,16 @@ export function applySoloIntent(
         if (error) return { ok: false, error };
         answer = evaluate(idx.ds, q, round.hider, ctx);
       }
-      const entry: Asked = { q: intent.question, ctx, answer };
-      const remaining = filterCandidates(idx.ds, round.reachable, [...round.asked, entry]).length;
-      return {
-        ok: true,
-        round: {
-          ...round,
-          asked: [...round.asked, { ...entry, at: t, remaining }],
-          // A thermometer reading restarts it from here, so you can keep chaining.
-          thermometer: q.kind === "thermometer" ? ctx.origin : round.thermometer,
-          footThermometer: q.kind === "spotThermometer" ? ctx.origin : round.footThermometer,
-        },
-      };
+      // The hider may answer a station question with Veto or Randomize.
+      const play = botPowerup(
+        idx.ds,
+        q,
+        ctx,
+        candidates(round, idx),
+        round.hand,
+        seededRandom(hashString(`${round.rngSeed}|${round.asked.length}`)),
+      );
+      return { ok: true, round: answerQuestion(round, { q, ctx, answer }, play, t, idx) };
     }
     case "giveUp":
       return { ok: true, round: { ...round, result: { kind: "gaveUp", at: t } } };
@@ -403,12 +640,15 @@ export function applySoloIntent(
       };
     }
     default: {
+      const blocked = curseBlocks(round, intent, t, idx);
+      if (blocked) return { ok: false, error: blocked };
       const moved = applyIntent(round.seeker, intent, t, idx);
       if (!moved.ok) return moved;
-      const seekerTrail = [...round.seekerTrail, { t, state: moved.state }];
+      const { seeker, curses } = underCurses(round, intent, moved.state, t);
+      const seekerTrail = [...round.seekerTrail, { t, state: seeker }];
       return {
         ok: true,
-        round: advanceSolo({ ...round, seeker: moved.state, seekerTrail }, t, idx),
+        round: advanceSolo({ ...round, seeker, curses, seekerTrail }, t, idx),
       };
     }
   }
@@ -418,8 +658,14 @@ export function candidates(round: SoloRound, idx: TimetableIndex): number[] {
   return filterCandidates(idx.ds, round.reachable, round.asked);
 }
 
-export function bonusSeconds(round: { asked: readonly { q: Question }[] }): number {
-  return round.asked.reduce((sum, a) => sum + QUESTION_RULES[categoryOf(a.q)].bonusSeconds, 0);
+/** Minutes the seeker's questions added to the hider's score (vetoed ones too). */
+export function questionBonusSeconds(asked: readonly { q: Question }[]): number {
+  return asked.reduce((sum, a) => sum + QUESTION_RULES[categoryOf(a.q)].bonusSeconds, 0);
+}
+
+/** The hider's bonus: every question, plus time bonuses still held once the round is over. */
+export function bonusSeconds(round: SoloRound): number {
+  return questionBonusSeconds(round.asked) + (round.result ? handBonusSeconds(round.hand) : 0);
 }
 
 /**
@@ -472,6 +718,14 @@ export interface SoloView {
   footThermometer: Place | null;
   /** Everywhere you've walked or stood on the street, for the searched area. */
   footpath: FootSegment[];
+  /** How many cards the hider holds (what they are is secret until the end). */
+  hiderHandSize: number;
+  /** The hider's hand, once the round is over. */
+  hiderHand: CardId[] | null;
+  /** Curses on you right now. */
+  curses: ActiveCurse[];
+  /** Every card the hider has played. */
+  cardEvents: CardEvent[];
 }
 
 /**
@@ -531,6 +785,10 @@ export function soloView(round: SoloRound, idx: TimetableIndex): SoloView {
     spotNearby: null,
     footThermometer: round.footThermometer,
     footpath: footpathOf(round.seekerTrail),
+    hiderHandSize: round.hand.length,
+    hiderHand: round.result ? round.hand : null,
+    curses: round.curses,
+    cardEvents: round.cardEvents,
   };
 }
 

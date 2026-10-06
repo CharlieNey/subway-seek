@@ -9,6 +9,7 @@ import {
   type Asked,
   evaluateSpot,
   isSpotQuestion,
+  isVetoed,
   sameAnswer,
   ZONE_RADIUS_M,
 } from "./questions.ts";
@@ -73,7 +74,7 @@ export function possibleSpots(
   footpath: readonly FootSegment[],
   t: number,
 ): Point[] {
-  const onFoot = asked.filter((a) => isSpotQuestion(a.q));
+  const onFoot = asked.filter((a) => isSpotQuestion(a.q) && !isVetoed(a.answer));
   const kx = 111_320 * Math.cos((center.lat * Math.PI) / 180);
   const near = (a: Point, b: Point) => Math.hypot((a.lon - b.lon) * kx, (a.lat - b.lat) * 110_540);
   // Only zones that reach into the circle matter. (+2 m: the server checks the zone flat.)

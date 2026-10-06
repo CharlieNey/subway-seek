@@ -2,6 +2,7 @@ import { resolve, streetPoint } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn.ts";
 import { useGame } from "./game.ts";
+import { cursed } from "./HiderCards.tsx";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { compass, nearestPano, panoPoint } from "./street.ts";
@@ -139,6 +140,10 @@ export function StreetView({ visible }: { visible: boolean }) {
     <div className="relative h-full w-full bg-stone-300">
       {/* Its own stacking context, so Google's internal z-indexes stay below our overlays. */}
       <div ref={el} className="absolute inset-0 z-0" />
+      {cursed(view, "fog", t) && (
+        // Fog: blurred, but you can still walk (and the marker still shows when you're close).
+        <div className="pointer-events-none absolute inset-0 z-[5] backdrop-blur-md" />
+      )}
       {spot && (
         <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
           <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white shadow">

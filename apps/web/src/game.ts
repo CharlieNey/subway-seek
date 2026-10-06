@@ -23,6 +23,7 @@ import {
   type TimetableIndex,
 } from "@stand-clear/engine";
 import { create } from "zustand";
+import { cardNotice } from "./HiderCards.tsx";
 import { type DailyResult, loadResults, saveResult } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
@@ -47,6 +48,8 @@ interface GameStore {
   results: Record<string, DailyResult>;
   /** Last rejection, shown as a toast. */
   notice: string | null;
+  /** The last card the hider played, as a notice. */
+  cardNotice: string | null;
   /** An intent is in flight (disable buttons until the server answers). */
   busy: boolean;
   follow: boolean;
@@ -54,6 +57,7 @@ interface GameStore {
   preview: LandmarkPreview | null;
   send: (intent: ClientIntent) => void;
   dismissNotice: () => void;
+  dismissCardNotice: () => void;
   setFollow: (follow: boolean) => void;
   setTab: (tab: "travel" | "ask") => void;
   setPreview: (preview: LandmarkPreview | null) => void;
@@ -80,6 +84,7 @@ export const useGame = create<GameStore>((set) => ({
   alreadyPlayed: false,
   results: loadResults(),
   notice: null,
+  cardNotice: null,
   busy: false,
   follow: true,
   preview: null,
@@ -91,6 +96,7 @@ export const useGame = create<GameStore>((set) => ({
     set({ busy: true, notice: null });
   },
   dismissNotice: () => set({ notice: null }),
+  dismissCardNotice: () => set({ cardNotice: null }),
   setFollow: (follow) => set({ follow }),
   setTab: (tab) => set({ tab }),
   setPreview: (preview) => set({ preview }),
@@ -120,6 +126,14 @@ function onView(view: SoloView): Partial<GameStore> {
   return { results: loadResults() };
 }
 
+/** A notice when the hider plays a card (and none when a new round starts). */
+function cardNoticeFor(view: SoloView, fresh: boolean): Partial<GameStore> {
+  const before = useGame.getState().view?.cardEvents.length ?? 0;
+  if (fresh) return { cardNotice: null };
+  const last = view.cardEvents.at(-1);
+  return last && view.cardEvents.length > before ? { cardNotice: cardNotice(last) } : {};
+}
+
 function handle(msg: ServerMessage) {
   switch (msg.type) {
     case "hello":
@@ -134,6 +148,7 @@ function handle(msg: ServerMessage) {
         sync: msg.clock,
         view: msg.view,
         busy: false,
+        ...cardNoticeFor(msg.view, fresh),
         ...onView(msg.view),
         ...(fresh ? { follow: true, tab: "travel" as const } : {}),
       });
@@ -145,6 +160,7 @@ function handle(msg: ServerMessage) {
         view: msg.view,
         busy: false,
         notice: msg.error,
+        ...cardNoticeFor(msg.view, false),
         ...onView(msg.view),
       });
       break;
