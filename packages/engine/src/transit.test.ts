@@ -234,15 +234,33 @@ describe("geometry", () => {
 
 describe("fast-forward targets", () => {
   it("skips to departure, then each next stop, then the alight stop", async () => {
-    const { nextEventTime } = await import("./transit.ts");
+    const { nextEventTime, SKIP_LEAD_SECONDS } = await import("./transit.ts");
     const d = nextDeparture("127", TEN, "1", 1);
     const s = ok(
       applyIntent(platform("127"), { type: "board", trip: d.trip, stop: d.stop }, TEN, idx),
     );
     const t = trip(d.trip);
     expect(nextEventTime(s, TEN, idx, "next")).toBe(d.dep);
-    expect(nextEventTime(s, d.dep + 1, idx, "next")).toBe(t.arr[d.stop + 1]);
+    expect(nextEventTime(s, d.dep + 1, idx, "next")).toBe(
+      (t.arr[d.stop + 1] as number) - SKIP_LEAD_SECONDS,
+    );
+    // Your own stop: straight to the arrival.
+    expect(nextEventTime(s, (t.arr.at(-2) as number) + 1, idx, "next")).toBe(t.arr.at(-1));
     expect(nextEventTime(s, d.dep + 1, idx, "end")).toBe(t.arr.at(-1));
     expect(nextEventTime(platform("127"), TEN, idx, "next")).toBeNull();
+  });
+
+  it("stops short of the next stop, so you can still get off there", async () => {
+    const { nextEventTime } = await import("./transit.ts");
+    const d = nextDeparture("127", TEN, "1", 1);
+    const s = ok(
+      applyIntent(platform("127"), { type: "board", trip: d.trip, stop: d.stop }, TEN, idx),
+    );
+    const at = nextEventTime(s, d.dep + 1, idx, "next") as number;
+    const off = ok(applyIntent(s, { type: "alightAt", stop: d.stop + 1 }, at, idx));
+    expect(resolve(off, trip(d.trip).arr[d.stop + 1] as number, idx)).toMatchObject({
+      kind: "platform",
+      station: trip(d.trip).stops[d.stop + 1],
+    });
   });
 });

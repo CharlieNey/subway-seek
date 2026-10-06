@@ -320,8 +320,16 @@ export function lastStation(state: Transit, t: number, idx: TimetableIndex): num
 }
 
 /**
+ * "Next stop" fast-forward pulls up this long before the train reaches the stop.
+ * Most stops in the timetable have no dwell (arrival = departure), so landing on the
+ * arrival itself would be too late to get off there.
+ */
+export const SKIP_LEAD_SECONDS = 30;
+
+/**
  * The next moment something happens for this player, for fast-forward:
- * - "next": the train leaving or reaching its next stop, or the end of a walk
+ * - "next": the train leaving, approaching its next stop (SKIP_LEAD_SECONDS out, while
+ *   you can still get off) or reaching your stop, or the end of a walk
  * - "end": arriving where you're headed (your stop, or the end of a walk)
  * Null when nothing is pending (standing on a platform or the street).
  */
@@ -341,7 +349,8 @@ export function nextEventTime(
   if (t < dep) return dep;
   for (let j = s.from + 1; j <= s.to; j++) {
     const a = trip.arr[j] as number;
-    if (a > t) return a;
+    const target = j === s.to ? a : a - SKIP_LEAD_SECONDS;
+    if (target > t) return target;
   }
   return null;
 }

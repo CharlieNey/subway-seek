@@ -149,8 +149,11 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
     (trip.arr[prev] as number) <= t &&
     t < (trip.dep[prev] as number);
   const nameOf = (k: number) => world.ds.stations[trip.stops[k] as number]?.name ?? "";
+  const leavesIn = formatIn(trip.dep[state.from] as number, t);
   const status = waiting
-    ? `leaves in ${formatIn(trip.dep[state.from] as number, t)}`
+    ? leavesIn === "now"
+      ? "leaves now"
+      : `leaves in ${leavesIn}`
     : dwelling
       ? `at ${nameOf(prev)} · doors open`
       : (trip.arr[next] as number) - t < 60
