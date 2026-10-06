@@ -1,6 +1,6 @@
 # Stand Clear — NYC Subway Hide & Seek
 
-*Working title. Design + build plan, as of 2026-10-05. Revised after the Fable and Astra reviews — see the decision log at the end.*
+*Working title. Design + build plan, as of 2026-10-06. Revised after the Fable and Astra reviews — see the decision log at the end. Rules the game already enforces are documented in `docs/` (question prices, endgame, the bot's cards); this file is the design and the plan.*
 
 ## Pitch
 
@@ -10,6 +10,8 @@ Two layers of deduction make it work online:
 
 - **Map questions find the station.** They're answered automatically by the server, so they're instant and can't be lied about.
 - **Photos and Street View find the spot.** This is the human, GeoGuessr-like part, and it gives the show's endgame search an online equivalent.
+
+**Where it stands apart.** "Online Jet Lag Hide & Seek" already exists: Worldboard sells it on real timetables with a Street View endgame, for Europe, Japan and Taiwan, in 1–3 hour games (no US coverage as of 2026-10-06; see Prior art). Stand Clear's room is one city known deeply, a match that fits in 40 minutes, a daily everyone plays and shares, and craft: the Mosaic look, motion that follows the timetable, a bot that plays cards. Those are the things to protect when scope is tight.
 
 ## Format
 
@@ -24,7 +26,7 @@ Two layers of deduction make it work online:
 ## A round (1v1)
 
 **Setup.**
-- Both players start at the same hub (e.g. Times Sq–42 St) at 10:00 game time on the pinned service date.
+- Both players start at the same hub at 10:00 game time on the pinned service date. There are 13 hubs (Times Sq–42 St, Grand Central, Atlantic Av–Barclays Ctr, 14 St–Union Sq, Jackson Hts–Roosevelt Av, Fulton St, 59 St–Columbus Circle, Jay St–MetroTech, 34 St–Herald Sq, 161 St–Yankee Stadium, Broadway Junction, W 4 St, 125 St); the daily picks one by date.
 - **Both rounds of a match use the same hub and start time**, so neither player gets an easier timetable.
 - The seeker's map starts with every station the hider could reach in the hiding time already shaded, which is honest about the real search space.
 
@@ -51,10 +53,11 @@ Two layers of deduction make it work online:
 
 **Phase 3 — Endgame** (target: **a third to half of the seeking time** — a real second half, not a quick finish)
 - The seeker gets off where they think the hider is and comes up at a street exit they choose.
-  - A wrong station costs about 2 game-min to go back down and out again.
-- Moving on the street is **map-driven** ("walk to this corner"), with Street View for looking around on arrival — not step-by-step clicking.
+  - A wrong station costs about 4 game-min to go back down and come up again: 2 min in, the walk to the exit, 2 min out.
+- Moving on the street is **map-driven** ("walk to this corner", or a direction button in Street View), with Street View for looking around on arrival — not step-by-step clicking. Walks are timed at walking speed with a detour factor, and you can't wander more than 600 m from the station you came up at.
+- **Searching:** the map frames the 400 m around the station the seeker came up at, never the hider's real zone, and shades where the hider could still be. Everywhere you walk or stand counts as searched. Two **on-foot questions** about the exact spot (street radar 50 / 100 / 200 m, walking hotter or colder) cost +3 min each on a 5-min cooldown. Rules and tuning: `docs/endgame-balance.md`.
 - The **hider** gets an alert, "Seeker is in your zone." The **seeker gets nothing**, and nothing in the seeker's UI changes when the hider freezes, so it can't leak.
-- **Catch:** the seeker is within 25 m of the hider **along the street/panorama graph** (not straight-line, so no catching through a wall or across an elevated track) and clicks the marker. The marker is only sent to the seeker's client within that range.
+- **Seeing and catching:** a walk that passes within **40 m** of the hider stops there and shows their marker. The **catch** is within **25 m**, by clicking the marker while standing still. The target is distance **along the street/panorama graph** (no catching through a wall or across an elevated track); the solo game measures straight-line until the curated zones exist. The marker is only sent to the seeker's client within 40 m.
 - **Fallback:** if Street View fails to load, the round falls back to the map-pin endgame (M3).
 
 **Scoring.**
@@ -77,37 +80,38 @@ Two layers of deduction make it work online:
   - The Street View endgame starts with a **curated set of 15–30 stations** whose exits have connected outdoor panorama paths.
   - The hider's spot must be in the **same connected panorama network as the station's exits**, so every spot is reachable by the seeker.
   - Some elevated outer-borough stations will fail.
+  - **Solo today:** any reachable complex is a hiding station. The server picks a spot 60–360 m from the station on an outdoor panorama; if it finds none, the round is "find the station" only. Connectivity to the exits isn't checked yet. Curated zones stay parked until two-player rounds (Charlie, 2026-10-06).
 
 ### Map questions are about the station, not the spot
 The hider may still be walking during Phase 2, so map questions answer about their **station** (the zone center). This keeps answers stable and makes "which station?" the clear mid-game goal.
 
-- **Origin: the last station the seeker's train called at** (or their street position if on foot), never a position interpolated along the track. That would turn thermometer into a range-finder fired at every stop.
-- **Cooldown:** one question per 5 game-min, across all types. Repeats are allowed (e.g. radar again at a different distance).
+- **Origin: the last station the seeker's train called at** (or their street position if on foot, or where a walk set off until it arrives), never a position interpolated along the track. That would turn thermometer into a range-finder fired at every stop.
+- **Cooldown:** a 5-game-min gap between any two station questions, plus a cooldown per category (15 min for Matching, Measuring, Radar and Photos; 10 for Thermometer; 40 for Tentacles). On-foot questions have their own 5-min cooldown and skip the gap. Repeats are allowed (e.g. radar again at a different distance), except a vetoed question, which is closed for the round (see Veto closes the question).
 - **"Line" = a route letter or number** (A, Q, 7, …), not a trunk line (8th Ave, Broadway).
 
-MVP question set — answerable from MTA data alone, no OSM needed:
+The question set, in Jet Lag Japan's six categories plus the street. Prices and cooldowns were set with `pnpm sim` (`docs/question-balance.md`). The M2 set was the MTA-only questions in the first four rows, at a flat +10 and one 5-min cooldown; a strong seeker spent over 90% of its questions on radar and route, so the set grew.
 
-| Category | Example | Answer |
-|---|---|---|
-| Radar | Is your station within 1 mile of me? | yes / no |
-| Thermometer | Since my last thermometer, am I closer? | hotter / colder (must be at a different station than last time) |
-| Matching | Does the [route the seeker picks] stop at your station? | yes / no |
-| Matching | Same borough? | yes / no |
-| Matching | Does an express train stop at your station? | yes / no |
-| Measuring | Do more routes stop at your station than at mine? | yes / no |
+| Category | Questions | Hider bonus | Cooldown |
+|---|---|---|---|
+| Matching | Is your nearest park / museum / library / hospital / zoo / airport the same as mine? · Same borough? · Same kind of stop as mine, express or local? · Does this line stop there? (only lines that stop where you are, like the show's rule) | +10 min | 15 min |
+| Measuring | Are you closer to a park / museum / … than me? · More lines than mine? | +10 | 15 |
+| Radar | Is your station within ¼, ½, 1, 2 or 5 miles of me? | +10 | 15 |
+| Thermometer | Start it anywhere, free. Move at least 400 m to another station, then: am I closer? Each reading restarts it where you read it. | +10 | 10 |
+| Tentacles | Of the museums / libraries within 1 mile, or hospitals / big parks within 2 miles of me, which is nearest your station? ("Not within range" if none.) | +20 | 40 |
+| Photos | A Street View look from one of their station's exits (any time) or from their spot (from 15 min in), facing N, E, S, W or up. They don't narrow the map. | +15 | 15 |
+| On foot | About the spot, asked standing on the street: Is your spot within 50 / 100 / 200 m of me? · Walk 30 m, then: am I closer? From more than 600 m away every answer is "Not near you". | +3 | 5, no gap |
 
 Definitions:
-- **"Express stops here"** is defined from the pinned service day's data: a train serving the station skips a station elsewhere on its run. Not from route letters — express/local patterns flip by borough, direction and time of day.
+- **"Express stop"** is defined from the pinned service day's data: a train serving the station skips a station elsewhere on its run. Not from route letters — express/local patterns flip by borough, direction and time of day. The question is relative ("like mine?") so it reads as matching.
 - **Borough** isn't a standard GTFS field: take it from MTA's station list or from borough boundary polygons.
 - **"Routes that stop here"** = routes with at least one trip stopping at the station on the pinned service day, within the play window.
-
-Later, with OSM data: nearest park / museum / library matching, "closer to a river than me?", tentacles ("which of these within 2 km is your station nearest?").
+- **Landmarks** (`nyc-landmarks.json`, built by `build-landmarks`): 60 big parks, 84 notable museums, 190 library branches, 51 hospitals with an ER, the zoos and the aquarium, JFK and LaGuardia. One pin each, with distances to the pin, as the show measures. OpenStreetMap and NYC Parks, credited in the Ask tab. Rivers and the coastline aren't questions yet.
 
 ### Photos
 Split by what the photo is *of*:
 
 - **Station photos — any time.**
-  - Taken from **any exit the hider picks** at their station, so they work while the hider is still walking.
+  - Taken from **any exit the hider picks** at their station, so they work while the hider is still walking. (Solo today: the server picks one exit per round, seeded, since a bot can't choose.)
   - The game opens a temporary Street View at that exit for the hider to aim; the hider doesn't move.
   - **No prompt ever requires station-name signage**, and the hider frames the view, so a station photo is never a free answer.
   - Examples:
@@ -124,32 +128,35 @@ Split by what the photo is *of*:
     - The popup is hider-side only, so it tells the seeker nothing.
   - Examples: what you see straight ahead; the nearest tree to you; the tallest building visible from where you are.
 - **Answer time:** 10 game-min (~100 s real). On timeout the server sends a default view (facing north); an unlocked hider is locked where they stand.
-- **Photos are server-rendered images with no location data.** The seeker's client never receives a panorama ID or coordinates for a photo; otherwise a station photo would leak the station and a spot photo the spot.
+- **Photos should carry no location data.** The aim: the seeker's client never receives a panorama ID or coordinates, because a station photo would leak the station and a spot photo the spot. Google's terms forbid relaying its imagery through our server (`docs/street-view-spike.md`), so today photos are Street View Static images the browser loads from Google, and the URL carries the panorama ID. They run on trust, like the show. Fine against a bot; a known leak for multiplayer.
 - **Honesty runs on trust**, as on the show. The server can't verify "tallest building visible."
 
 ### Question cost
-- **v1:** map questions add **+10 min** to the hider's score and photos **+15 min**. Photos cost more because they can be much more revealing. All questions share the 5-minute cooldown.
-- **Minimal cards in M3:** time bonuses + Veto, so the hider has a decision on every question.
-- **Later:** the full card deck replaces the flat cost.
-- Prices get set from M2's simulation (see Build plan), not guessed.
+- Every question adds minutes to the hider's score (table above): +10 for most, +20 for Tentacles because one answer does the work of two, +15 for photos because they can be much more revealing, +3 on foot because the street search wants quick questions.
+- **Cards on top:** the hider draws cards on every answer (Cards, below). The bot hider already plays a 38-card deck in solo rounds (`docs/hider-bot.md`); the two-player version brings the same deck.
+- Prices come from the simulations (`pnpm sim`, `pnpm sim:endgame`; see Build plan), not guesses.
 
 ### Starting numbers (tune in playtests)
 
-All times and speeds are in **game time**; at 6×, walking 400 m takes ~5 game-min ≈ 50 real seconds.
+All times and speeds are in **game time**; at 6×, walking 400 m takes ~6 game-min ≈ 1 real minute once the detour factor is applied.
 
 | Setting | Game time | Real time at 6× |
 |---|---|---|
 | Hiding phase | 20 min | ~3.5 min |
 | Zone radius | 400 m (¼ mi) | — |
 | Seeking limit | 2 h | ~20 min |
-| Station entry / exit | 2 min | ~20 s |
-| Question cooldown | 5 min | ~50 s |
+| Station entry / exit | 2 min each, plus the walk to the exit | ~20 s each |
+| Platform change inside a station | GTFS transfer time, at least 90 s | ≥ 15 s |
+| Gap between station questions | 5 min | ~50 s |
+| Answer window (station questions, bot or human) | 1 min | 10 s |
+| Category cooldowns | 15 min (Matching, Measuring, Radar, Photos) · 10 (Thermometer) · 40 (Tentacles) · 5 (On foot, no gap) | 2.5 / 1.7 / 6.7 / 0.8 min |
 | Spot photos open | 15 min into Phase 2 | ~2.5 min |
-| Photo answer time | 10 min | ~100 s |
-| Catch distance | 25 m along the graph | — |
-| Walking speed | 1.4 m/s | — |
-| Map question bonus (v1) | +10 min | — |
-| Photo question bonus (v1) | +15 min | — |
+| Photo answer time (human hider) | 10 min | ~100 s |
+| Hider seen from | 40 m; a walk stops there | — |
+| Catch distance | 25 m, standing still | — |
+| Walking speed | 1.4 m/s, with a 1.3× detour on straight-line walks | — |
+| Farthest you can walk from your station | 600 m | — |
+| Question bonuses | +10 · +20 Tentacles · +15 photos · +3 on foot | — |
 
 ## Time & transit model
 
@@ -162,7 +169,7 @@ One **shared, server-authoritative game clock** at **6×** real time:
 | 2 min between stops | ~20 s |
 | 30 min ride | ~5 min |
 
-**Skip ahead is off in v1.** Later: it needs both players' consent, and the server processes every event in the skipped span (arrivals, freezes, timeouts).
+**Skip ahead in two-player rounds is off in v1.** Later: it needs both players' consent, and the server processes every event in the skipped span (arrivals, freezes, timeouts). **Solo rounds have it:** fast-forward to your train's departure, to 30 s before each next stop (so you can still get off), to your stop, or to the end of a walk, capped at the seeking limit. Pause is for practice rounds only.
 
 ### Player states
 
@@ -192,7 +199,7 @@ One **shared, server-authoritative game clock** at **6×** real time:
 
 ### Hidden information and validation
 - The server alone knows the hider's route, station and spot.
-- The seeker's client only ever receives: the status line, question answers, photo images (no metadata), and the marker (within catch range).
+- The seeker's client only ever receives: the status line, question answers (each when its answer window ends), photo images (see Photos for today's panorama-ID caveat), the hider's card plays that act on them (Veto, Randomize and curses, each when it lands), and the marker (within 40 m). The hider's hand size and their Discard 2, draw 3 plays stay hidden until the round ends (decided 2026-10-06, built the same day).
 - The hider's client receives the seeker's live position, trains and questions (Phase 2+). If the Move card later makes this exploitable, delay the view.
 - **Positions snap to real panoramas.**
   - For each hide-eligible zone, the server holds the panorama graph and validates every street move against adjacency.
@@ -225,7 +232,7 @@ Built in M0 (`packages/data`). What the data turned out to be:
 
 ```
  ┌──────────── Client (Vite + React + TS) ────────────────┐
- │ MapLibre map (subway lines from GTFS shapes)           │
+ │ Google Maps + deck.gl (lines, stations, trails)        │
  │ Departure board · Question panel · Street View pane    │
  └───────────────▲──────────────────────────┬─────────────┘
                  │ events + state (WebSocket)│ intents (board, alight,
@@ -254,9 +261,9 @@ Built in M0 (`packages/data`). What the data turned out to be:
 | Server | Node + `ws`, hand-rolled room manager | Two players a room; full control over what each player is sent |
 | Messages | JSON over WebSocket, intents validated with zod | Every player action is checked before the engine sees it |
 | Client | Vite + React SPA · Zustand · Tailwind | The game screen is all client-side; Next.js's server rendering would only get in the way |
-| Map | MapLibre GL + OpenFreeMap tiles | Free, no key, OSM-based; self-hosted Protomaps if outgrown |
-| Geo maths | turf.js | Distances, zones, radar/measuring questions |
-| Street View | Google Maps JS API (client) · Street View Static API (server, photos) | Pending the Street View spike |
+| Map | Google Maps JS (vector Map ID with the Mosaic cloud style) + deck.gl overlays · MapLibre + OpenFreeMap as a dev fallback | Google's terms require a Google map beside Street View (decision B); one map load per session is within the free tier |
+| Geo maths | own great-circle helpers in the engine | Distances, zones, radar/measuring questions; no turf dependency so far |
+| Street View | Google Maps JS panorama (client) · Street View Static images for photos (browser-loaded) · metadata API on the server, free, for picking spots | Spike done 2026-10-05: walking inside one panorama is free, loads are billed, relay is forbidden (`docs/street-view-spike.md`) |
 | Hosting | Client on Vercel (static) · server on Fly.io near NYC | Long-lived WebSocket process, a few dollars a month |
 | Persistence | None in v1: rooms in memory, each match appends its action log to a file | The log feeds playtest metrics and, later, replays |
 
@@ -266,11 +273,11 @@ Built in M0 (`packages/data`). What the data turned out to be:
 stand-clear/
   packages/
     data/     M0: MTA GTFS → dataset/nyc-subway.json (pnpm data:build)
-    engine/   game rules: clock (done), player states, questions, scoring, visibility
+    engine/   game rules: clock, transit, questions, cards, bot hider, street search, the solo round; pure, no I/O
   apps/
-    server/   WebSocket rooms, reconnects, bot hider
+    server/   WebSocket rooms, the bot hider's spot, match logs (reconnects: open question)
     web/      Vite + React client
-  docs/       review prompt, notes
+  docs/       rules the game enforces (questions, endgame, bot cards), research, spike findings
 ```
 
 ### Engineering principles
@@ -282,7 +289,7 @@ stand-clear/
 
 ### Notes
 - **Transit:** no routing engine — departure boards are `stop_times` filtered by station + time; reachability (initial shaded map, bot hider, question simulation) is an earliest-arrival search over the in-memory timetable.
-- **Google terms the Street View spike must answer**, any of which could change the stack: must Street View sit next to a Google map (→ swap MapLibre for Google Maps JS)? Can the server fetch a Street View image and relay it to another player (photos depend on it)? Can panorama IDs be stored (curated zone graphs)? Cost per load and per metadata call.
+- **Google terms, answered by the spike** (`docs/street-view-spike.md`): Street View must sit beside a Google map, so the game moved to Google Maps JS. The server can't relay Street View images, so photos are browser-loaded Static images. Panorama IDs may be stored but go stale, so store our own coordinates and re-look them up. Walking inside one panorama object is free; creating a map or panorama is billed.
 - **Later:** OSM extract for NYC (POIs for richer questions), MTA GTFS-RT recordings for a "replay a real day with its delays" mode.
 
 ## Build plan
@@ -295,9 +302,9 @@ The deduction loop is the core and is pure functions over GTFS; Street View is t
 | M1 ✅ | **Transit sandbox** | One player, 6× clock: departure boards, board, choose exit stop, timed transfers and exits, moving dot on the map. *Riding the subway at 6× feels good.* *Done 2026-10-05: every running train animates along its real track; 35 tests.* |
 | M2 ✅ | **Questions vs a bot hider** | Single-player: a bot hides at a random reachable station; the six MVP questions are answered automatically; the map shades ruled-out stations. **Simulate question partitions over the reachable set** (average questions to find the station) and set prices from it. *Finding the station is fun on its own.* *Done 2026-10-05: `pnpm sim`; 46 tests; a played round found Borough Hall in 32 min with 2 questions.* |
 | M3 | **Two-player round, map endgame** | Room with hider + seeker; Phase 1 → 2 → 3; the hider watches the seeker; Hide here + auto-freeze; the hider drops a map pin in the zone, catch = seeker's pin within 25 m; minimal cards (time bonuses + Veto); reconnects; score + swap |
-| M4 ◐ | **Street View endgame** | 15–30 curated hide-eligible zones with connected panorama graphs; "walk to"; catch along the graph; fallback to the map endgame on load failure. *Solo version done 2026-10-05: the bot hides at a real Street View spot (server-side metadata lookup) within 400 m of its station; finding the station starts the endgame (recorded, not revealed); you walk by direction buttons or map clicks at 1.4 m/s; the marker appears within 40 m; catch within 25 m. Verified end to end on Daily #1 (station at 27 min, caught at 35). Simplifications for solo: moves are speed-checked rather than validated against a curated panorama graph, and the catch is straight-line. The multiplayer version still needs the curated zones.* |
-| M5 ◐ | **Photos** | Station photos (any exit, any time) and spot photos (fixed open time), server-rendered with no metadata; answer timer. *Solo version done 2026-10-05: "photo from their station exit" (any time) and "from where they're hiding" (from 15 min in), looking N/E/S/W/up — directional prompts a bot can answer fairly. +15 min each, shared cooldown; photos don't narrow the map. Shown as Google Street View Static images loaded from Google (allowed by the terms; the URL contains the panorama ID, so photos run on trust — fine vs a bot). Multiplayer adds human-framed prompts ("tallest building you can see").* |
-| M6 | **Full card deck** | Draw-on-answer, hand of 6, powerups, digital curses (see below) |
+| M4 ◐ | **Street View endgame** | 15–30 curated hide-eligible zones with connected panorama graphs; "walk to"; catch along the graph; fallback to the map endgame on load failure. *Solo version done 2026-10-05: the bot hides at a real Street View spot (server-side metadata lookup) within 400 m of its station; finding the station starts the endgame (recorded, not revealed); you walk by direction buttons or map clicks at 1.4 m/s; the marker appears within 40 m; catch within 25 m. Verified end to end on Daily #1 (station at 27 min, caught at 35). Simplifications for solo: moves are speed-checked rather than validated against a curated panorama graph, and the catch is straight-line. The multiplayer version still needs the curated zones. Later the same day: the search area, on-foot questions, and seeing the hider as you pass within 40 m (`docs/endgame-balance.md`); walks take a 1.3× detour factor and stay within 600 m of the station.* |
+| M5 ◐ | **Photos** | Station photos (any exit, any time) and spot photos (fixed open time), server-rendered with no metadata; answer timer. *Solo version done 2026-10-05: "photo from their station exit" (any time) and "from where they're hiding" (from 15 min in), looking N/E/S/W/up — directional prompts a bot can answer fairly. The exit is one seeded pick per round. +15 min each, with a 15-min photo cooldown plus the 5-min gap; photos don't narrow the map. Shown as Google Street View Static images loaded from Google (allowed by the terms; the URL contains the panorama ID, so photos run on trust — fine vs a bot). Multiplayer adds human-framed prompts ("tallest building you can see").* |
+| M6 ◐ | **Full card deck** | Draw-on-answer, hand of 6, powerups, digital curses (see below). *Solo version done 2026-10-06: the bot hider draws on every answer, keeps its best cards, plays Veto, Randomize and Discard 2 draw 3 from public information only, and pays for Fog, Signal loss, Wrong way, Tourist and Sidewalk shed; the movement curses are server-enforced. Not yet: Move, Signal problems, Local only, and the balance pass (S4). The 2026-10-06 decisions are built: a vetoed question closes for the round, every station question waits out the 1-min answer window, and the seeker's view no longer carries the hider's hand size or their Discard 2, draw 3 plays. `docs/hider-bot.md`.* |
 | M7 | **Polish** | Animated end-of-round replay of both routes; spectator view; room-code matchmaking; more formats (1v2, 2v2) |
 
 **Street View spike (now, before the solo track):** walk one zone in Street View at 6×, count panorama loads per round, and settle the pricing/terms question. Street View is the hook, so confirm early that it feels right and is affordable — but don't build on it until M4. *Done 2026-10-05 — findings in `docs/street-view-spike.md`: Google works and is cheap, but its terms block our side-by-side layout and server-relayed photos; provider decision pending a Mapillary check.*
@@ -308,11 +315,32 @@ Charlie is holding off on live playtests, so these come before M3. They make sol
 
 | # | Item | Done when |
 |---|---|---|
-| S1 ✅ | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result line ("Stand Clear #12 · found in 41 min · 3 questions"); practice rounds stay random; results history kept in the browser. *Done 2026-10-05: Daily #1 verified identical across connections; share text, stats and history unit-tested.* |
+| S1 ✅ | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result ("Stand Clear #12 · from Times Sq–42 St 🚇 / Found it in 41 min · 3 questions / 📡🗽🐙 / Hider score: 1 h 11 min"); practice rounds stay random; results history kept in the browser. *Done 2026-10-05: Daily #1 verified identical across connections; share text, stats and history unit-tested.* |
 | S2 ✅ | **End-of-round replay** | After a round, an animated map replays the bot's hidden route and your route side by side, like the show's map graphics; makes the daily share worth clicking. *Done 2026-10-05: one 10:00 → end timeline in ~25 s, trains rewind with it, question markers appear when asked, play/pause/scrub. Visual polish → design agent.* |
 | S3 | **You hide, a bot seeks** | The hider half of the game solo: the 20-min hiding phase, watching the seeker close in, the freeze rule, the map-pin endgame. The bot seeker plans journeys toward the remaining stations and asks questions with the M2 simulation's strategy |
 | S4 | **Bot vs bot balance sim** | The S3 seeker vs a bot hider at full speed, with real travel time: distributions of station-finding time, endgame share and hider score, to tune the hide time, cooldown and prices without playtests |
-| S5 | **Smarter bot hider** | Difficulty levels: Hard picks stations the questions struggle to tell apart |
+| S5 ✅ | **Smarter bot hider** | Difficulty levels: Hard picks stations the questions struggle to tell apart. *Done 2026-10-06: the bot hides in a band of station hardness (Easy 3–4 questions, Normal 5–6, Hard 7–8 with twins), the daily plays Normal, Easy plays no curses, Normal holds movement curses until 20 stations are left, Veto also fires on a kill shot. Below, and `docs/hider-bot.md`.* |
+
+### Bot hider difficulty (S5)
+
+*Proposed and decided 2026-10-06; built the same day. The numbers measured here are in `docs/hider-bot.md`.*
+
+**Today the bot's station is a lottery.** It hides at a uniformly random reachable station (`createSoloRound`), then plays its cards well. Measured with the `pnpm sim` thrifty seeker over all 1,028 (hub, station) pairs (2026-10-06): 7% of stations fall in 1–3 questions, 17% in 4, 51% in 5–6, 25% in 7–8. One daily is "28 St, found in one question", the next is an 8-question slog across the river. Ride time from the hub explains little of it (correlation 0.39, and every station is ≤ 20 min away); what makes a station hard is how many others answer every question the same way from where the seeker stands.
+
+**The bot picks its station from a difficulty band, and the daily plays Normal.**
+
+- **Hardness of a station = questions a strong seeker needs to pin it**, from the sim's thrifty policy (best bits per minute, moves toward the candidates, honours cooldowns), run inside the engine at round start (up to ~0.2 s per hub the first time, then cached; deterministic). The seeker and the sim share the code, per the engine rule.
+- **Bands.** Easy: 3–4 questions (23% of stations). Normal: 5–6 (51%). Hard: 7–8 (25%; ties broken toward stations with a twin, one indistinguishable from it by every question asked from the hub, which 25% of stations have). A band empty for a hub widens by one question on each side. Within the band the pick is uniform, seeded as today, so the daily stays the same for everyone.
+- **Why 5–6 for Normal.** The seeker still has to deduce (never a gimme), questions alone take ~25–30 game-min and ~55 min of hider bonus, then 2–3 stations are left and travelling to look is cheaper than asking: the crossover the M2 pricing wanted every round to reach. 7–8 keeps the seeker asking past the point where it's fun; 1–4 ends before the cards matter.
+- **Cards.** The bot keeps deciding from public information only (`docs/hider-bot.md`), and curses stay rate-limited (one at a time, 10 min apart, 2 of each in the deck). Three changes:
+  - **Veto is a kill-shot card.** It fires late (30 or fewer stations, a strong question) as before, or earlier when the question is expected to leave 10 stations or fewer. Measured along the sim's runs: with more than 30 left no question ever leaves fewer than ~10, so the "3 or fewer" first proposed would never have fired; 10 is the sharpest cut that exists, at ~3% of steps.
+  - **Normal holds Tourist and Wrong way until 20 or fewer stations are left.** Early exploration is never punished; a movement curse lands when the seeker is closing in and reads as the hider fighting back. Hard plays them from the first ride.
+  - **Easy plays no curses**, for a tutorial round.
+  - Not done, on purpose: Randomize picking the weakest replacement (the card says random, and it would be a second Veto), and any card decision that looks at the real answer (it leaks).
+- **Hiding spot:** unchanged (a random panorama 60–360 m out). A later knob if the street search needs one: Easy nearer the exit, Hard further.
+- **Not an LLM.** The bot's decisions are small, exact search problems over ~100 stations that need to be deterministic for the daily, reproducible in tests, free, and pure in the engine; a model call fits none of that. Prior art agrees: the Scotland Yard hider in Nijssen & Winands ([IEEE TCIAIG 2012](https://dke.maastrichtuniversity.nl/m.winands/documents/TCAIG_ScotlandYard.pdf)) is search with two heuristics (stay far from the nearest seeker; keep the seekers' possible-location set large), and [Absurdle](https://qntm.org/absurdle), the adversarial Wordle, is the pure form of a hard hider: after every guess it keeps the largest bucket of answers. Our hardness measure is the same idea run once, since our hider has to commit to a station. Difficulty-adjustment research (Hunicke, [DDA 2005](https://dl.acm.org/doi/pdf/10.1145/1178477.1178573)) warns that mid-round rubber-banding reads as cheating; a band chosen before the round is honest and keeps the daily shared.
+- **Screens:** the result card gets a difficulty picker (Easy · Normal · Hard) under "Practice round", with a one-line hint for the chosen level; the header reads "Practice round · Hard" and the share line "Stand Clear (practice · hard)" when it isn't Normal. Under Interaction's vocabulary it is three Buttons, the chosen one ink and the others white with a rule, not a tab row. The daily has no picker.
+- **Where it lives:** `hardness.ts` (the shared seeker, the table, the bands), `createSoloRound` (the pick), `hiderBot.ts` (the kill shot and the Normal hold), `protocol.ts` (practice difficulty), the server's `newRound`, the result card. `pnpm sim` now runs on the engine's seeker and reports the same numbers as before (thrifty: mean 5.4 questions, hider bonus ~64 min).
 
 ### M2 results: how many questions find the station (`pnpm sim`)
 
@@ -326,6 +354,8 @@ Hider leaves Times Sq at 10:00 with 20 min → **97 possible stations** (log₂ 
 Stations left after 1–8 questions (moving): 49 → 25 → 14 → 7 → 3.7 → 2.0 → 1.3 → 1.1.
 
 **Pricing decision: keep +10 min per question and the 5-min cooldown.** Pinning the station by questions alone costs the seeker ~70 min of hider bonus and ≥ 30 game-min of cooldown, so questions pay early, but with 2–3 stations left it's cheaper to go and look. That crossover is the decision we want players making. Revisit once real playtests log station-finding times.
+
+*Superseded later the same day: with only radar and route questions, a strong seeker spent over 90% of its questions on those two kinds, so the set grew to six categories with per-category prices and cooldowns (Rules detail; `docs/question-balance.md`). The crossover logic above still holds: pinning the station now takes ~5.4 questions and earns the hider ~64 min.*
 
 ### Playtest metrics (log from M2 on)
 
@@ -353,24 +383,41 @@ Draws when answering:
 | Thermometer | 2 | 1 |
 | Matching | 3 | 1 |
 | Measuring | 3 | 1 |
+| Tentacles | 4 | 2 |
 | Photo | 1 | 1 |
+| On foot | 1 | 1 |
 
-Hand limit: 6.
+Hand limit: 6. A vetoed question draws nothing. The solo deck today is 38 cards, listed in `docs/hider-bot.md`; the final mix is set in S4.
 
-- **Time bonuses** *(M3)*: +5 / +10 / +15 min to the hider's score, if still held when caught.
+- **Time bonuses** *(M3)*: +5 / +10 / +15 min to the hider's score, if still held when the round ends (caught, time's up or the seeker gave up).
 - **Powerups:**
-  - **Veto** *(M3)*: refuse a question; the seeker has still spent it
+  - **Veto** *(M3)*: refuse a question; the seeker has still spent it, and it's closed for the rest of the round (see Veto closes the question). *Decided and built 2026-10-06.*
   - **Randomize:** swap the question for another of the same type
   - **Discard 2, draw 3**
-  - **Move:** unfreeze and choose a new spot in your zone while the seeker is frozen 5 min
-- **Curses** (played on the seeker; paid for by discarding cards). All are server-enforced, which is where online beats the show:
+  - **Move:** unfreeze and choose a new spot in your zone while the seeker is frozen 5 min. *Not in the solo deck: a bot doesn't move.*
+- **Curses** (played on the seeker; paid for by discarding cards). Movement curses are server-enforced, which is where online beats the show. Fog and Signal loss are drawn by the client, which is enough against a bot; for multiplayer, either accept that a determined seeker can defeat them or strip the data server-side:
   - **Fog:** seeker's Street View blurred for 10 game-min
-  - **Signal loss:** seeker's map hidden, leaving only departure boards
-  - **Local only:** no express trains for 20 min
-  - **Signal problems:** seeker's train held 5 min at the next station
-  - **Wrong way:** seeker's next train must go in the opposite direction
+  - **Signal loss:** seeker's map hidden for 10 game-min, leaving only departure boards
+  - **Local only:** no express trains for 20 min. *Not in the solo deck yet: needs per-train express flags.*
+  - **Signal problems:** seeker's train held 5 min at the next station. *Not in the solo deck yet: needs per-player train timing.*
+  - **Wrong way:** seeker's next train must go in the opposite direction. Lapses after 30 min so a terminal can't strand the seeker
   - **Tourist:** seeker must get off at the next stop and walk 200 m before going back in
   - **Sidewalk shed:** seeker walks at half speed for 10 game-min (replaced Black & white, which didn't change play)
+
+### Veto closes the question
+
+Today a vetoed question can be asked again once its category cools down. So Veto only delays one answer, by 15 min for most categories, 40 for Tentacles and 5 on foot, and the seeker can ask other categories meanwhile. The show had the same flaw, and it was the main rules complaint after the NYC season: the seekers just ask again ([r/JetLagTheGame](https://www.reddit.com/r/JetLagTheGame/comments/1kd2m9b/), 537 upvotes). The show has since fixed it. In the official expansion rules a vetoed question "is removed from the game for the rest of the round" ([rules](https://rules.jetlagthegame.com/expansion)).
+
+- **Rule, decided 2026-10-06: a vetoed question is closed for the rest of the round.** Built the same day: the engine refuses a re-ask, and the client derives the closed list from the question log.
+  - **"The same question" means the same kind and setting, asked from anywhere:** Radar 1 mi, "Does the Q stop there?", Same borough, Matching museums, Tentacles hospitals, a photo looking north from their exit, Street radar 100 m. Closing it only where it was asked would do nothing, because the seeker would ask it again from the next stop.
+  - **The rest of its category stays open.** After a vetoed Radar 1 mi, Radar ½ mi is still there once radar cools down. Pushing the seeker onto a worse question is part of what the hider gets.
+  - **Unchanged:** the seeker still pays the question's price and its category cooldown, and the hider draws nothing for it.
+  - **Randomize never swaps to a closed question.** It's out of the game, and swapping to it would answer what the hider refused.
+- **Thermometer and the walking hotter-or-colder are one question each,** so a veto closes the whole category for the round. Accept it for the thermometer, the least-used category (~5–6% of a strong seeker's questions, `docs/question-balance.md`). Watch the walking one in playtests, because the street search leans on it.
+- **Seeker:** a closed question's chip stays in its block, hollow like a vetoed question's square in the replay, captioned "Vetoed · closed this round". It can't be chosen, so it never needs a refusal row. *Solo today: the chip is struck through, with that caption as its tooltip.*
+- **Hider:** the rule is printed on the card. The incoming-question band already shows the true answer and what it would leave, so the hider sees what closing it is worth.
+- **Bot:** a stronger Veto changes when the bot should play it (today: a strong question with 30 or fewer stations left) and what it's worth when choosing which cards to keep (12 min). Re-tune both with the S4 simulation, along with the curse prices.
+- **What doesn't change:** a veto still tells the seeker the hider didn't want to answer, so the bot still decides from public information only.
 
 ### Card faces (proposed)
 
@@ -392,7 +439,7 @@ Every card is a small plaque in the Mosaic look (see Look and motion). Art and l
 | Running late (+5) | platform clock at 10:05 | Adds 5 min to your score if you're still holding it when you're caught. | "Next train in 5 minutes." | — |
 | Delays (+10) | the clock at 10:10 | Adds 10 min, same terms. | "We are delayed because of train traffic ahead." | — |
 | Planned work (+15) | the clock at 10:15 | Adds 15 min, same terms. | "Trains are running with delays because of planned work." | — |
-| Veto | brass folding gate | Refuse a question. The seeker has still spent it. | "This entrance is closed." | — |
+| Veto | brass folding gate | Refuse a question. The seeker has still spent it, and can't ask it again this round. | "This entrance is closed." | — |
 | Randomize | the old Y-cut subway token | Swap the seeker's question for a random one of the same type. | "Good for one fare." | — |
 | Discard 2, draw 3 | three cards | Discard two cards, then draw three. | "Transfer is available." | — |
 | Move | station stair, arrow up | Unfreeze and choose a new spot in your zone. The seeker is frozen for 5 min while you move. Playable once frozen or locked in. | "Step lively." | — |
@@ -407,9 +454,9 @@ Every card is a small plaque in the Mosaic look (see Look and motion). Art and l
 - **Curse costs (proposed):** about one card per 5 game-min the curse is expected to cost the seeker, minimum one. Signal problems is a certain 5 min, so it costs 1. Tourist (exit, 200 m, entry, a wait) and Wrong way (a stop out, a stop back, two waits) cost about 8–12 min, so they cost 2. Signal loss takes the shaded map, which is where the deduction lives, so it costs 2. Set the real prices with the S4 bot-vs-bot simulation, like question prices.
 - **Open questions (cards):**
   - [ ] Signal loss had no duration. The card proposes 10 min, to match Fog.
-  - [ ] Randomize on a thermometer has nothing of the same type to swap to. Either block it, or roll any type.
+  - [x] Randomize on a thermometer has nothing of the same type to swap to. The bot never randomizes a thermometer, a photo or an on-foot question, and otherwise swaps within the category ("Same borough?" can become "Nearest museum the same as mine?"). Keep that rule for human hiders.
   - [ ] Move is limited to "once frozen or locked in". Played any earlier, it would be a free 5-min freeze on the seeker.
-  - [ ] Deck composition: how many of each card. Set with the curse prices in S4.
+  - [ ] Deck composition: how many of each card. The solo deck is 38: 10 / 6 / 3 time bonuses, 3 each of Veto, Randomize and Discard 2 draw 3, 2 of each curse. Set the final mix with the curse prices in S4.
 
 ## Look and motion
 
@@ -420,7 +467,7 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
 - **IRT tile (Heins & LaFarge, 1904) carries identity:** name tablets, faience plaques, borders. It's used for where you are, photos, cards and the brand. It never carries game data.
 - **IND tile (Squire Vickers, 1932) carries information:** the color bands that changed at every express stop, and white-on-black captions. It's used for questions, importance and time.
 - Rules that follow:
-  - **Five IND color families = the five question types:** Radar blue, Thermometer red, Matching green, Measuring yellow, Photo purple. A family color never decorates.
+  - **IND color families = the question categories:** Radar blue, Thermometer red, Matching green, Measuring ochre, Photo violet, and Tentacles teal, which is ours because the IND had five. On-foot questions use Radar and Thermometer at street scale. A family color never decorates. See Questions.
   - **Band width = importance**, after the IND's wider express bands. A 3-tile "express" band marks the one thing that matters now. Everything else gets a 2-tile "local" band or a plain rule.
   - **Circles are trains, squares are game information.** Route bullets and train dots stay MTA circles. Candidate stations and question chips are square tiles, so a green Matching chip can't be mistaken for the 4.
   - **Type:** Josefin Sans for tablets, captions and buttons. Libre Franklin for anything read. Tabular figures for every time.
@@ -440,29 +487,97 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
     - Push the cloud style with the Map Management API: PATCH `styleConfigs/a45edf63b9a210393eb6e2eb`. It takes OAuth, an `X-Goog-User-Project: stand-clear-nyc` header, and the project number `75066973119` in resource paths.
 - Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817). Both are private artifacts.
 
+### Interaction
+
+From the UX pass of 2026-10-06 (`docs/ux-pass.md`, with the reasoning and sources). The mocks were clean but even: every element a similar rectangle in the same tracked caps, and asking, the most expensive click in the game, had no arming step. Charlie reviewed the proposals on 2026-10-06. The decided rules come first; the screen sections below and the Deck page's mocks (parts four, seven, nine, ten and eleven) were redrawn to them the same day. The rest stay proposed.
+
+**Decided 2026-10-06**
+
+- **One vocabulary of tiles.** Each role has one shape, and no two roles share one.
+  - Caption: black tile, white tracked caps. The clock, "Facing N", a band's label.
+  - Button: ink fill for the default, white with a 2 px ink rule for the alternative, tracked caps, presses 2 px.
+  - Tab: square tiles in a row, the active one ink, never more than three. Travel and Ask only.
+  - Chip: a light tile with a 2 px rule and a family square at its left edge; dims with its reason.
+  - Lamp: a 10 px square dot with a plain label; lit is the family color or ink, unlit is an outline. The status board is lamps, not tiles.
+  - Band: local (2 tiles) or express (3 tiles) in a family color.
+  - Rule: a 2 px ink rule with small caps above it and no fill. Section headings in the panel are rules.
+  - Notice: a light row with a terra cotta square, dismissed by clicking.
+  - "Following you" leaves the tab row and becomes a square toggle on the map, bottom right, beside the zoom buttons. It's a map state, not a panel view.
+- **A caption budget.** At most two black caption tiles per panel besides the clock. Captions mark live information, not sections.
+- **Departure boards look like the real countdown clocks.** The board is a black field with glaze type, as on the platform, and reads bullet · destination · **3 min**. The minutes are the largest thing on the row, tabular and right-aligned, with the clock time small after them. Each route and direction shows its next two trains, "2 min" then "9 min", as the real boards do. The whole row is the button; "Board" shows on hover and focus. Rows you can't make are dimmed with their reason. On a train the stop list stays as mocked, with the stop you're getting off at in the express band.
+- **Asking is select, see, confirm.**
+  - Clicking a chip arms it: the chip sets ink, the map draws the question's shape (the radar ring, the thermometer's halfway line, the matching cells, the measuring rings, the tentacles), and a one-sentence hint says what it does. Hover previews the same without arming.
+  - **No outcome counts.** The map draws the shape and the player judges what it would leave. Counting the two sides for the player would turn reading the map into a lookup; Charlie wants the map read. The partition stays an engine function for the bot and the simulator only.
+  - The wainscot is the confirm: "Ask · Radar 1 mi · +10 min to their score". Esc disarms. One question can be armed at a time, and it stays armed across stops, so a question can be set up on the ride and fired on arrival.
+  - A category that's cooling down collapses to one rule-row, "Radar · next 10:40". Only ready categories show chips.
+  - The route question offers only the lines at your origin: "Lines here: N Q R W".
+  - Thermometer chips say how far you've moved: "1.9 km from Times Sq–42 St", or "Move 400 m to another station first · 210 m so far".
+- **The seeker sees the answer window.** The question band carries a ten-tile timer, "Answer in 6 s", and the answer sets when the window ends. A bot answers at the same moment a human would, so the wait never reads as lag.
+- **Riding has a job.** On a train, the Travel tab shows **connections at your stop**: the departure board of the stop you're getting off at, around your arrival time, in the same countdown-clock form. Hover previews keep working while categories cool down.
+- **Fast-forward is on the clock.** In solo rounds the clock tile grows square buttons to its right: ▸ Next stop and ▸▸ Your stop on a train (▸▸ Arrive on a walk, ▸ Departure on a platform). The digits step to the new time and dots jump, because the clock is later, not faster (rule 1). Practice rounds get Pause as a square button on the tile's left. Space and Shift+Space.
+- **Onboarding is three hints,** eight words or fewer each, shown once in the notice row and remembered in the browser: before the first question ("Hover a question to see what it does."), after the first answer ("Ride toward what's left. Get off anywhere.") and at three stations or fewer ("Three left. Go up and look."). No tutorial.
+
+**Decided 2026-10-06, second review.** Charlie took the rest of the pass as written, so these are rules too.
+
+- **One hero number.** The seeker's is stations possible (on foot: the share of the circle left); the hider's is their score. It's set larger, and the other two numbers sit on the same rule as a secondary line.
+- **The clock says the time.** "6× real time" is said once, on the homepage and the loading board. Under the clock is nothing. "hider bonus, min" reads "min to their score".
+- **The homepage has one door:** Play today's daily in the hero, Practice as a text link beside it, and the departures board as the only list of modes.
+- **The answer window is for everyone, bot included.** Every station question waits the same 1 game-minute (10 s real) before its answer lands, in solo rounds too, so the seeker's screen can never tell a hider who holds a card from one who doesn't. The seeker sees it as the ten-tile timer. Playtest the pace; the length is the one knob. *Built 2026-10-06 for every station question, photos included; on-foot questions answer at once. A Veto or Randomize shows when the answer would have landed. Solo today: the log reads "Answer in 6 s".*
+- **"What counts" at the street.** A three-line notice on the first arrival at the street: the circle, seen at 40 m, caught at 25 m.
+- **Keyboard:** 1–5 arm radar distances, Enter confirms, Esc disarms or closes, B boards the first row, Space fast-forwards (Shift+Space to your stop), arrows walk on the street. Each key is printed small on its control, in a hollow tile.
+- **Motion catalog additions:** Board (the row becomes the express band; the tablet departs at the scheduled time), Arm a question (chip sets ink, shape draws, wainscot label steps), Fast-forward (digits step, dots jump, no catch-up), Copied (Share result sets a 2 s notice).
+- **Sound is events, and one of them is on by default.** "Someone's here" gets a hard sound and a two-frame hold on the catch band, and it's the only sound that ships on. The departure chime and the answer tock stay optional. There is no soundtrack.
+- **Durations have a ceiling.** Nothing in the panel runs over 300 ms, nothing eases in, only transform and opacity animate, and a control hit by keyboard gets the step token or nothing. Brake and depart are the exception, because they move with the timetable.
+- **Contrast is checked at the boundary.** Each family's ring, line or cell must hold 3:1 against the base map's land, water and parks, and each chip's square against its tile. Shape already carries the family on the map, and chips carry text.
+- **Small fixes:** no "status page" link until there is one; legends on the map collapse to one caption line once read; caps that carry information are at least 12 px with 0.08 em tracking; terra cotta keeps three jobs (the other player, the irreversible action, the curse) and errors use ink with the terra cotta square only; Share result confirms with "Copied".
+- **The component sheet** on the Deck page (part thirteen) is the reference for every role above, at real size, with its states. Build the components from it, not from the screens.
+
+### Voice
+
+Plain copy everywhere: second person, present tense, digits for numbers, say what to do, no exclamation marks, no emoji in the UI (the share text keeps its trail), and the subway's own words for states (Now boarding, Not in service, Delayed, Held, Last stop). Never "Oops", never "Great job", never a cheerful empty state.
+
+Personality lives in **twelve fixed moments**, each with one original line in the conductor's register. A line is set small under the moment's band or tablet, in Libre Franklin italic, ink-2. It is never a toast, never repeats within a round, and never tells one side anything the other doesn't know. No real MTA announcement is quoted (the departure keeps no caption, as decided 2026-10-05).
+
+| Moment | Who | Line |
+|---|---|---|
+| The daily opens | both | "Now boarding. Today's hider went underground at 10:00." |
+| Trains open at 10:20 | seeker | "Trains are running. Ride toward what's left." |
+| Time's up | hider | "This is your station. Everyone off, please." |
+| Locked in | hider | "You're set. Hold on and watch them come." |
+| First question fired | seeker | "Your question is on its way. Answers take a minute." |
+| A veto arrives | seeker | "This entrance is closed. That question is gone for the round." |
+| Up to the street | the walker | "Mind the stairs. Daylight ahead." |
+| Seeker is in your zone | hider | "Stay where you are. They're on your block." |
+| Found | both | "Last stop. Thank you for riding." |
+| Time's up for the seeker | both | "Service has ended. The hider was at …" |
+| Connection lost | the one who dropped | "We're being held by the dispatcher. The round is paused." |
+| Back online | the one who dropped | "We're moving again. Thank you for your patience." |
+
+Cards keep their own lines (Cards › Card faces). Everything else in the game is plain.
+
 ### Sidebar
 
 The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private artifact).
 
-- **Top bar:** "Stand Clear" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with "6× real time" under it.
-- **The round:** stations possible, time left and hider bonus, as three numbers on a 2 px ink rule with grout dividers. Tabular figures. "Give up" is a quiet underlined link.
-- **Tabs:** square tiles, with the active one in ink. "Following you" is a light caption, because it's a state, not an action.
+- **Top bar:** "Stand Clear" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with nothing under it. In solo rounds two square buttons sit beside the clock, ▸ and ▸▸: the departure or the next stop, and your stop.
+- **The round:** stations possible, time left and minutes to the hider's score, as three numbers on a 2 px ink rule with grout dividers. Stations possible is the hero, set larger. Tabular figures. "Give up" is a quiet underlined link.
+- **Tabs:** Travel and Ask, square tiles with the active one in ink. "Following you" is a toggle on the map, bottom right, because it's a map state.
 - **Where you are:** the station's mosaic name tablet, with its bullets, on a tile field.
   - On a train: the route bullet, headsign and "next: Canal St in 2 min".
   - On the street: the exit ("Exit 4 · E 14 St & Union Sq E").
-- **Boards and lists:**
-  - Direction headings are black captions ("↑ Uptown & Queens").
-  - Rows are a bullet, headsign and time, with a small ink button.
-  - A row you can't use is dimmed, with the reason in words ("too soon to change platforms").
-  - The stop you're getting off at is the one express band in the list.
-- **Ask:**
-  - Each question family is headed by a local band in its color.
-  - Radar distances are square tiles, and route choices stay MTA circles.
-  - The cooldown is a tile timer, and every control waits it out together.
-  - The log shows each question's family square, its time and origin, and how many stations were left.
+- **Departure boards are the countdown clock:** a black field with glaze type, as on the platform.
+  - Direction headings are small caps on the board ("↑ Uptown & Queens").
+  - Rows read bullet · destination · **minutes**, the minutes largest and right-aligned, the clock time small under the destination, and each route shows its next two trains ("2 min, then 9 min").
+  - The whole row boards; "Board" shows on hover and focus. A row you can't use is dimmed, with the reason in words ("too soon to change platforms").
+  - On a train, the stop list keeps its rows and the stop you're getting off at is the one express band. Under it, the same board shows the **connections at that stop** around your arrival, so the change is planned before the doors open.
+- **Ask:** select, see, confirm.
+  - Each ready category is headed by a local band in its color with its price. A category that's cooling down collapses to one rule-row with its next time ("Matching · next 10:40").
+  - Radar distances are square chips, and route choices stay MTA circles, only for the lines at your origin.
+  - Clicking a chip arms it: the chip sets ink, the map draws the question's shape, and a hint says what it does without counting the sides. The wainscot confirms: "Ask · Radar 1 mi · +10 min to their score". Esc clears.
+  - Once asked, the question sits in an express band with the ten-tile answer window ("Answer in 6 s"), then collapses into the log, which shows each question's family square, its time and origin, and how many stations were left.
 - **Wainscot:** the one main action for the state, on buff brick. Up to the street, Get off at the next stop, or Back down.
 - **Result:** a gold "Found" tablet (or "Time's up"), the hider's station as its own tablet, the three numbers, and the score tally bar. Then Watch replay in ink, with Share and Practice round in white.
-- **Rules:** ink for the default action, white for the alternative, terra cotta only for actions that fix where you are (Hide here, Lock & answer). No rounded corners, no shadows. Notices are a light row with a terra cotta square, dismissed by clicking.
+- **Rules:** ink for the default action, white for the alternative, terra cotta only for actions that fix where you are (Hide here, Lock & answer). No rounded corners, no shadows. Section headings are rules, not captions, and a panel carries at most two black captions besides the clock. Notices are a light row with a terra cotta square, dismissed by clicking; the first round's three hints use that row.
 
 ### Street endgame
 
@@ -486,7 +601,7 @@ Street View takes the top three fifths of the main column and the map the bottom
 
 One job: get the visitor into today's daily in one click. Shared result lines are how new players arrive, and they arrive wanting today's puzzle. Full mock, responsive: [Stand Clear Homepage](https://claude.ai/artifact/TLySzn31W8WUSPrapZN7dB) (private artifact).
 
-- **Hero, on the platform wall:** the Stand Clear mosaic tablet. Below it, "Hide and seek on the real New York subway." Then "Play today's daily · #23" in ink, "Practice round" in white, and one line of facts: "Daily #23 · Tue, Oct 27 · everyone hunts the same hidden station · starts at Times Sq–42 St, 10:20".
+- **Hero, on the platform wall:** the Stand Clear mosaic tablet. Below it, "Hide and seek on the real New York subway." Then "Play today's daily · #23" in ink, with "or a practice round" as a text link beside it (decided 2026-10-06: one door), and one line of facts: "Daily #23 · Tue, Oct 27 · everyone hunts the same hidden station · starts at Times Sq–42 St, 10:20".
 - **Live map:** today's timetable at 6×, every dot a train, every square a reachable station. Ambient motion that's real data (rule 8). It never hints at today's station.
 - **Departures board, for the modes:**
   - Today's daily is "Now boarding", and Practice is "Any time".
@@ -527,7 +642,7 @@ Six screens that follow one round on the real timetable, from Times Sq–42 St a
   - The stations still possible, as far as the seeker knows, are ink squares, and the panel counts them.
   - The lock row reads "Locked in · E 15 St, near Irving Pl · since 10:31", and the hand sits on the wainscot.
 - **A question arrives:**
-  - A band in the family's color reads "Incoming · matching · from 23 St". Under it are the question and your true answer, with what it would leave: "Yes · would leave 3 stations, yours among them". The hider decides with the cost in front of them.
+  - A band in the family's color reads "Incoming · radar · from 23 St". Under it are the question and your true answer, with what it would leave: "Yes · would leave 2 stations, yours among them". The hider decides with the cost in front of them.
   - The window is a tile timer ("Sent in 6 s"), with Play Veto or Randomize when you hold them. It's the same length for every question, card or no card, and the answer goes out when it ends. This is the proposal in the veto-window open question.
 - **Seeker is in your zone:**
   - A terra cotta express band with ink trim sits at the top of the map: "Came up at Exit 4 · 10:48". It's the hider's one express band, and it mirrors the seeker's catch prompt.
@@ -547,10 +662,10 @@ The seeker's first twenty minutes. Mock at 10:13 of the same round: the Deck pag
   - Stations reachable so far are ink, and the rest are outlined, with the legend "48 stations reachable by now · 97 by time's up at 10:20". Squares set as the clock reaches them, which is ambient motion that's data (rule 8).
 - **Countdown:** "The hider has 7 min" over twenty tiles, then "You start at 10:20, from Times Sq–42 St."
 - **Status board:**
-  - Three lamps, Riding, Changing trains and Walking, with the lit one in glaze on an ink board. Each change crossfades (step) and is logged with its time.
+  - Three lamps, Riding, Changing trains and Walking: a square dot and a plain label, the lit one ink and the others outlined, so they can't read as tabs. Each change crossfades (step) and is logged with its time.
   - Waiting on a platform counts as Changing trains, so stopping tells the seeker nothing extra.
   - Playtest variant: the lit lamp adds the route letter ("Riding · Q"). It never shows stations.
-- **Opening questions:** a queue the seeker can reorder, showing when each fires (10:20, 10:25, 10:30). Each is asked from wherever the seeker is when it fires.
+- **Opening questions:** a queue the seeker can reorder, showing when each fires. The times follow the 5-minute gap and each category's cooldown: this round's radar, borough and hospital Tentacles fire at 10:20, 10:25 and 10:30, and a second radar couldn't go before 10:35. Each is asked from wherever the seeker is when it fires.
 - **Wainscot:** Add a question, beside "Trains open at 10:20". Boarding is shown as a time, not as a disabled button.
 
 ### Replay
@@ -565,10 +680,78 @@ The same round, replayed for the seeker after the find, scrubbed to the Veto at 
   - Both trails are square tesserae, offset side by side where the players rode the same tracks. What has happened is solid and the rest of the round is faint.
   - Questions stack like tiles at the place they were asked from, each labeled with its answer. The zone and the spot are revealed.
 - **Panel:**
-  - The hider's station tablet, then "on E 15 St, near Irving Pl · found at 11:52", then found in, hider bonus and hider score.
+  - The hider's station tablet, then "on E 15 St, near Irving Pl · found at 11:10", then found in, hider bonus and hider score.
   - The log follows the playhead. The current event is the express band, later events are dimmed, and clicking a row jumps there.
   - Hider moves get a terra cotta dot and yours an ink dot. Questions get their family square and curses a terra cotta square.
 - **Wainscot:** in a match, "Round 2 · you hide" and Share. In a daily, Share and Practice round.
+
+### Questions
+
+The Ask tab's six categories and the on-foot questions. Mocks from the same round, on the game's real landmark data and its own search code: the Deck page, part nine.
+
+- **Six families.** Each category keeps a family color, and the color stands for the shape its answer draws, so it says what a question will do before you ask it.
+  - Radar blue is a ring. Thermometer red is a halfway line. Matching green, "same as mine?", is a region. Measuring ochre, "closer than me?", is rings round every landmark. Photo violet is a view.
+  - **Tentacles teal is new:** `#1F6E6B`, with `#0E3A38` trim. Its answer is a cell round each landmark in range. The IND had five families, so the sixth is ours. It's kept clear of radar blue, matching green and the water on the base map.
+- **On foot is not a seventh family.** The street radar and the walking hotter-or-colder draw the same shapes as Radar and Thermometer, so they use those colors at street scale. Their price and cooldown sit on an ink caption band: "On foot · their exact spot".
+- **Landmarks are plaques.**
+  - Each is a small buff-framed plaque with a 9 × 9 tile pictogram: a tree, a museum front, an open book, an H for hospitals, a paw for zoos and aquariums, and a plane.
+  - They're never circles, which mean trains, or bare squares, which mean game information. The one nearest you gets an ink frame and its name.
+  - Plaques show only while you're choosing or reading a landmark question.
+- **The Ask tab:**
+  - "Asking from" sits at the top, with the 5-minute gap as a five-tile timer.
+  - Each ready category is a block: a local band in its color with its price, then its chips. A category that's cooling down collapses to one rule-row with its next time ("Matching · next 10:40"); opening it shows its dimmed chips, so previews still work for planning.
+  - Landmark chips carry their pictogram. Tentacles chips carry their count and range ("Hospitals · 8 within 2 mi"), and dim with the reason when none are in range.
+  - Photos are two compasses, one for their exit and one for their spot, with N, E, S and W round the edge and Up in the middle. The spot compass says when it opens.
+  - On foot, the tab leads with On foot and Photos. The five station categories fold into one list with their next ready times.
+  - "Places © OpenStreetMap contributors · NYC Parks" stays at the foot of the tab.
+- **Choosing previews the answer's shape, and clicking arms it.**
+  - An armed chip is ink, and the wainscot confirms it with the price ("Ask · Tentacles · Hospitals · +20 min to their score"). Enter asks, Esc clears. The hint never counts the two sides.
+  - Hovering a chip draws on the map what the question would do, and a one-sentence hint says it: "Your nearest museum is Madame Tussauds New York, 220 m away. Yes keeps every station whose nearest museum is the same one."
+  - Matching draws the city divided by nearest landmark of that kind, in green, with yours outlined. Measuring draws an ochre ring of your distance round every landmark of that kind. Tentacles draws the range ring and a teal line from you to each landmark inside it.
+  - Previews still work while a category cools down, so you can plan.
+- **Answers** arrive as the express band in the family's color, with the question, the answer and the count ("59 stations → 6"). Then the band collapses into the log. A Tentacles answer names its landmark beside the plaque. The other tentacles retract, and the named landmark's cell, clipped to the range, stays outlined.
+- **The street search is tiles.**
+  - Where the hider could still be is drawn on the engine's 8 m search grid, as ink tesserae inside the search circle. It clears tile by tile.
+  - A street radar draws a blue ring, and a hotter-or-colder draws a red halfway line clipped to the circle.
+  - The panel says what's left: "21% of your circle is left", over a 20-tile bar.
+
+### Photos
+
+Photo questions on both sides. The mocks use the real Street View at the hider's spot: the Deck page, part ten.
+
+- **Asking:** the two compasses. Hovering a direction says what the photo will be and what it costs: "+15 min. A human hider has 10 min to send it."
+- **Waiting, with two players only:** a violet express band holds an empty plaque and a ten-tile timer, "Up to 9 min more". It never shows whether the hider is unlocked or deciding. A bot answers when the 1-min answer window ends, like every station question.
+- **Arriving:** the photo sets into its plaque inside the violet band. The plaque is a glaze mat with an ink edge and a violet caption saying where the photo is from and which way it faces. The image carries no location data, so the frame does the explaining.
+- **On foot, the newest spot photo is pinned** at the top of the panel as a compact "Looking for" row, so it stays beside Street View while you walk. Clicking it enlarges it.
+- **Enlarged:** the photo fills the screen on a dark backdrop with its caption and the question. Esc or Close returns. With several photos it says "1 of 3", and the arrow keys step through them.
+- **The hider's station photo:**
+  - The seeker sets the direction, and the hider picks the exit from the list or the map.
+  - Street View previews exactly what will be sent, inside viewfinder corners, so choosing the least revealing exit is the hider's decision.
+  - "Send from Exit 3" is ink, because station photos never lock you. A spot photo while unlocked opens the lock popup (Hider screens).
+- **Edge cases:**
+  - After 10 minutes the game sends the north view from where the hider stands, captioned "Sent automatically".
+  - An image that fails to load shows "The photo didn't load · Try again". Retrying is free, because the question is already spent.
+  - A vetoed photo keeps its empty frame and a hollow violet square.
+
+### Loading, connecting and errors
+
+What the game shows while it gets ready, and when something breaks. Mocks: the Deck page, part eleven.
+
+- **Getting ready is a four-row departures board:** Timetable, Landmarks, The network and Game server.
+  - Each row has a status word, such as "61%", "Done", "Next", "Waiting" or "Connecting", and done rows turn ink.
+  - Progress is real. The timetable's twenty tiles fill with bytes downloaded. The other rows show their status only, never fake progress.
+  - The base map shows first, because Google loads it on its own. The lines and stations set onto it once the timetable is in.
+  - The clock tile stays blank ("--:--") until the server answers, because only the server knows the time.
+  - After 8 seconds, the server row says "Still connecting. The server can take a few seconds to wake up." It keeps retrying, and the wainscot offers Try again now.
+- **Every error is a plaque that says three things:** what happened, what's safe, and what to do.
+  - The header is ink with a terra cotta square. The "safe" line is marked with the locked-spot glyph. The action is ink, and details for bug reports sit in small monospace at the bottom.
+  - **Can't reach the server:** "You're online, but the server isn't answering." The safe line is "Today's daily hasn't started, and it'll be the same round when you get in." It retries with growing waits, shown as tiles: "Trying again in 6 s · try 3".
+  - **Connection lost mid-round:** the round pauses on the server. The clock tile reads "Paused", trains stop, and the panel dims under an ink express band, "Connection lost · reconnecting · Try 2 of 5". **This needs server support:** today each connection starts a new round, so a dropped connection loses the round. See the open question.
+  - **The other player dropped:** the clock pauses for both players. The 3-minute grace period is an 18-tile timer, one tile per 10 s, and the panel says what happens when it runs out: "If they don't come back in time, you win the round."
+  - **The map didn't load:** the map pane becomes a plain tile field with the plaque. The round carries on, because the departure boards and questions don't need the map. The "Following you" caption reads "No map".
+  - **Street View didn't load:** the pane keeps its place, with a dark tile field and Try again. The walk still counted. If it keeps failing, the round falls back to the map-pin endgame, which isn't designed yet.
+- **Refused actions** stay the light notice row with a terra cotta square. They say what to do ("You can ask Radar again at 10:51") and never say "error".
+- **Page not found** uses the homepage's look: a "NOT IN SERVICE" tablet, one line of explanation, and two ways back, Play today's daily and Home.
 
 ### Motion
 
@@ -608,13 +791,16 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | **Up to the street / back down** | the walker | Exiting takes 2 game-min (20 s real). The progress is drawn as stair treads that fill one per 10 game-s. On arrival the Street View pane, which shares the screen with the map under decision B, brightens from the top down over 900 ms (decelerate), like daylight at the top of the stairs. Going back down reverses it. | progress bar; view cuts |
 | **Search area / Your zone** | seeker on foot; hider walking | On reaching the street the circle draws out from its center (ring, 400 ms). Then the outside blurs and takes its glaze veil (600 ms, decelerate). Going back down reverses it. The hider's blur clears when they're locked in or frozen. | circle and blur appear at once |
 | **Ask → answer** | seeker; the hider watches it live | The question unrolls as an express band in its family color (band), from its top edge rather than sliding in (rule 5). The answer word sets (set). The boundary draws and stations clear (Elimination). The candidate count counts down one per cleared station. The band collapses into its log row's family chip (band). Under 2 s in total. | answer and count appear together |
-| **Elimination** | both | **Radar:** the ring grows from where you asked to its radius (400 ms). Then the ruled-out side clears starting at the ring: inward for No, outward for Yes. **Thermometer:** the line halfway between your last reading and this one draws out from its midpoint (300 ms). The colder side clears away from the line. **Route, borough, express, more routes:** no geometry, so stations clear outward from where you asked. Each station's square lifts from ink to outline (160 ms). The stagger is by distance, spread 600–900 ms by count. Boundaries stay on the map, faint. | all clear at once; boundary drawn |
+| **Elimination** | both | **Radar:** the ring grows from where you asked to its radius (400 ms). Then the ruled-out side clears starting at the ring: inward for No, outward for Yes. **Thermometer:** the line halfway between your last reading and this one draws out from its midpoint (300 ms). The colder side clears away from the line. **Route, borough, express, more routes:** no geometry, so stations clear outward from where you asked. **Matching a landmark:** the cell edges draw out from your landmark's plaque (400 ms), then the stations on the ruled-out side clear. **Measuring a landmark:** the rings grow from each plaque to your distance (400 ms), then the inside or outside clears. **Tentacles:** a line reaches out to each landmark in range (300 ms each, staggered 60 ms). On the answer the others retract (depart), the named cell outlines, and the stations outside it clear. **On foot:** the street ring or halfway line draws, then search tiles lift from the ruled-out side, staggered by distance. Each station's square lifts from ink to outline (160 ms). The stagger is by distance, spread 600–900 ms by count. Boundaries stay on the map, faint. | all clear at once; boundary drawn |
 | **Clock and cooldown** | seeker | The clock's minutes flip (step) once per game minute, every 10 s real. The 5-min cooldown shows as 5 tiles, one per game minute, lifting right to left. At zero the question chips step to ready. | digits change; tiles vanish |
 | **Timers** (photo answer, veto window) | hider | A row of tiles, one per unit shown in its label, lifting as time runs out. The last tile turns terra cotta. | tiles vanish |
 | **Seeker is in your zone** | hider only | A terra cotta express band with ink trim unrolls down from the top edge of the map (band), mirroring the seeker's catch prompt on Street View. It doesn't enter from off-screen (rule 5), and nothing bounces. The panel's distance counts down along the streets as the seeker walks. The seeker's screen does nothing (rule 2). | band appears |
 | **Frozen / locked in** | hider only | "Set in grout": four grout bars close around your dot (300 ms), and the dot sets as a square tile, your spot. The Hide here button presses in. The lock row's dashed glyph sets solid and reads "Locked in · E 15 St, near Irving Pl" (or "Frozen"). The map then widens over the Street View pane (band). | frame appears |
 | **Card draw** | hider only | After an answer, N face-down cards rise 24 px into place (band, staggered 120 ms). They flip about their centers (rotateY 350 ms, decelerate, faces swap at 90°). The card you pick lifts 8 px. The rest drop (band), and the kept card shrinks into its hand slot (400 ms). Photo (draw 1, keep 1) skips the choice. | cards appear face up |
 | **Curse lands** | seeker; the hider sees it played | The card rises 24 px into place at center (band), holds 1.6 s, then shrinks into a status chip with a tile timer (400 ms). Then the effect: **Signal loss:** glazed tiles set across the map in a diagonal sweep (900 ms), leaving the departure boards, and lift in reverse when it ends. **Fog:** Street View blur ramps in over 600 ms. It decelerates, and ramps back out the same way when the curse ends. **Sidewalk shed:** the walking band is hatched like scaffold planks and fills at half speed while it lasts (timetable truth: slower walking is drawn slower). Glazed tiles sit on a grout bed, so nothing of the map shows between them. **Local only, Wrong way:** the affected departure rows dim and strike through. **Signal problems:** the held train's dot simply stops at the platform with a "Held" caption. By rule 1 it stops; it doesn't slow down. | effect applies at once |
+| **Photo arrives** | seeker | The violet band unrolls (band). The photo sets into its plaque from the top edge down (set, 600 ms), like daylight in Up to the street. On foot it then shrinks into the "Looking for" row (400 ms). | photo appears |
+| **Loading** | everyone | The timetable's tiles set as bytes arrive. Rows step to ink as they finish (step). The lines and stations crossfade onto the map once the timetable is in. | rows update |
+| **Connection lost and back** | both | The clock tile steps to "Paused", and trains stop where they are, because the clock has stopped (rule 1). The ink band unrolls (band). On reconnect the band collapses and the screen jumps to the server's state with no catch-up animation. | band appears |
 | **Walk a street step** | the walker | The band at the foot of Street View fills tile by tile at walking speed (timetable, linear). The walk tiles dim, then step back to ready on arrival (step). | progress bar fills; no tiles |
 | **Someone's here** | the seeker | The catch prompt unrolls from the top of Street View as an express band (band). The hider's gold marker sets (set). | prompt and marker appear |
 | **Found** | both | The hider's spot sets gold. A "Found 11:52" tablet sets tile by tile, left to right (set, 900 ms). | tablet appears |
@@ -635,13 +821,14 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 **Open questions (motion)**
 
-- [ ] **Veto needs a window, and the window must not leak the hand.** Map answers are instant, but Veto and Randomize need a moment to decide. If the window appears only when the hider holds one of those cards, its presence tells the seeker what's in the hand. **Proposal:** every map question gets the same short answer window, about 1 game-min (10 s real), whether or not the hider can use it. The answer goes out when the window ends. The hider screens are mocked this way. Decide before M3.
+- [x] **Veto needs a window, and the window must not leak the hand.** Decided 2026-10-06: every station question gets the same 1 game-min (10 s real) answer window, whether or not the hider can use it, and in solo rounds too. The answer goes out when the window ends. The hider screens and the seeker's "Asked" panel are mocked this way. Built 2026-10-06.
 - [ ] **Replay pace.** Uniform compression keeps rule 1, but squeezing a 2-hour round into 25 s runs trains at about 290× real-world speed. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
-- [ ] **Does the seeker see the hider's hand size?** Default: no. It would leak the same way as the veto window.
+- [x] **Does the seeker see the hider's hand size?** No, decided 2026-10-06. It would leak the same way as the veto window. The seeker sees only card plays that affect them. The solo client's "The hider holds N cards · played M" row is gone from both the view the server sends and the panel (2026-10-06).
 
 ## Open questions & risks
 
-- [ ] **Does a vetoed question still add its bonus?** Veto says the seeker has still spent the question. The hider mocks count its +10 min, and draw no cards for it. Decide with the M3 cards.
+- [x] **Does a vetoed question still add its bonus?** Yes. The engine adds every asked question's price, vetoed or not, and the hider mocks follow it.
+- [ ] **Resume a round after a disconnect.** The connection-lost screen assumes the server keeps the round, paused, and a reconnect picks it up. Today each WebSocket connection starts a new round. It needs a session token and the 3-minute grace period from Disconnects.
 - [x] **Google Maps base map (decision B) — done 2026-10-05.** The game runs on Google Maps with deck.gl's `GoogleMapsOverlay` (non-interleaved) and a quiet JSON style (no POIs or Google transit icons). MapLibre remains a fallback (`VITE_MAP_PROVIDER=maplibre`, or no key) to save map loads in dev. Billing, a $10/month budget alert and daily quota caps are set on `stand-clear-nyc`. Still to do before anything public: a cloud map style + map ID (design agent), Google attribution/terms links in our own terms, and switching the throwaway Street View spike's MapLibre minimap to Google.
 - [ ] **Sign Street View Static URLs.** The browser key's localhost referrer restriction is enforced against a wrong referrer (403), but requests with *no* referrer are served, so the key alone could fetch images. Today the 300/day cap bounds it. Fix: a URL signing secret on `stand-clear-nyc`, the server signs each photo URL, and the unsigned quota drops to 0.
 - [ ] **Outside-tab research.** The seeker can open Google Maps elsewhere. That's acceptable as long as the **catch requires being near the hider in-game**: outside research only helps deduction, and the show's seekers do exactly that on their phones.
@@ -673,15 +860,17 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 - **Replay a recorded real day** including its actual delays (record MTA GTFS-RT).
 - **Buses** as a card or later mode.
 - **Route-letter reveals** during the hide (Scotland Yard rule), if the seeker's wait feels dead.
+- **From the UX pass** (`docs/ux-pass.md`, Outside input): a streak repair once a month when results live on a server; a playable archive of past dailies; a result rank in the subway's words (Express, Local, Shuttle), minding the card names; express stops marked with a wider rule in the on-train stop list, after the IND bands; the hider's hand and the replay scrubber made good to fidget with.
 
 ## Prior art & references
 
 **Closest existing products**
-- [Worldboard](https://worldboard.games/) — browser games on real timetables, the closest existing product:
-  - **Tag:** same-train / same-station tags, roles swap on every tag, clock up to 80×
-  - **Hide & Seek:** vs an AI hider
-  - **GeoRace:** async tournaments on frozen timetables
-  - Play it before building.
+- [Worldboard](https://worldboard.games/) — browser games on real timetables, the closest existing product. Checked 2026-10-06:
+  - **Hide & Seek:** out of Early Access since 2026-09-15. Solo vs an AI hider and 1v1 multiplayer, cards and curses, a Street View endgame with freeze on zone entry and a 25 m catch. Games run 1–3 hours. The UI is a generic dashboard with AI-video cutscenes.
+  - **Coverage:** Europe and Türkiye, Japan, Taiwan (65k stations, 46 countries). No US or NYC anywhere on the site, changelog or subreddit. Re-check before relying on it.
+  - **Traction** is small (Discord ~140, trailer ~36 views, best Reddit post ~165 upvotes).
+  - Also **Tag** (same-train / same-station tags, roles swap on every tag, clock up to 80×), **GeoRace** (async tournaments on frozen timetables; the Japanorama tournament had 82 entrants) and Wanderlusters.
+  - Play it before building more. What it proves: the format works online. What it leaves open: NYC, short matches, a daily, and craft (see the Pitch).
 - [Play Jet Lag](https://www.playjetlag.com/) (iOS beta) and [hideandseek.game](https://hideandseek.game/) — companion apps for playing in real life.
 
 **Fan map tools** (question → map elimination logic worth reading)
@@ -717,6 +906,30 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-06 | The answer window covers every station question, photos included; on-foot questions answer at once. A Veto or Randomize shows when the answer would have landed | The decided rule says every station question, the same set the 5-min gap covers. The street search wants quick questions, and the bot never plays a card on them. A veto shown early would give the card away |
+| 2026-10-06 | The seeker doesn't see the hider's Discard 2, draw 3 plays until the round ends; Veto, Randomize and curses stay visible | It told the seeker the hider held two weak cards, and it doesn't act on them: the same leak as the hand size |
+| 2026-10-06 | Randomize never swaps to a closed question | A vetoed question is out of the game for the round; swapping to it would answer what the hider refused |
+| 2026-10-06 | A question asked mid-walk is asked from where the walk set off, its station and its coordinates both | A walking transfer between complexes took the start's coordinates but the destination's lines |
+| 2026-10-06 | Everything measures on one sphere, the questions' great-circle distance. The flat-earth distance used for walking, the zone, the reveal and the search, and the 2–5 m of slack between them, are gone | The two disagreed by up to 0.6% (2.4 m at 400 m), so on-foot answers needed slack to never rule out the hider. North–south walks now take up to 0.6% longer. `pnpm sim:endgame` and `pnpm sim` re-run: unchanged |
+| 2026-10-06 | The daily is built once per New York date and shared. Only panorama IDs are kept; each round looks the spot up again by ID. The exit photo has its own seed | Each connection rebuilt it with up to twelve Street View lookups, and the exit depended on how many tries the spot took. Google's terms rule out caching their coordinates (`docs/street-view-spike.md`) |
+| 2026-10-06 | The bot hides in a band of station hardness (questions a strong seeker needs: Easy 3–4, Normal 5–6, Hard 7–8 preferring twins), and the daily plays Normal | Charlie: "smart but not too difficult". A uniform pick made 7% of rounds 1–3-question gimmes and 25% 7–8-question slogs; Normal lands every round at the ask-or-go crossover the pricing was built for |
+| 2026-10-06 | Veto also fires on a kill shot (a question expected to leave ≤ 10 stations) with more than 30 left; Normal holds Tourist and Wrong way until ≤ 20 stations are left; Easy plays no curses | Charlie approved the proposal. The kill shot was proposed at ≤ 3 and measured never to exist above 30 stations, so it was set at the sharpest cut that does |
+| 2026-10-06 | The bot is search and scoring, not a model (Charlie floated TypeSafe's Jev) | The daily must be deterministic and free, the engine pure; a learned scorer can't beat computing the answer over ~100 stations. Scotland Yard's MCTS hider and Absurdle use the same idea |
+| 2026-10-06 | Second review of the UX pass: everything still proposed is decided (hero number, nothing under the clock, one door on the homepage, the answer window for bot rounds too, keyboard, "What counts", motion additions, one default sound, the duration ceiling, boundary contrast, the small fixes), and the twelve conductor's lines are written under Voice. The Deck page gets a component sheet (part thirteen) and the closed Veto chip | Charlie: "all yes". The lines were written in one sitting so they sound like one voice |
+| 2026-10-06 | The Deck page's mocks were redrawn to the decided Interaction rules: parts four (five sidebar states, including the answer window), seven, nine, ten and eleven. Section headings became rules, tabs lost "Following you" to a map toggle, lamps became dots, boards became the countdown clock, and asking shows an armed chip with its wainscot confirm | Charlie asked for everything affected to be redrawn once the rules were decided |
+| 2026-10-06 | UX pass written (`docs/ux-pass.md`); its proposals sit under Look and motion › Interaction, pending Charlie's review | Charlie asked for a deep pass: smooth, intuitive, clean, with personality. The mocks were even and asking had no arming step |
+| 2026-10-06 | From the UX pass, decided: one vocabulary of tiles, the caption budget, departure boards drawn like the real countdown clocks, select-see-confirm asking that draws the shape but shows no outcome counts, the seeker's answer-window timer, connections at your stop, the fast-forward control on the clock, and three onboarding hints. The rest of the pass stays proposed | Charlie's review. Outcome counts stay off so the player still reads the map |
+| 2026-10-06 | A vetoed question is closed for the rest of the round (same kind and setting, asked from anywhere); the rest of its category stays open | Charlie. Otherwise Veto only delays an answer, the complaint after the show's NYC season; the official expansion rules now do the same |
+| 2026-10-06 | The seeker never sees the hider's hand size, only card plays that affect them | Charlie. Hand size would leak the same way as a card-dependent veto window |
+| 2026-10-06 | Curated hide-eligible zones stay parked; solo keeps any reachable station with a Street View spot | Charlie. They matter for two-player rounds, which come after the solo track |
+| 2026-10-06 | DESIGN.md reconciled with the engine: per-category prices and cooldowns, the 40 m reveal, the detour factor and 600 m walk limit, solo fast-forward, the solo deck, the four-line share. Rules the game enforces are documented in `docs/`; this file keeps the design and the plan | A review found the Rules detail still describing the M2 question set and a 25 m marker |
+| 2026-10-06 | The teaser pins Google's logo and attribution at the foot of every map frame | The map captures carry them in a corner the camera pans away, and Google's guidelines for video require them visible |
+| 2026-10-06 | Positioning written into the Pitch: not "online Jet Lag", but NYC depth, a 40-minute match, the daily, and craft | Worldboard already ships the generic version for Europe, Japan and Taiwan |
+| 2026-10-06 | Tentacles gets a sixth family color, teal `#1F6E6B`. On-foot questions reuse Radar and Thermometer at street scale, under an ink "On foot" caption | Charlie asked for the new question types. A family color stands for the shape its answer draws, and on-foot answers draw the same shapes as Radar and Thermometer |
+| 2026-10-06 | Landmarks are small framed plaques with tile pictograms, and the street search area is drawn as tiles on the engine's 8 m grid | Landmarks are places, the IRT's job, and circles and bare squares are taken. The tiles are exactly what the game searches |
+| 2026-10-06 | On foot, the newest spot photo stays pinned at the top of the panel as "Looking for" | The photo matters most while walking, so it shouldn't scroll away into the log |
+| 2026-10-06 | Errors are plaques that say what happened, what's safe and what to do. A lost connection pauses the round rather than ending it | Charlie asked for loading, connecting and error pages. Pausing matches Disconnects, but needs server support |
+| 2026-10-06 | The mocked round was re-planned on the per-category cooldowns. The third opening question is now Tentacles (hospitals), the vetoed question is Radar ½ mi, and the find is at 11:10 | The first version asked two radars ten minutes apart, which the 15-minute radar cooldown forbids. A find at 11:10 matches the endgame simulation |
 | 2026-10-05 | Hider screens, the seeker's wait and the replay are designed on one real round (Deck page, parts six to eight). The hider sees each incoming question's true answer and what it would leave, and once locked, the map takes the whole main column | Charlie asked for the hider screens, replay and wait screen. Showing the cost makes a veto a real choice, and a locked hider only needs Street View for photos |
 | 2026-10-05 | Your dot and trail are always ink, and the other player's are terra cotta | One rule for both sides. On the hider's screen the threat is terra cotta, which is the color's job |
 | 2026-10-05 | Terra cotta buttons only for actions that fix where you are: Hide here and Lock & answer. Card plays stay ink, with their cost beside the button | Designing the hider screens: playing cards is the point of holding them, so they shouldn't read as a warning |
