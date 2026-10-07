@@ -44,6 +44,24 @@ describe("sessions", () => {
     expect(expired).toEqual([]);
   });
 
+  it("keeps a solo round's clock running through a drop", () => {
+    const solo = new SessionStore<{ clock: GameClock }>({
+      graceMs: GRACE,
+      pauseOnDrop: false,
+      newToken: () => "solo",
+    });
+    const s = solo.create({ clock: startClock(36000, 6, 0) });
+    const a = conn();
+    solo.attach(s, a, 0);
+    expect(solo.detach(s, a, 10_000)).toBe(true);
+    // Away for 2 min: the round went on without them, 720 game-s.
+    expect(gameTime(s.game.clock, 130_000)).toBe(36780);
+    expect(solo.all()).toEqual([s]);
+    expect(solo.connected()).toEqual([]);
+    solo.attach(s, conn(), 130_000);
+    expect(gameTime(s.game.clock, 140_000)).toBe(36840);
+  });
+
   it("drops the session once the grace period runs out", () => {
     const s = store.create({ clock: startClock(36000, 6, 0) });
     const a = conn();

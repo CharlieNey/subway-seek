@@ -21,7 +21,7 @@ Optional env:
 - `VITE_MAP_PROVIDER=maplibre` (web): use the free MapLibre/OpenFreeMap base map instead of Google, e.g. while iterating locally. Google's terms require the Google map once Street View is on screen.
 - Dev only, per tab: `?map=maplibre` (or `google`) picks the base map, and `?server=ws://localhost:8788` points the tab at another server, for headless checks without billed map loads.
 
-A round survives a refresh or a dropped connection: the browser keeps a session token and the server holds the round, clock paused, for 3 minutes.
+A round survives a refresh or a dropped connection: the browser keeps a session token and the server holds the round for 3 minutes. Its clock keeps running meanwhile (solo rounds don't pause on a drop). With `GOOGLE_STREETVIEW_SERVER_KEY` set, the server also checks each street walk's target against Street View (one free metadata lookup per walk).
 
 ## Commands
 

@@ -31,6 +31,34 @@ export function nearestPano(lat: number, lon: number): Promise<HidingSpot | null
   return metadata(`location=${lat},${lon}&radius=40&source=outdoor`);
 }
 
+/** How far a walk's target may sit from the panorama Google has there. */
+export const STREET_SNAP_M = 5;
+
+/**
+ * Whether a walk's target is a real street panorama (DESIGN.md, Hidden information and
+ * validation; solo today checks the target, not the path): the panorama it names, within
+ * STREET_SNAP_M of the point it gives, or with no name, an outdoor panorama that close.
+ * The client walks to panoramas Google's own viewer reports, so an honest walk always
+ * passes; a point inside a building doesn't. Null when it can't be checked (no key, or
+ * the lookup failed), and the caller lets the walk through rather than strand the player.
+ */
+export async function isStreetPoint(
+  lat: number,
+  lon: number,
+  pano?: string,
+): Promise<boolean | null> {
+  if (!KEY) return null;
+  try {
+    const p = pano
+      ? await metadata(`pano=${encodeURIComponent(pano)}`)
+      : await metadata(`location=${lat},${lon}&radius=${STREET_SNAP_M}&source=outdoor`);
+    return p !== null && distanceMeters(p, { lat, lon }) <= STREET_SNAP_M;
+  } catch (err) {
+    console.warn(`street check failed: ${String(err)}`);
+    return null;
+  }
+}
+
 /** A panorama's spot, by its ID. Null when there's no key, or the lookup fails. */
 export async function spotFromPano(pano: string): Promise<HidingSpot | null> {
   if (!KEY) return null;

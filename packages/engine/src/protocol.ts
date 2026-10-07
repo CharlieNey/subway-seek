@@ -94,10 +94,16 @@ export interface ClockSync {
 }
 
 /**
- * A dropped player's round is kept this long on the server, its clock paused, for them to
- * come back to with their session token (DESIGN.md, Disconnects).
+ * A dropped player's round is kept this long on the server for them to come back to with
+ * their session token (DESIGN.md, Disconnects).
  */
 export const RECONNECT_GRACE_MS = 3 * 60 * 1000;
+/**
+ * A solo round's clock runs through a drop: the server advances the round, and a missed
+ * stop is the player's cost. A pause there would be free thinking time on the daily (close
+ * the tab, think, come back). Two-player rounds will pause, for fairness.
+ */
+export const SOLO_PAUSES_ON_DROP = false;
 /** The query parameter on the WebSocket URL that carries the session token. */
 export const SESSION_PARAM = "session";
 /** Close code for a connection whose session was opened somewhere else (another tab). */

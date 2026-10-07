@@ -27,6 +27,12 @@ or `--reveal 30`.
     1 km away (the spot is within 400 m of its station). So they can't be fired across the
     city to find the station.
 
+- **Walks end on a real street** (2026-10-06). The server checks each walk's target with a
+  free Street View metadata lookup: the panorama the walk names must be within 5 m of the
+  point it gives. The path between stays straight-line, like the reveal and the catch,
+  until the curated zones exist. No re-run: the simulation walks in straight 10 m steps and
+  doesn't go through the server, so no number here moves.
+
 ## Tuning (`pnpm sim:endgame`)
 
 The simulation plays 480 endgames: 120 stations a hider can reach from the 13 start

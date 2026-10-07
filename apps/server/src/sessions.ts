@@ -1,9 +1,10 @@
 /**
  * Sessions: a round that outlives its connection. Each connection gets a session token
  * in `hello`; a reconnect that brings the token back picks up the same round and clock.
- * When the connection drops, the clock pauses and the session waits out the grace period
- * (RECONNECT_GRACE_MS) before it's dropped (DESIGN.md, Disconnects). A second connection
- * with the same token takes the session over, and the first is closed.
+ * When the connection drops, the session waits out the grace period (RECONNECT_GRACE_MS)
+ * before it's dropped, its clock paused or, for a solo round, still running (DESIGN.md,
+ * Disconnects). A second connection with the same token takes the session over, and the
+ * first is closed.
  */
 import { randomUUID } from "node:crypto";
 import { type GameClock, pauseClock, resumeClock } from "@stand-clear/engine";
@@ -41,6 +42,11 @@ export class SessionStore<G extends { clock: GameClock }> {
   constructor(
     private readonly opts: {
       graceMs: number;
+      /**
+       * Pause the clock while the connection is away (default). Two-player rounds pause
+       * for fairness; a solo round's clock runs through a drop (DESIGN.md, Disconnects).
+       */
+      pauseOnDrop?: boolean;
       /** Called when a session is dropped after its grace period. */
       onExpire?: (session: Session<G>) => void;
       timers?: Timers;
@@ -73,6 +79,11 @@ export class SessionStore<G extends { clock: GameClock }> {
     return [...this.sessions.values()].filter((s) => s.conn !== null);
   }
 
+  /** Every session still kept, connected or waiting out its grace period. */
+  all(): Session<G>[] {
+    return [...this.sessions.values()];
+  }
+
   get size(): number {
     return this.sessions.size;
   }
@@ -94,14 +105,15 @@ export class SessionStore<G extends { clock: GameClock }> {
   }
 
   /**
-   * A connection closed. Pauses the clock (a practice round the player paused stays
-   * paused) and starts the grace period. False if `conn` had already been replaced.
+   * A connection closed. Pauses the clock if the store pauses on a drop (a practice round
+   * the player paused stays paused) and starts the grace period. False if `conn` had
+   * already been replaced.
    */
   detach(session: Session<G>, conn: Conn, now: number): boolean {
     if (conn !== session.conn) return false;
     session.conn = null;
     session.droppedAt = now;
-    if (session.game.clock.pausedAt === null) {
+    if (this.opts.pauseOnDrop !== false && session.game.clock.pausedAt === null) {
       session.game.clock = pauseClock(session.game.clock, now);
       session.pausedByDrop = true;
     }

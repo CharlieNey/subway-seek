@@ -115,6 +115,26 @@ describe("the Street View endgame", () => {
     expect(r.result).toBeNull();
   });
 
+  it("changes nothing the seeker sees when they reach the hider's station", () => {
+    // The server pushes a frame only when the seeker's view changes, so the view must not
+    // change here, or the frame's arrival alone would say "right station".
+    const c = ds.complexes[round.hider];
+    if (!c) throw new Error("complex");
+    const t = round.seekStart + 700;
+    const atStation: SoloRound = {
+      ...round,
+      seeker: {
+        kind: "platform",
+        station: c.stations[0] as number,
+        since: round.seekStart + 600,
+        arrivedDir: null,
+      },
+    };
+    const found = advanceSolo(atStation, t, idx);
+    expect(found.stationFoundAt).not.toBeNull();
+    expect(soloView(found, t, idx)).toEqual(soloView(atStation, t, idx));
+  });
+
   it("reveals the marker within 40 m and only catches within 25 m", () => {
     const t = round.seekStart + 1200;
     const at = (m: number): SoloRound => ({
@@ -128,6 +148,42 @@ describe("the Street View endgame", () => {
     const caught = applySoloIntent(at(10), { type: "catch" }, t, idx);
     if (!caught.ok) throw new Error(caught.error);
     expect(caught.round.result).toEqual({ kind: "found", at: t });
+  });
+
+  it("reveals the hider when any round ends, a daily given up included", () => {
+    // Reversed 2026-10-07: the reveal is the reward for trying. The give-up-and-replay
+    // exploit is left to the honor system until results live on a server.
+    const daily: SoloRound = { ...round, mode: "daily", daily: { date: "2026-10-06", number: 2 } };
+    const t = round.seekStart + 1200;
+    const shown = (r: SoloRound) => {
+      const v = soloView(r, t, idx);
+      return { hider: v.hider, trail: v.replay?.hider, spot: v.spotNearby };
+    };
+    const gaveUp = applySoloIntent(daily, { type: "giveUp" }, t, idx);
+    if (!gaveUp.ok) throw new Error(gaveUp.error);
+    expect(shown(gaveUp.round)).toEqual({
+      hider: round.hider,
+      trail: daily.hiderTrail,
+      spot: { lat: spot.lat, lon: spot.lon },
+    });
+    expect(soloView(gaveUp.round, t, idx).replay?.seeker).toEqual(daily.seekerTrail);
+    // Time's up reveals it too.
+    expect(shown(advanceSolo(daily, daily.seekEnd, idx))).toEqual(shown(gaveUp.round));
+    // Still secret while the round is on.
+    expect(soloView(daily, t, idx).hider).toBeNull();
+    expect(soloView(daily, t, idx).replay).toBeNull();
+    // Found, or a practice round given up: everything shows.
+    const near: SoloRound = {
+      ...daily,
+      seeker: { ...onStreetAt(round.hider, t), at: east(spot.lat, spot.lon, 10) },
+    };
+    const caught = applySoloIntent(near, { type: "catch" }, t, idx);
+    if (!caught.ok) throw new Error(caught.error);
+    expect(soloView(caught.round, t, idx).hider).toBe(round.hider);
+    const practice = applySoloIntent(round, { type: "giveUp" }, t, idx);
+    if (!practice.ok) throw new Error(practice.error);
+    expect(soloView(practice.round, t, idx).hider).toBe(round.hider);
+    expect(soloView(practice.round, t, idx).spotNearby).not.toBeNull();
   });
 
   it("can't catch while still walking", () => {

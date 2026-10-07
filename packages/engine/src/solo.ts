@@ -810,15 +810,15 @@ export interface SoloView {
   thermometer: Place | null;
   bonusSeconds: number;
   result: RoundResult | null;
-  /** Only once the round is over. */
+  /** Only once the round is over (revealsHider). */
   hider: number | null;
   /** Both routes, for the end-of-round replay — only once the round is over. */
   replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
   /** Whether this round has a Street View endgame (a hiding spot to catch). */
   hasSpot: boolean;
-  /** When you first reached the hider's station — only revealed once the round is over. */
+  /** When you first reached the hider's station — only revealed with the hider. */
   stationFoundAt: number | null;
-  /** The hider's spot once you're within SPOT_REVEAL_METERS on the street (or after the round). */
+  /** The hider's spot once you're within SPOT_REVEAL_METERS on the street, or revealed with the hider. */
   spotNearby: { lat: number; lon: number } | null;
   footThermometer: Place | null;
   /** Everywhere you've walked or stood on the street, for the searched area. */
@@ -871,15 +871,31 @@ function playedOnSeeker(e: CardEvent): boolean {
 }
 
 /**
+ * Whether the round's end reveals where the hider was: once it's over, however it ended.
+ * The reveal is the reward for trying, as Wordle shows the word after a miss. Everyone
+ * plays the same daily hider, so giving up, learning the station and replaying in a fresh
+ * browser is possible; it only ever fools that browser's own record and an honor-system
+ * share line, so it's left to the honor system until there's a server-side record to
+ * protect (then the server refuses a second daily per recorded result). Reversed
+ * 2026-10-07 from "a daily that isn't found keeps its station secret until the next day".
+ */
+export function revealsHider(round: Pick<SoloRound, "mode" | "result">): boolean {
+  return round.result !== null;
+}
+
+/**
  * The seeker's view of the round at time t: the engine's one visibility filter. The
- * hider's station, spot, hand and route stay secret until the round ends; answers wait
- * for their window; the marker shows within SPOT_REVEAL_METERS.
+ * hider's station, spot and route stay secret until the round ends (revealsHider); their
+ * hand until it ends; answers wait for their window; the marker shows within
+ * SPOT_REVEAL_METERS.
  */
 export function soloView(round: SoloRound, t: number, idx: TimetableIndex): SoloView {
   const over = round.result !== null;
+  const revealed = revealsHider(round);
   const near =
     round.spot !== null &&
-    (over || (metersToSpot(round, t, idx) ?? Number.POSITIVE_INFINITY) <= SPOT_REVEAL_METERS);
+    (revealed ||
+      (!over && (metersToSpot(round, t, idx) ?? Number.POSITIVE_INFINITY) <= SPOT_REVEAL_METERS));
   return {
     mode: round.mode,
     difficulty: round.difficulty,
@@ -907,11 +923,11 @@ export function soloView(round: SoloRound, t: number, idx: TimetableIndex): Solo
     thermometer: round.thermometer,
     bonusSeconds: bonusSeconds(round),
     result: round.result,
-    hider: over ? round.hider : null,
-    replay: over ? { hider: round.hiderTrail, seeker: round.seekerTrail } : null,
+    hider: revealed ? round.hider : null,
+    replay: over ? { hider: revealed ? round.hiderTrail : [], seeker: round.seekerTrail } : null,
     hasSpot: round.spot !== null,
     // Not shown mid-round: confirming "right station" would give the zone away.
-    stationFoundAt: over ? round.stationFoundAt : null,
+    stationFoundAt: revealed ? round.stationFoundAt : null,
     spotNearby: near && round.spot ? { lat: round.spot.lat, lon: round.spot.lon } : null,
     footThermometer: round.footThermometer,
     footpath: footpathOf(round.seekerTrail),

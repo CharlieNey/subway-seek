@@ -4,8 +4,8 @@
  * clock starts at 10:20. The server holds the round (including the secret hider) and
  * only ever sends the seeker's view of it. Rooms and a human hider come in M3.
  *
- * A session outlives its connection (sessions.ts): a drop pauses the clock, and a
- * reconnect with the session token within the grace period picks the round up again.
+ * A session outlives its connection (sessions.ts): the round's clock runs on through a
+ * drop, and a reconnect with the session token within the grace period picks it up again.
  */
 import "./env.ts";
 import { createServer } from "node:http";
@@ -26,7 +26,6 @@ import {
   type GameClock,
   gameTime,
   type HidingSpot,
-  isAnswered,
   jumpClock,
   nextAnswerAt,
   nextEventTime,
@@ -40,6 +39,7 @@ import {
   resumeClock,
   SESSION_PARAM,
   type ServerMessage,
+  SOLO_PAUSES_ON_DROP,
   type SoloRound,
   type SoloView,
   skipSolo,
@@ -50,7 +50,7 @@ import { type WebSocket, WebSocketServer } from "ws";
 import { MatchLog } from "./matchLog.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
-import { pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
+import { isStreetPoint, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -81,9 +81,12 @@ interface Game {
   /** How many of the hider's card plays are already in the log. */
   cardsLogged: number;
   stationLogged: boolean;
-  /** What the client last saw, to tell when the 1 s tick has news. */
-  markerShown: boolean;
-  answersShown: number;
+  /**
+   * The last view sent, as JSON. The 1 s tick pushes a frame only when the view differs,
+   * so a frame's arrival never says more than its contents (reaching the hider's station
+   * changes the round, not the view).
+   */
+  shown: string;
   /** Sends the view the moment the next answer lands (the 1 s tick could be a second late). */
   answerTimer: ReturnType<typeof setTimeout> | undefined;
 }
@@ -188,7 +191,8 @@ async function newRound(
     hub: dataset.stations[round.hub]?.id,
     hider: dataset.complexes[round.hider]?.name,
     hiderComplex: round.hider,
-    spot: spot ? { lat: spot.lat, lon: spot.lon } : null,
+    // The panorama ID, never its coordinates: Google's terms allow storing IDs, not their places.
+    spot: spot?.pano ?? null,
     photoExit: round.photoExit !== null,
     reachable: round.reachable.length,
     seekStart: round.seekStart,
@@ -235,13 +239,14 @@ async function newGame(mode: RoundMode, difficulty?: Difficulty) {
     ...(await newRound(mode, difficulty)),
     cardsLogged: 0,
     stationLogged: false,
-    markerShown: false,
-    answersShown: 0,
+    shown: "",
   };
 }
 
 const sessions = new SessionStore<Game>({
   graceMs: RECONNECT_GRACE_MS,
+  // Every round is solo today, and a solo round's clock runs through a drop.
+  pauseOnDrop: SOLO_PAUSES_ON_DROP,
   onExpire: ({ game }) => {
     clearTimeout(game.answerTimer);
     const t = gameTime(game.clock, Date.now());
@@ -263,23 +268,20 @@ if (!PHOTO_SIGNING)
   console.warn("photo URLs unsigned — set GOOGLE_MAPS_BROWSER_KEY and STREETVIEW_SIGNING_SECRET");
 
 /** The seeker's view right now (the hider's marker shows only when they're close). */
-const viewNow = (game: Game, now: number) =>
-  withPhotoUrls(soloView(game.round, gameTime(game.clock, now), idx), PHOTO_SIGNING);
-const answered = (v: SoloView) => v.asked.filter(isAnswered).length;
+const viewNow = (game: Game, now: number) => soloView(game.round, gameTime(game.clock, now), idx);
 
 /** The view to send, noting what it shows and timing the push for the next answer. */
 function remember(session: Session<Game>, now: number): SoloView {
   const { game } = session;
   const v = viewNow(game, now);
-  game.markerShown = v.spotNearby !== null;
-  game.answersShown = answered(v);
+  game.shown = JSON.stringify(v);
   clearTimeout(game.answerTimer);
   const next = nextAnswerAt(game.round, gameTime(game.clock, now));
   const ms = next === null ? Number.POSITIVE_INFINITY : realMsUntil(game.clock, next, now);
   if (Number.isFinite(ms)) {
     game.answerTimer = setTimeout(() => sendState(session, game.lastSeq, Date.now()), ms + 10);
   }
-  return v;
+  return withPhotoUrls(v, PHOTO_SIGNING);
 }
 
 function sendState(session: Session<Game>, seq: number, now: number) {
@@ -295,11 +297,13 @@ function sendState(session: Session<Game>, seq: number, now: number) {
 
 /**
  * Rides and walks resolve lazily, so once a second: has the seeker reached the hider's
- * station, come within sight of their spot, had an answer land, or run out of time?
- * Only connected sessions: a dropped one's clock is paused.
+ * station, come within sight of their spot, had an answer land, or run out of time? A
+ * dropped session too: its clock runs on, and the hider still plays. The frame goes out
+ * only if what the seeker may see has changed.
  */
 function tick(session: Session<Game>, now: number) {
   const { game } = session;
+  if (game.clock.pausedAt !== null || game.round.result) return;
   const next = advanceSolo(game.round, gameTime(game.clock, now), idx);
   const changed = next !== game.round;
   game.round = next;
@@ -309,12 +313,7 @@ function tick(session: Session<Game>, now: number) {
     game.stationLogged = true;
     game.log.write("station_found", { t: game.round.stationFoundAt });
   }
-  const v = viewNow(game, now);
-  if (
-    changed ||
-    (v.spotNearby !== null) !== game.markerShown ||
-    answered(v) !== game.answersShown
-  ) {
+  if (session.conn && JSON.stringify(viewNow(game, now)) !== game.shown) {
     sendState(session, game.lastSeq, now);
   }
 }
@@ -385,7 +384,7 @@ httpServer.listen(PORT);
 
 setInterval(() => {
   const now = Date.now();
-  for (const session of sessions.connected()) tick(session, now);
+  for (const session of sessions.all()) tick(session, now);
 }, 1000);
 
 // A connection that stops answering pings is dead (a laptop lid shut, a train tunnel):
@@ -447,102 +446,152 @@ wss.on("connection", async (socket, req) => {
     s.game.log.write("disconnect", { t: gameTime(s.game.clock, at) });
   });
 
-  socket.on("message", async (raw) => {
-    // A connection whose session moved to another tab no longer plays it.
-    if (s.conn !== socket) return;
-    const game = s.game;
-    let json: unknown;
-    try {
-      json = JSON.parse(String(raw));
-    } catch {
-      return;
-    }
-    const parsed = clientMessageSchema.safeParse(json);
-    const now = Date.now();
-    if (!parsed.success) {
-      send(socket, {
-        type: "rejected",
-        seq: -1,
-        error: "Malformed message.",
-        clock: sync(game.clock, now),
-        view: viewNow(game, now),
-      });
-      return;
-    }
-    const { seq, intent } = parsed.data;
-    if (seq <= game.lastSeq) {
-      // A retry of something already handled (a resend after a reconnect): restate the round.
-      sendState(s, seq, now);
-      return;
-    }
-    game.lastSeq = seq;
-
-    if (intent.type === "newRound") {
-      clearTimeout(game.answerTimer);
-      Object.assign(game, await newGame(intent.mode, intent.difficulty));
-      sendState(s, seq, Date.now());
-      return;
-    }
-
-    const t = gameTime(game.clock, now);
-    const reject = (error: string) => {
-      game.log.write("rejected", { t, type: intent.type, error });
-      send(socket, {
-        type: "rejected",
-        seq,
-        error,
-        clock: sync(game.clock, now),
-        view: viewNow(game, now),
-      });
-    };
-
-    // Clock controls. Score is game time, so skipping ahead never helps — it just saves
-    // waiting. Pausing would give free thinking time, so it's practice-only.
-    if (intent.type === "pause" || intent.type === "resume" || intent.type === "skip") {
-      if (game.round.result) return reject("This round is over.");
-      if (intent.type === "skip") {
-        const target = nextEventTime(game.round.seeker, t, idx, intent.to);
-        if (target === null) return reject("Nothing to skip to.");
-        // Stops early if the hider plays a card on the way.
-        const skipped = skipSolo(game.round, t, Math.min(target, game.round.seekEnd), idx);
-        game.round = skipped.round;
-        game.clock = jumpClock(game.clock, skipped.t, now);
-      } else if (game.round.mode !== "practice") {
-        return reject("Pausing is for practice rounds.");
-      } else {
-        game.clock = (intent.type === "pause" ? pauseClock : resumeClock)(game.clock, now);
-      }
-      game.log.write("clock", { t, type: intent.type, to: gameTime(game.clock, now) });
-      game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
-      logCards(game);
-      logEnd(game);
-      sendState(s, seq, now);
-      return;
-    }
-    if (game.clock.pausedAt !== null) return reject("Paused — resume first.");
-
-    const result = applySoloIntent(game.round, intent, t, idx);
-    if (result.ok) {
-      const before = game.round.asked.length;
-      game.round = result.round;
-      const asked = game.round.asked;
-      if (asked.length > before) {
-        const q = asked.at(-1);
-        game.log.write("question", { t, q: q?.q, answer: q?.answer, remaining: q?.remaining });
-      } else {
-        game.log.write("intent", { t, type: intent.type });
-      }
-      logCards(game);
-      logEnd(game);
-      sendState(s, seq, now);
-    } else {
-      reject(result.error);
-    }
-    console.log(
-      `${formatServiceTime(t)} ${intent.type} → ${result.ok ? "ok" : `rejected: ${result.error}`}`,
+  // One message at a time per session, in order: a walk waits on a Street View lookup and
+  // a new round on several, and nothing may overtake them.
+  socket.on("message", (raw) => {
+    const queued = (queues.get(s) ?? Promise.resolve()).then(() => handleMessage(s, socket, raw));
+    queues.set(
+      s,
+      queued.catch((err: unknown) => console.error("message failed:", err)),
     );
   });
 });
+
+/** Each session's messages, chained so they're handled in the order they came. */
+const queues = new WeakMap<Session<Game>, Promise<void>>();
+
+/** The seq a message carries, even one the schema refused: its rejection answers it. */
+function seqOf(json: unknown): number {
+  const seq = (json as { seq?: unknown } | null)?.seq;
+  return typeof seq === "number" && Number.isInteger(seq) && seq >= 0 ? seq : -1;
+}
+
+async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) {
+  // A connection whose session moved to another tab no longer plays it.
+  if (s.conn !== socket) return;
+  let json: unknown;
+  try {
+    json = JSON.parse(String(raw));
+  } catch {
+    return;
+  }
+  const parsed = clientMessageSchema.safeParse(json);
+  if (!parsed.success) {
+    const seq = seqOf(json);
+    if (seq > s.game.lastSeq) s.game.lastSeq = seq;
+    const now = Date.now();
+    send(socket, {
+      type: "rejected",
+      seq,
+      error: "That didn't go through. Try again.",
+      clock: sync(s.game.clock, now),
+      view: remember(s, now),
+    });
+    return;
+  }
+  const { seq, intent } = parsed.data;
+  if (seq <= s.game.lastSeq) {
+    // A retry of something already handled (a resend after a reconnect): restate the round.
+    sendState(s, seq, Date.now());
+    return;
+  }
+
+  if (intent.type === "newRound") {
+    let fresh: Awaited<ReturnType<typeof newGame>>;
+    try {
+      fresh = await newGame(intent.mode, intent.difficulty);
+    } catch (err) {
+      console.error("new round failed:", err);
+      s.game.lastSeq = seq;
+      const now = Date.now();
+      send(socket, {
+        type: "rejected",
+        seq,
+        error: "The new round didn't start. Try again.",
+        clock: sync(s.game.clock, now),
+        view: remember(s, now),
+      });
+      return;
+    }
+    clearTimeout(s.game.answerTimer);
+    Object.assign(s.game, fresh);
+    // Only now: until the new round is in place, the tick's frames are the old round's,
+    // and they mustn't answer this intent.
+    s.game.lastSeq = seq;
+    sendState(s, seq, Date.now());
+    return;
+  }
+
+  // A walk must end on a real street (solo today: its target, not its path). Checked
+  // before the clock is read, so the walk starts when it's accepted.
+  let offStreet = false;
+  if (intent.type === "walkTo") {
+    offStreet = (await isStreetPoint(intent.lat, intent.lon, intent.pano)) === false;
+    if (s.conn !== socket) return;
+  }
+
+  const game = s.game;
+  game.lastSeq = seq;
+  const now = Date.now();
+  const t = gameTime(game.clock, now);
+  const reject = (error: string) => {
+    game.log.write("rejected", { t, type: intent.type, error });
+    send(socket, {
+      type: "rejected",
+      seq,
+      error,
+      clock: sync(game.clock, now),
+      view: remember(s, now),
+    });
+  };
+  if (offStreet) return reject("No street to walk to there. Click closer to a street.");
+
+  // Clock controls. Score is game time, so skipping ahead never helps — it just saves
+  // waiting. Pausing would give free thinking time, so it's practice-only.
+  if (intent.type === "pause" || intent.type === "resume" || intent.type === "skip") {
+    if (game.round.result) return reject("This round is over.");
+    if (intent.type === "skip") {
+      const target = nextEventTime(game.round.seeker, t, idx, intent.to);
+      if (target === null) return reject("Nothing to skip to.");
+      // Stops early if the hider plays a card on the way.
+      const skipped = skipSolo(game.round, t, Math.min(target, game.round.seekEnd), idx);
+      game.round = skipped.round;
+      game.clock = jumpClock(game.clock, skipped.t, now);
+    } else if (game.round.mode !== "practice") {
+      return reject("Pausing is for practice rounds.");
+    } else {
+      game.clock = (intent.type === "pause" ? pauseClock : resumeClock)(game.clock, now);
+    }
+    game.log.write("clock", { t, type: intent.type, to: gameTime(game.clock, now) });
+    game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
+    logCards(game);
+    logEnd(game);
+    sendState(s, seq, now);
+    return;
+  }
+  if (game.clock.pausedAt !== null) return reject("Paused — resume first.");
+
+  const result = applySoloIntent(game.round, intent, t, idx);
+  if (result.ok) {
+    const before = game.round.asked.length;
+    game.round = result.round;
+    const asked = game.round.asked;
+    if (asked.length > before) {
+      const q = asked.at(-1);
+      game.log.write("question", { t, q: q?.q, answer: q?.answer, remaining: q?.remaining });
+    } else {
+      game.log.write("intent", { t, type: intent.type });
+    }
+    logCards(game);
+    logEnd(game);
+    sendState(s, seq, now);
+  } else {
+    reject(result.error);
+  }
+  console.log(
+    `${formatServiceTime(t)} ${intent.type} → ${result.ok ? "ok" : `rejected: ${result.error}`}`,
+  );
+}
 
 console.log(
   `listening on ws://localhost:${PORT} · daily #${dailyNumber(nyDate(new Date()))} + practice rounds, ${SPEED}×`,
