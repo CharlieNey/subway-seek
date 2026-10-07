@@ -22,7 +22,7 @@ INSTANCE_ID=i-… ECR=…dkr.ecr.us-east-1.amazonaws.com/stand-clear-server AWS_
 
 The first deploy asks for the host name and the secrets (`DAILY_SECRET`, generated if blank; the Street View server key; the browser key and signing secret) and writes them to the instance's `.env`, builds the image for `linux/amd64`, pushes it, and starts the stack. Caddy fetches the certificate on first start, which needs the DNS record to resolve already.
 
-Every deploy after that is `infra/aws/deploy.sh` with the same three variables, or nothing at all: `.github/workflows/deploy-server.yml` does it on every push to `main` that touches the server, the engine, the data or `infra/aws`. The Action needs four repository secrets: `AWS_ROLE_ARN` (an IAM role GitHub assumes with OIDC, allowed to push to the repository and to send SSM commands to the instance), `AWS_REGION`, `ECR_REPOSITORY` and `INSTANCE_ID`.
+Every deploy after that is `infra/aws/deploy.sh` with the same three variables, or nothing at all: `.github/workflows/deploy-server.yml` does it on every push to `main` that touches the server, the engine, the data or `infra/aws`, after lint, typecheck, the tests and the timetable check pass on the runner (a red commit never deploys; `ci.yml` runs the same checks plus the web build on every push and pull request). The Action needs four repository secrets: `AWS_ROLE_ARN` (an IAM role GitHub assumes with OIDC, allowed to push to the repository and to send SSM commands to the instance), `AWS_REGION`, `ECR_REPOSITORY` and `INSTANCE_ID`.
 
 What to know:
 
@@ -30,7 +30,7 @@ What to know:
 - **Rounds survive a deploy.** Live sessions are saved to `SESSION_DB` (`/data/sessions.sqlite` on the volume) whenever they change and restored at boot with whatever is left of their 3-minute grace period; a solo clock runs on through the downtime, as through any drop. Players see "Connection lost", then their round again. A deploy that takes longer than three minutes ends the rounds.
 - **Limits:** 30 new rounds per address per hour, 40 street walks per session per minute, 500 live sessions per server. Caddy sets `X-Forwarded-For`, which the limits read. A turned-away connection gets a close reason the client shows.
 - **Looking at it:** `aws ssm start-session --target i-…` opens a shell (no SSH). `GET https://<host>/health` returns `{ ok, sessions, serviceDate }`. `docker compose logs -f server` in `/opt/stand-clear` follows the round log; `/var/lib/docker/volumes/stand-clear_data/_data/logs` holds the match logs.
-- **Cost:** a `t3.small` on demand is about $15 a month, the disk about $1, the Elastic IP free while attached. A `t4g.small` is cheaper if you build the image with `PLATFORM=linux/arm64`. Data transfer is negligible at launch scale.
+- **Cost:** a `t3.small` on demand is about $15 a month, the disk about $1, the Elastic IP free while attached. ECR keeps the last ten images (a lifecycle rule from `setup.sh`), well under a dollar. GitHub Actions: a deploy is about six runner minutes, a CI run about four, against 2,000 free a month on a private repo. A `t4g.small` is cheaper if you build the image with `PLATFORM=linux/arm64`. Data transfer is negligible at launch scale.
 - **Later:** when there are two-player rooms or a second machine, the step up is an Application Load Balancer in front and sessions in DynamoDB instead of SQLite on the disk; nothing in the app assumes the instance beyond the two file paths.
 
 ## The client (Vercel)

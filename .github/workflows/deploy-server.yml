@@ -1,6 +1,7 @@
-# Deploy the game server on every push to main that touches it: build the image, push it
-# to ECR, then pull and restart on the EC2 instance over SSM (infra/aws/deploy.sh does the
-# same from a laptop). Needs these repository secrets:
+# Deploy the game server on every push to main that touches it: run the checks, build the
+# image, push it to ECR, then pull and restart on the EC2 instance over SSM
+# (infra/aws/deploy.sh does the same from a laptop). A commit that fails lint, typecheck or
+# the tests never deploys. Needs these repository secrets:
 #   AWS_ROLE_ARN   an IAM role GitHub can assume with OIDC (ECR push + ssm:SendCommand on the instance)
 #   AWS_REGION     us-east-1
 #   ECR_REPOSITORY 123.dkr.ecr.us-east-1.amazonaws.com/stand-clear-server
@@ -28,7 +29,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec biome ci .
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm data:check
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

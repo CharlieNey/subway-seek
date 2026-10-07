@@ -30,6 +30,16 @@ if ! aws ecr describe-repositories --region "$REGION" --repository-names "$NAME"
     --image-scanning-configuration scanOnPush=true >/dev/null
   say "created ECR repository $NAME"
 fi
+# Every deploy pushes an image tagged with its commit (a few hundred MB each, about $0.10
+# per GB-month). Keep the last ten for rollbacks; the rule expires the rest.
+aws ecr put-lifecycle-policy --region "$REGION" --repository-name "$NAME" --lifecycle-policy-text '{
+  "rules": [{
+    "rulePriority": 1,
+    "description": "Keep the last ten images",
+    "selection": { "tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10 },
+    "action": { "type": "expire" }
+  }]
+}' >/dev/null
 ECR="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$NAME"
 
 # --- IAM role for the instance: pull from ECR, reachable over SSM --------------------
