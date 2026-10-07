@@ -10,11 +10,15 @@ import { fileURLToPath } from "node:url";
 const LOG_DIR = process.env.MATCH_LOG_DIR ?? fileURLToPath(new URL("../logs/", import.meta.url));
 
 export class MatchLog {
-  readonly id =
-    `${new Date().toISOString().replace(/[:.]/g, "-")}-${Math.random().toString(36).slice(2, 7)}`;
-  private readonly path = join(LOG_DIR, `${this.id}.jsonl`);
+  readonly id: string;
+  private readonly path: string;
 
-  constructor() {
+  /** A new log, or an existing one reopened by id (a session restored after a restart). */
+  constructor(id?: string) {
+    this.id =
+      id ??
+      `${new Date().toISOString().replace(/[:.]/g, "-")}-${Math.random().toString(36).slice(2, 7)}`;
+    this.path = join(LOG_DIR, `${this.id}.jsonl`);
     mkdirSync(LOG_DIR, { recursive: true });
   }
 

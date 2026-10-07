@@ -5,3 +5,4 @@ dist/
 .env*
 packages/data/raw/
 apps/server/logs/
+apps/server/data/

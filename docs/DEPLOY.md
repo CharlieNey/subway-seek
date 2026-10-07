@@ -22,7 +22,9 @@ Every deploy after that is `fly deploy`. The machine stays on (`auto_stop_machin
 
 What to know:
 
-- **Changing `DAILY_SECRET` changes every future daily**, and a redeploy mid-day restarts the server, which rebuilds the day's cache from the same seed, so the daily stays the same. Sessions in flight are lost on deploy until there's a store for them; deploy when nobody's playing.
+- **Changing `DAILY_SECRET` changes every future daily**, and a redeploy mid-day restarts the server, which rebuilds the day's cache from the same seed, so the daily stays the same.
+- **Rounds survive a deploy.** Live sessions are saved to `SESSION_DB` (`/data/sessions.sqlite` on the volume) whenever they change and restored at boot with whatever is left of their 3-minute grace period; a solo clock runs on through the downtime, as through any drop. Players see "Connection lost", then their round again. A deploy that takes longer than three minutes ends the rounds.
+- **Limits:** 30 new rounds per address per hour, 40 street walks per session per minute, 500 live sessions per server. A turned-away connection gets a close reason the client shows.
 - **Logs:** `MATCH_LOG_DIR=/data/logs` on the volume. `fly ssh console -C "ls /data/logs"` to look, `fly sftp get /data/logs/<file>` to fetch.
 - **Health:** the server speaks WebSocket only, so Fly's HTTP checks are off. `fly logs` shows `listening on ws://…` and each intent.
 - **Cost:** one shared-cpu-1x with 512 MB and a 1 GB volume is a few dollars a month.
@@ -37,10 +39,11 @@ Environment variables, for Production and Preview:
 |---|---|
 | `VITE_SERVER_URL` | `wss://stand-clear-server.fly.dev` |
 | `VITE_GOOGLE_MAPS_API_KEY` | the browser key from `stand-clear-nyc` |
+| `VITE_SITE_URL` | the site's origin, `https://<your domain>`, no trailing slash. It becomes the absolute `og:url` and `og:image` in `index.html`, so Discord, Slack, iMessage and X can fetch `/og.png`. Unset, the build uses `http://localhost:5173`, so a preview deploy without it points its card image at localhost. |
 
 The dataset (5 MB) is imported with a content hash into `assets/`, so it's cached for a year and refetched only when it changes; Vercel serves it compressed. The loading board's bytes bar reads the real transfer.
 
-`pnpm --filter @stand-clear/web build` locally produces `apps/web/dist` for a check before pushing. `apps/web/public/terms.html` is served as-is at `/terms.html`.
+`pnpm --filter @stand-clear/web build` locally produces `apps/web/dist` for a check before pushing. `apps/web/public/terms.html` is served as-is at `/terms.html`, and so are the favicon, `apple-touch-icon.png` and `og.png` (the link-preview card; `apps/web/scripts/og/README.md` says how to regenerate it). The card is one static image for every link, `/`, `/play` and the share link's `/?d=23&t=41`: the SPA rewrite serves the same `index.html` for all of them, and the share's number and minutes are read by the page, not the card.
 
 ## Google Cloud (`stand-clear-nyc`)
 

@@ -56,8 +56,7 @@ export class SessionStore<G extends { clock: GameClock }> {
     this.timers = opts.timers ?? realTimers;
   }
 
-  create(game: G): Session<G> {
-    const token = (this.opts.newToken ?? randomUUID)();
+  create(game: G, token = (this.opts.newToken ?? randomUUID)()): Session<G> {
     const session: Session<G> = {
       token,
       game,
@@ -67,6 +66,24 @@ export class SessionStore<G extends { clock: GameClock }> {
       graceTimer: null,
     };
     this.sessions.set(token, session);
+    return session;
+  }
+
+  /**
+   * Bring back a session saved before a restart, with no connection, as if it had
+   * dropped at `droppedAt`: its grace period runs for whatever is left of it. The clock
+   * is left as saved (a solo clock runs through a drop; a paused one stays paused).
+   */
+  restore(game: G, token: string, droppedAt: number, now: number): Session<G> {
+    const session = this.create(game, token);
+    session.droppedAt = droppedAt;
+    const left = Math.max(0, this.opts.graceMs - (now - droppedAt));
+    session.graceTimer = this.timers.setTimeout(() => {
+      session.graceTimer = null;
+      if (session.conn !== null || this.sessions.get(session.token) !== session) return;
+      this.sessions.delete(session.token);
+      this.opts.onExpire?.(session);
+    }, left);
     return session;
   }
 

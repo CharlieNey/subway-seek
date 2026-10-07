@@ -15,8 +15,11 @@ primary_region = "ewr"
 
 [env]
   PORT = "8787"
-  # Match logs go on the volume below, so they survive deploys.
+  # Match logs and live sessions go on the volume below, so they survive deploys.
   MATCH_LOG_DIR = "/data/logs"
+  SESSION_DB = "/data/sessions.sqlite"
+  # Node's built-in SQLite prints an experimental-feature warning at boot; it's stable enough.
+  NODE_OPTIONS = "--disable-warning=ExperimentalWarning"
 
 [http_service]
   internal_port = 8787

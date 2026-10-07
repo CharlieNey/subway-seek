@@ -95,3 +95,16 @@ describe("the link to the server", () => {
     expect(startAttempt({ kind: "takenOver" }, 9)).toMatchObject({ tries: 0, firstTryAt: 9 });
   });
 });
+
+describe("a connection the server turned away", () => {
+  it("waits a full minute and keeps the server's reason, instead of retrying like a blip", async () => {
+    const { CLOSE_FULL } = await import("@stand-clear/engine");
+    const first = attemptFailed({ kind: "idle" }, { code: CLOSE_FULL, opened: false }, 0, false);
+    expect(first.kind).toBe("waiting");
+    const close = { code: CLOSE_FULL, opened: false, reason: "The server is full right now." };
+    const next = attemptFailed(first, close, 1000, false);
+    if (next.kind !== "waiting") throw new Error(next.kind);
+    expect(next.wait).toBe(60_000);
+    expect(next.lastClose).toEqual(close);
+  });
+});

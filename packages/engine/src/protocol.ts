@@ -108,6 +108,9 @@ export const SOLO_PAUSES_ON_DROP = false;
 export const SESSION_PARAM = "session";
 /** Close code for a connection whose session was opened somewhere else (another tab). */
 export const CLOSE_TAKEN_OVER = 4001;
+/** Close codes for a new connection turned away: too many new rounds from its address, or a full server. */
+export const CLOSE_TOO_MANY_ROUNDS = 4002;
+export const CLOSE_FULL = 4003;
 
 export type ServerMessage =
   | {

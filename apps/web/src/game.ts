@@ -377,11 +377,16 @@ function dropSocket() {
 }
 
 /** The link failed or dropped: wait, then try again. */
-function failed(code: number, opened: boolean) {
+function failed(code: number, opened: boolean, reason?: string) {
   const { link, everOpen } = useGame.getState();
   // A solo round's clock runs on through a drop, on the server and here.
   if (link.kind === "open" && SOLO_PAUSES_ON_DROP) freezeClock();
-  const next = attemptFailed(link, { code, opened }, Date.now(), everOpen);
+  const next = attemptFailed(
+    link,
+    { code, opened, reason: reason || undefined },
+    Date.now(),
+    everOpen,
+  );
   useGame.setState({ link: next });
   clearTimeout(retryTimer);
   if (next.kind === "waiting") retryTimer = setTimeout(connect, next.until - Date.now());
@@ -425,7 +430,7 @@ function connect() {
       useGame.setState({ link: { kind: "takenOver" } });
       return;
     }
-    failed(e.code, opened);
+    failed(e.code, opened, e.reason);
   };
 }
 

@@ -38,7 +38,8 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] The share text ends with a link carrying the daily's number and the sharer's minutes, for the "a friend found…" band (2026-10-06).
 - [ ] Open Graph title, description and image on the homepage, so a shared link unfurls.
 - [ ] Name check: trademark and app-store search for "Stand Clear" before buying the domain.
-- [ ] A per-IP limit on new rounds (each practice round makes up to twelve free Street View metadata calls, and every street walk one more).
+- [x] Limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; a refused connection shows the server's reason (2026-10-07).
+- [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the Fly volume.
 - [ ] Play a full daily and a practice round on the deployed site, on Chrome, Safari and Firefox.
 
 ## Pre-launch review (2026-10-06)

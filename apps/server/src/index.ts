@@ -8,7 +8,10 @@
  * drop, and a reconnect with the session token within the grace period picks it up again.
  */
 import "./env.ts";
+import { existsSync, mkdirSync } from "node:fs";
 import { createServer } from "node:http";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { formatServiceTime } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
@@ -16,7 +19,9 @@ import {
   applySoloIntent,
   bonusSeconds,
   buildIndex,
+  CLOSE_FULL,
   CLOSE_TAKEN_OVER,
+  CLOSE_TOO_MANY_ROUNDS,
   type ClockSync,
   clientMessageSchema,
   createSoloRound,
@@ -47,10 +52,18 @@ import {
   startClock,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
+import {
+  clientAddress,
+  MAX_SESSIONS,
+  NEW_ROUNDS_PER_HOUR,
+  RateLimiter,
+  WALKS_PER_MINUTE,
+} from "./limits.ts";
 import { MatchLog } from "./matchLog.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
 import { isStreetPoint, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
+import { restorable, SessionDb } from "./store.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -243,17 +256,87 @@ async function newGame(mode: RoundMode, difficulty?: Difficulty) {
   };
 }
 
+/**
+ * Live sessions on disk (store.ts), so a deploy or a crash doesn't end the rounds in
+ * progress. SESSION_DB is a file on the Fly volume in production; locally it's
+ * apps/server/data/sessions.sqlite (gitignored).
+ */
+const SESSION_DB =
+  process.env.SESSION_DB ?? fileURLToPath(new URL("../data/sessions.sqlite", import.meta.url));
+if (SESSION_DB !== ":memory:" && !existsSync(dirname(SESSION_DB))) {
+  mkdirSync(dirname(SESSION_DB), { recursive: true });
+}
+const db = new SessionDb(SESSION_DB);
+
 const sessions = new SessionStore<Game>({
   graceMs: RECONNECT_GRACE_MS,
   // Every round is solo today, and a solo round's clock runs through a drop.
   pauseOnDrop: SOLO_PAUSES_ON_DROP,
-  onExpire: ({ game }) => {
+  onExpire: ({ token, game }) => {
     clearTimeout(game.answerTimer);
+    db.delete(token);
     const t = gameTime(game.clock, Date.now());
     game.log.write("abandoned", { t, over: game.round.result !== null });
     console.log(`${formatServiceTime(t)} session dropped after the grace period`);
   },
 });
+
+/** Save a session's game, so it survives a restart. Called whenever the round or clock changes. */
+function persist(session: Session<Game>, now: number) {
+  const { game } = session;
+  db.save({
+    token: session.token,
+    game: {
+      round: game.round,
+      clock: game.clock,
+      lastSeq: game.lastSeq,
+      logId: game.log.id,
+      cardsLogged: game.cardsLogged,
+      stationLogged: game.stationLogged,
+    },
+    droppedAt: session.droppedAt,
+    updatedAt: now,
+  });
+}
+
+// Bring back the sessions a restart interrupted, with whatever is left of their grace
+// period; the rest are forgotten. A solo clock ran on through the downtime, as it does
+// through any drop.
+{
+  const now = Date.now();
+  const saved = db.all();
+  const keep = restorable(saved, now, RECONNECT_GRACE_MS);
+  for (const s of saved) if (!keep.includes(s)) db.delete(s.token);
+  for (const s of keep) {
+    const game: Game = {
+      round: s.game.round,
+      clock: s.game.clock,
+      lastSeq: s.game.lastSeq,
+      log: new MatchLog(s.game.logId),
+      cardsLogged: s.game.cardsLogged,
+      stationLogged: s.game.stationLogged,
+      shown: "",
+      answerTimer: undefined,
+    };
+    sessions.restore(game, s.token, s.droppedAt ?? s.updatedAt, now);
+    game.log.write("restored", { t: gameTime(game.clock, now) });
+  }
+  if (saved.length) console.log(`restored ${keep.length} of ${saved.length} saved session(s)`);
+}
+
+// Rate limits (limits.ts): new rounds per address, street walks per session, sessions kept.
+const newRounds = new RateLimiter(NEW_ROUNDS_PER_HOUR, 60 * 60 * 1000);
+const walks = new RateLimiter(WALKS_PER_MINUTE, 60 * 1000);
+setInterval(
+  () => {
+    const now = Date.now();
+    newRounds.sweep(now);
+    walks.sweep(now);
+  },
+  10 * 60 * 1000,
+);
+/** The address each session connected from, for the new-round limit. */
+const addressOf = new WeakMap<Session<Game>, string>();
 
 /**
  * Photo answers carry a signed Street View Static URL when the browser key and the URL
@@ -313,6 +396,7 @@ function tick(session: Session<Game>, now: number) {
     game.stationLogged = true;
     game.log.write("station_found", { t: game.round.stationFoundAt });
   }
+  if (changed) persist(session, now);
   if (session.conn && JSON.stringify(viewNow(game, now)) !== game.shown) {
     sendState(session, game.lastSeq, now);
   }
@@ -406,9 +490,20 @@ wss.on("connection", async (socket, req) => {
   socket.on("pong", () => alive.set(socket, true));
   const params = new URL(req.url ?? "/", "http://localhost").searchParams;
   const token = params.get(SESSION_PARAM);
+  const address = clientAddress(req.headers, req.socket.remoteAddress);
   let session = sessions.get(token);
   const resumed = session !== undefined;
   if (!session) {
+    // A new session is a new round: turned away when the server is full or this address
+    // has started too many lately (limits.ts). The client shows the close reason.
+    if (sessions.size >= MAX_SESSIONS) {
+      socket.close(CLOSE_FULL, "The server is full right now. Try again in a few minutes.");
+      return;
+    }
+    if (!newRounds.allow(address, Date.now())) {
+      socket.close(CLOSE_TOO_MANY_ROUNDS, "Too many new rounds from here. Try again later.");
+      return;
+    }
     // A new session starts the round its link asked for: the daily unless it says practice.
     const mode: RoundMode = params.get("mode") === "practice" ? "practice" : "daily";
     const d = params.get("difficulty");
@@ -423,11 +518,13 @@ wss.on("connection", async (socket, req) => {
     session = sessions.create(game);
   }
   const s = session;
+  addressOf.set(s, address);
   const now = Date.now();
   const replaced = sessions.attach(s, socket, now);
   if (replaced) replaced.close(CLOSE_TAKEN_OVER, "Opened somewhere else");
   if (resumed)
     s.game.log.write("reconnect", { t: gameTime(s.game.clock, now), replaced: !!replaced });
+  persist(s, now);
 
   send(socket, {
     type: "hello",
@@ -444,6 +541,7 @@ wss.on("connection", async (socket, req) => {
     if (!sessions.detach(s, socket, at)) return;
     clearTimeout(s.game.answerTimer);
     s.game.log.write("disconnect", { t: gameTime(s.game.clock, at) });
+    persist(s, at);
   });
 
   // One message at a time per session, in order: a walk waits on a Street View lookup and
@@ -497,6 +595,18 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
   }
 
   if (intent.type === "newRound") {
+    if (!newRounds.allow(addressOf.get(s) ?? "unknown", Date.now())) {
+      s.game.lastSeq = seq;
+      const now = Date.now();
+      send(socket, {
+        type: "rejected",
+        seq,
+        error: "Too many new rounds from here in the last hour. Try again later.",
+        clock: sync(s.game.clock, now),
+        view: remember(s, now),
+      });
+      return;
+    }
     let fresh: Awaited<ReturnType<typeof newGame>>;
     try {
       fresh = await newGame(intent.mode, intent.difficulty);
@@ -518,16 +628,23 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     // Only now: until the new round is in place, the tick's frames are the old round's,
     // and they mustn't answer this intent.
     s.game.lastSeq = seq;
-    sendState(s, seq, Date.now());
+    const started = Date.now();
+    persist(s, started);
+    sendState(s, seq, started);
     return;
   }
 
   // A walk must end on a real street (solo today: its target, not its path). Checked
-  // before the clock is read, so the walk starts when it's accepted.
+  // before the clock is read, so the walk starts when it's accepted. Each check is a
+  // Street View lookup, so walks are limited per session (limits.ts).
   let offStreet = false;
+  let tooManyWalks = false;
   if (intent.type === "walkTo") {
-    offStreet = (await isStreetPoint(intent.lat, intent.lon, intent.pano)) === false;
-    if (s.conn !== socket) return;
+    tooManyWalks = !walks.allow(s.token, Date.now());
+    if (!tooManyWalks) {
+      offStreet = (await isStreetPoint(intent.lat, intent.lon, intent.pano)) === false;
+      if (s.conn !== socket) return;
+    }
   }
 
   const game = s.game;
@@ -544,6 +661,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
       view: remember(s, now),
     });
   };
+  if (tooManyWalks) return reject("That's a lot of walking at once. Give it a moment.");
   if (offStreet) return reject("No street to walk to there. Click closer to a street.");
 
   // Clock controls. Score is game time, so skipping ahead never helps — it just saves
@@ -566,6 +684,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
     logCards(game);
     logEnd(game);
+    persist(s, now);
     sendState(s, seq, now);
     return;
   }
@@ -584,6 +703,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     }
     logCards(game);
     logEnd(game);
+    persist(s, now);
     sendState(s, seq, now);
   } else {
     reject(result.error);

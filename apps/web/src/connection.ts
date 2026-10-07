@@ -4,6 +4,8 @@
  * feeds it events and real times; the screens read what to show from it.
  */
 
+import { CLOSE_FULL, CLOSE_TOO_MANY_ROUNDS } from "@stand-clear/engine";
+
 /** An attempt slower than this says so on the board ("Still connecting"). */
 export const SLOW_MS = 8000;
 /** An attempt that hasn't opened by now is given up and retried. */
@@ -43,7 +45,14 @@ export interface CloseInfo {
   code: number;
   /** Whether it ever opened. */
   opened: boolean;
+  /** The server's close reason, when it turned the connection away on purpose. */
+  reason?: string;
 }
+
+/** The server said no (too many new rounds from here, or it's full): not a blip, so wait a while. */
+export const refused = (close: CloseInfo | null | undefined): boolean =>
+  close?.code === CLOSE_TOO_MANY_ROUNDS || close?.code === CLOSE_FULL;
+const REFUSED_WAIT_MS = 60_000;
 
 /**
  * How long to wait before the next attempt, after `tries` failures. Mid-round the first
@@ -74,7 +83,7 @@ export function attemptFailed(link: Link, close: CloseInfo, now: number, midRoun
     return { kind: "waiting", until: now, wait: 0, tries: 0, firstTryAt: now, lastClose: close };
   }
   const tries = link.tries + 1;
-  const wait = retryDelayMs(tries, midRound);
+  const wait = refused(close) ? REFUSED_WAIT_MS : retryDelayMs(tries, midRound);
   return {
     kind: "waiting",
     until: now + wait,

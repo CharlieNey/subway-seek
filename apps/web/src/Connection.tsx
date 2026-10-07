@@ -6,7 +6,7 @@
  */
 import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
-import { type LinkScreen, LOST_TRIES, linkScreen } from "./connection.ts";
+import { type LinkScreen, LOST_TRIES, linkScreen, refused } from "./connection.ts";
 import { useGame } from "./game.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Button, Plaque, TileTimer, Wainscot, WainscotText } from "./ui/vocab.tsx";
@@ -232,9 +232,11 @@ export function ServerPlaque({ screen }: { screen: Extract<LinkScreen, { kind: "
       details={`${close ? `${close.opened ? "Dropped" : "Closed before it opened"} · code ${close.code} · ` : ""}${screen.tries} ${screen.tries === 1 ? "try" : "tries"} since ${clockTime(screen.firstTryAt)}`}
     >
       <p>
-        {online
-          ? "You're online, but the server isn't answering. It may be restarting."
-          : "This device is offline. The game picks up again when it's back."}
+        {refused(close) && close?.reason
+          ? close.reason
+          : online
+            ? "You're online, but the server isn't answering. It may be restarting."
+            : "This device is offline. The game picks up again when it's back."}
       </p>
     </Plaque>
   );
