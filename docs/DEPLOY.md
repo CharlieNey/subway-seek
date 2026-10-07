@@ -8,7 +8,7 @@ One EC2 instance in us-east-1 (New York's region) runs the Docker image behind C
 
 What's where on the instance: `/opt/stand-clear/docker-compose.yml`, `Caddyfile` and `.env` (the secrets); the match logs and the live-sessions database on a Docker volume on the instance's EBS disk, so they survive deploys. The instance has no SSH key and no port 22: commands go through SSM, and only 80 and 443 are open.
 
-First time, with the AWS CLI installed and signed in (`brew install awscli`, then `aws configure sso` or `aws configure`):
+First time, with the AWS CLI installed and signed in (`brew install awscli`, then `aws configure` with an access key, or `aws login` to borrow a console session). In an account someone else administers, the IAM user needs `PowerUserAccess` plus `infra/aws/deployer-policy.json` (its own access key, the instance role, the GitHub deploy role); without the first statement the user can't even create its key. Then:
 
 ```sh
 AWS_REGION=us-east-1 infra/aws/setup.sh

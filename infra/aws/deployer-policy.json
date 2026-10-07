@@ -1,0 +1,49 @@
+{
+  "_comment": "What the IAM user that runs setup.sh and deploy.sh needs beyond the AWS managed PowerUserAccess policy (EC2, ECR, SSM): its own access key, the instance role setup.sh creates, and the GitHub OIDC role for the deploy Action. Replace the account id. Attach as an inline policy named stand-clear-deployer.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OwnCredentials",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateAccessKey",
+        "iam:ListAccessKeys",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey",
+        "iam:GetUser",
+        "iam:GetLoginProfile",
+        "iam:ListMFADevices"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:user/${aws:username}"
+    },
+    {
+      "Sid": "InstanceRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:AttachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:PassRole",
+        "iam:TagRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/stand-clear-*",
+        "arn:aws:iam::ACCOUNT_ID:instance-profile/stand-clear-*"
+      ]
+    },
+    {
+      "Sid": "GitHubDeployRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateOpenIDConnectProvider",
+        "iam:GetOpenIDConnectProvider",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
