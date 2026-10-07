@@ -32,6 +32,12 @@ const datasetBytes = statSync(
   createRequire(import.meta.url).resolve("@stand-clear/data/dataset.json"),
 ).size;
 
+/**
+ * The site's public origin, for the absolute og:url and og:image in index.html
+ * (`%VITE_SITE_URL%`). Vercel sets it (docs/DEPLOY.md); local dev gets the dev server.
+ */
+process.env.VITE_SITE_URL ??= "http://localhost:5173";
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), maplibreWorkerChunk()],
   define: { "import.meta.env.VITE_DATASET_BYTES": JSON.stringify(datasetBytes) },
