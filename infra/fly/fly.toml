@@ -1,4 +1,5 @@
-# Fly.io app for the game server (apps/server). Deploy from the repo root: `fly deploy`.
+# Fly.io alternative for the game server (apps/server), kept in case AWS is ever dropped.
+# The plan is AWS (infra/aws, docs/DEPLOY.md). To use this instead: `fly deploy --config infra/fly/fly.toml`.
 #
 # One machine, always on: rounds live in memory, the daily is cached per New York date,
 # and WebSockets need a process that doesn't stop between requests. Newark is the region
@@ -11,7 +12,7 @@ app = "stand-clear-server"
 primary_region = "ewr"
 
 [build]
-  dockerfile = "apps/server/Dockerfile"
+  dockerfile = "../../apps/server/Dockerfile"
 
 [env]
   PORT = "8787"

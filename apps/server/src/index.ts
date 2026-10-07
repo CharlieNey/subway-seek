@@ -448,7 +448,16 @@ async function dailyInfo() {
 const httpServer = createServer((req, res) => {
   // Public facts only, so any page may read them.
   res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method === "GET" && new URL(req.url ?? "/", "http://localhost").pathname === "/daily") {
+  const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+  // For the container's health check and a load balancer's: up, and how many rounds it holds.
+  if (req.method === "GET" && pathname === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(
+      JSON.stringify({ ok: true, sessions: sessions.size, serviceDate: dataset.meta.serviceDate }),
+    );
+    return;
+  }
+  if (req.method === "GET" && pathname === "/daily") {
     dailyInfo().then(
       (info) => {
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });

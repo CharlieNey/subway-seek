@@ -4,10 +4,10 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 ## Hosting
 
-- [x] `apps/server/Dockerfile` and `fly.toml` (Newark, always on, logs on a volume).
+- [x] `apps/server/Dockerfile`; `infra/aws` (one EC2 instance in us-east-1 behind Caddy, image in ECR, deploys over SSM; a GitHub Action deploys on push). Fly kept in `infra/fly` as an alternative.
 - [x] `vercel.json` (build, SPA rewrite, immutable hashed assets, security headers).
 - [x] `docs/DEPLOY.md`: first deploy, env vars, re-pin routine, smoke test, rollback.
-- [ ] Create the Fly app, volume and secrets; first `fly deploy`.
+- [ ] `infra/aws/setup.sh` (needs the AWS CLI signed in), point the A record at the Elastic IP, then `infra/aws/deploy.sh --first`. Add the four repository secrets for the deploy Action.
 - [ ] Import the repo in Vercel; set `VITE_SERVER_URL` and `VITE_GOOGLE_MAPS_API_KEY`.
 - [ ] A domain, and the server's `wss://` URL behind it.
 
@@ -15,7 +15,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 - [x] URL signing implemented and tested against Google's documented example (`apps/server/src/sign.ts`).
 - [x] Wired in: the server attaches a signed URL to every photo answer when `GOOGLE_MAPS_BROWSER_KEY` and `STREETVIEW_SIGNING_SECRET` are set, and the client uses it. Unsigned until then (it warns at startup).
-- [ ] Generate the signing secret; `fly secrets set STREETVIEW_SIGNING_SECRET=… GOOGLE_MAPS_BROWSER_KEY=…`. Then set the Static API's unsigned quota to 0.
+- [ ] Generate the signing secret; it and the browser key go into the instance's `.env` (`deploy.sh --first` asks for them). Then set the Static API's unsigned quota to 0.
 - [ ] Restrict the browser key's referrers to the production domain (and previews), APIs to Maps JavaScript + Street View Static.
 - [ ] Check the vector Map ID in Safari; fall back to the raster ID if the overlay fails.
 - [ ] Confirm the budget alert and daily caps against the expected first-week traffic.
@@ -36,10 +36,10 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 - [ ] S4 bot-vs-bot balance run; deck mix and curse prices set from it (`docs/hider-bot.md`).
 - [x] The share text ends with a link carrying the daily's number and the sharer's minutes, for the "a friend found…" band (2026-10-06).
-- [ ] Open Graph title, description and image on the homepage, so a shared link unfurls.
+- [x] Open Graph title, description and card image, favicon and touch icon; `VITE_SITE_URL` makes the URLs absolute (2026-10-07).
 - [ ] Name check: trademark and app-store search for "Stand Clear" before buying the domain.
 - [x] Limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; a refused connection shows the server's reason (2026-10-07).
-- [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the Fly volume.
+- [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the instance's volume.
 - [ ] Play a full daily and a practice round on the deployed site, on Chrome, Safari and Firefox.
 
 ## Pre-launch review (2026-10-06)

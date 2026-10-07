@@ -1,0 +1,7 @@
+# TLS from Let's Encrypt for the server's host, and everything (WebSocket upgrades included)
+# proxied to the game server. Caddy adds X-Forwarded-For, which the server's rate limits
+# read (apps/server/src/limits.ts).
+{$SERVER_HOST} {
+	encode zstd gzip
+	reverse_proxy server:8787
+}

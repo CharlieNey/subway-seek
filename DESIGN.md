@@ -271,7 +271,7 @@ Built in M0 (`packages/data`). What the data turned out to be:
 | Map | Google Maps JS (vector Map ID with the Mosaic cloud style) + deck.gl overlays · MapLibre + OpenFreeMap as a dev fallback | Google's terms require a Google map beside Street View (decision B); one map load per session is within the free tier |
 | Geo maths | own great-circle helpers in the engine | Distances, zones, radar/measuring questions; no turf dependency so far |
 | Street View | Google Maps JS panorama (client) · Street View Static images for photos (browser-loaded) · metadata API on the server, free, for picking spots | Spike done 2026-10-05: walking inside one panorama is free, loads are billed, relay is forbidden (`docs/street-view-spike.md`) |
-| Hosting | Client on Vercel (static) · server on Fly.io near NYC | Long-lived WebSocket process, a few dollars a month |
+| Hosting | Client on Vercel (static) · server on one EC2 instance in us-east-1 behind Caddy, with the image in ECR (`infra/aws`) | Long-lived WebSocket process with a disk, about $15 a month; Charlie has AWS. Fly.io was the first plan and stays as an alternative in `infra/fly` |
 | Persistence | None in v1: rooms in memory, each match appends its action log to a file | The log feeds playtest metrics and, later, replays |
 
 ### Repo layout
@@ -957,6 +957,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-07 | The server is hosted on AWS: one EC2 instance in us-east-1 running the Docker image behind Caddy (automatic TLS, WebSockets proxied), the image in ECR, deploys over SSM from a script or the GitHub Action; the client stays on Vercel | Charlie has AWS. One always-on process with a disk is what the server needs, and EC2 is the plain way to get it; Fargate would add a load balancer and move SQLite off a disk. The Fly config is kept as an alternative |
 | 2026-10-07 | Live sessions are saved to SQLite on the server's volume on every change and restored at boot with the rest of their grace period, so a deploy or crash doesn't end the rounds in progress | Launch prep: a single process lost every round on deploy. Node's built-in SQLite needs no dependency, and one row per session is the shape two-player rooms will reuse |
 | 2026-10-07 | Rate limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; refused connections carry a close reason the client shows | Launch prep: each new round costs up to twelve Street View lookups and each walk one, so an unlimited script could exhaust Google's rate limit for everyone |
 | 2026-10-07 | Reversed: every round reveals the hider when it ends, an unfound daily included. The replay shows both routes and the station again, and time's up names the station | Charlie. There is no leaderboard or server record yet, so the give-up-and-replay exploit fools only the cheater's own browser and an honor-system share line, while the secret cost every honest player the answer at the moment Wordle shows the word. Revisit when results live on a server: refuse a second daily per recorded result |
