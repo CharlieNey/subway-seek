@@ -33,7 +33,6 @@ import {
   DECK_COUNTS,
   DIFFICULTIES,
   type Difficulty,
-  EXIT_SECONDS,
   evaluate,
   filterCandidates,
   HUB_STATION_IDS,
@@ -123,7 +122,7 @@ interface Run {
   curses: CurseId[];
   /** Exits taken before the hider's station was reached. */
   wrongStations: number;
-  /** Caught from a neighbouring station's street: the engine never saw the hider's station reached. */
+  /** Caught from a neighbouring station's street, never having stood in the hider's station. */
   fromNeighbour: boolean;
   rejections: Map<string, number>;
   steps: number;
@@ -165,16 +164,18 @@ function play(start: SoloRound, trace = false): Run {
     trace ? traceStep : undefined,
   );
   const ms = performance.now() - clock;
-  const lastExitAt = exitsAt.length > 0 ? (exitsAt.at(-1) as number) + EXIT_SECONDS : null;
-  const wrongStations = exitsAt.filter(
-    (x) => x < (round.stationFoundAt ?? Number.POSITIVE_INFINITY),
-  ).length;
   const result = round.result ?? { kind: "timeout" as const, at: round.seekEnd };
   const seek = (x: number) => (x - round.seekStart) / 60;
-  // The endgame starts when the seeker stands in the hider's station, or, caught from a
-  // neighbouring station's street, when they last came up.
   const found = result.kind === "found";
-  const endgameFrom = round.stationFoundAt ?? (found ? lastExitAt : null);
+  // The engine dates the endgame from standing in the hider's station or, caught from a
+  // neighbouring station's street, from coming up there (stationFoundAt, 2026-10-07).
+  const endgameFrom = round.stationFoundAt;
+  const at = resolve(round.seeker, result.at, idx);
+  const fromNeighbour = found && at.kind === "street" && at.complex !== round.hider;
+  // Exits taken before the endgame began; the neighbour's own exit isn't a wrong station.
+  const wrongStations =
+    exitsAt.filter((x) => x < (endgameFrom ?? Number.POSITIVE_INFINITY)).length -
+    (fromNeighbour ? 1 : 0);
   const drawn: Partial<Record<CardId, number>> = {};
   for (const c of CARD_IDS) {
     const left = round.deck.filter((x) => x === c).length;
@@ -210,8 +211,8 @@ function play(start: SoloRound, trace = false): Run {
     curses: round.cardEvents
       .map((e) => e.card)
       .filter((c): c is CurseId => CURSES.includes(c as CurseId)),
-    wrongStations: found && round.stationFoundAt === null ? wrongStations - 1 : wrongStations,
-    fromNeighbour: found && round.stationFoundAt === null,
+    wrongStations,
+    fromNeighbour,
     rejections,
     steps,
     stalled: steps >= MAX_STEPS,

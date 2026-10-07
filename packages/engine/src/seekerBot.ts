@@ -153,7 +153,7 @@ export function planFromPlatform(
   tMax: number,
   targets: readonly number[],
 ): Plan | null {
-  const legs = earliestJourney(idx, station, t0, tMax, targets);
+  const legs = earliestJourney(idx, station, t0, tMax, targets, true);
   if (!legs) return null;
   const first = legs[0];
   return { intents: first ? legIntents(first) : [], arrive: arrivalOf(legs, t0) };
@@ -174,7 +174,7 @@ export function planFromStreet(
   let best: Plan | null = null;
   for (const station of complex.stations) {
     const t0 = t + walkBack + ENTER_SECONDS;
-    const legs = earliestJourney(idx, station, t0, tMax, targets);
+    const legs = earliestJourney(idx, station, t0, tMax, targets, true);
     if (!legs) continue;
     const arrive = arrivalOf(legs, t0);
     if (!best || arrive < best.arrive) {
@@ -211,7 +211,7 @@ export function planOnTrain(
   const trip = idx.ds.trips[s.trip];
   if (!trip) return [];
   if (t < (trip.dep[s.from] as number)) {
-    const legs = earliestJourney(idx, trip.stops[s.from] as number, t0, tMax, targets);
+    const legs = earliestJourney(idx, trip.stops[s.from] as number, t0, tMax, targets, true);
     const first = legs?.[0];
     if (!legs || !first) return [];
     if (first.kind === "ride" && first.trip === s.trip) {
@@ -221,7 +221,14 @@ export function planOnTrain(
   }
   const k = stopAhead(s, t, idx);
   if (k === null) return [];
-  const legs = earliestJourney(idx, trip.stops[k] as number, trip.arr[k] as number, tMax, targets);
+  const legs = earliestJourney(
+    idx,
+    trip.stops[k] as number,
+    trip.arr[k] as number,
+    tMax,
+    targets,
+    true,
+  );
   if (!legs) return [];
   const first = legs[0];
   const alight = first && first.kind === "ride" && first.trip === s.trip ? first.to : k;
@@ -259,7 +266,7 @@ export function planWrongWay(
       const arr = trip.arr[j] as number;
       let arrive = arr;
       if (!targets.includes(stop)) {
-        const legs = earliestJourney(idx, stop, arr, tMax, targets);
+        const legs = earliestJourney(idx, stop, arr, tMax, targets, true);
         if (!legs) continue;
         arrive = arrivalOf(legs, arr);
       }

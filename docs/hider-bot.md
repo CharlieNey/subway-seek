@@ -4,19 +4,19 @@ The solo hider now plays the deck from DESIGN.md ("Cards"), so it has moves of i
 instead of only answering. Code: `packages/engine/src/cards.ts` (the deck),
 `hiderBot.ts` (its decisions), `solo.ts` (drawing, playing and enforcing).
 
-## The deck (38 cards)
+## The deck (31 cards)
 
 | Cards | Count | What they do |
 |---|---|---|
-| Running late / Delays / Planned work | 10 / 6 / 3 | +5 / +10 / +15 min to the hider's score if still held when caught |
+| Running late / Delays / Planned work | 6 / 4 / 2 | +5 / +10 / +15 min to the hider's score if still held when caught |
 | Veto | 3 | No answer; the seeker has still paid for the question, and it's closed for the round |
 | Randomize | 3 | Swaps the question for a random one of the same category |
 | Discard 2, draw 3 | 3 | Trades two weak cards for three new ones |
 | Fog | 2 | Seeker's Street View blurred for 10 min (cost: 1 card) |
 | Signal loss | 2 | Seeker's map covered for 10 min; departure boards still work (2) |
-| Wrong way | 2 | Seeker's next train must run the opposite way (2) |
+| Wrong way | 2 | Seeker's next train must run the opposite way (1) |
 | Tourist | 2 | Off at the next stop, walk 200 m before going back in (2) |
-| Sidewalk shed | 2 | Seeker walks at half speed for 10 min (1) |
+| Sidewalk shed | 2 | Seeker walks at half speed for 20 min (1) |
 
 Not in the solo deck yet:
 - **Move:** a bot doesn't move.
@@ -98,12 +98,13 @@ The table costs up to ~0.2 s per hub the first time (Times Sq, 97 stations) and 
   - **Sidewalk shed:** doubles street-walk times.
 - **Client-side effects:** Fog and Signal loss.
 
-## Not tuned yet
+## Tuned by the S4 simulation (2026-10-07)
 
-The card economy (deck mix, curse costs, the bot's thresholds) is still at its reasoned
-starting values, covered by tests (`cards.test.ts`). The S4 bot-vs-bot simulation now
-exists (`pnpm sim:match`, `docs/match-balance.md`): a bot seeker with real travel time that
-re-plans around Tourist and Wrong way. It measured Tourist at 8–10 min to the seeker (priced
-right at 2 cards), Wrong way at a median 0 (it lands too late on Normal), Sidewalk shed at
-1–2 min, and held time bonuses at a near-constant 35–42 min of every score. Its
-recommendations are in that doc, awaiting a decision.
+The card economy was set from `pnpm sim:match` (`docs/match-balance.md`): a bot seeker with
+real travel time that re-plans around Tourist and Wrong way. It measured Tourist at 8–10 min
+to the seeker (priced right at 2 cards), Wrong way at a median 0 at 2 cards (it lands as the
+seeker comes up, and lapses), Sidewalk shed at 1–2 min over 10 minutes, and held time
+bonuses at a near-constant 35–42 min of every score with 19 bonuses in 38 cards. Charlie
+took its recommendations: bonuses 6 / 4 / 2 (deck 31), Wrong way at 1 card, Sidewalk shed
+for 20 min (now 6 min of cost), `CARD_VALUE` Veto 10 and Wrong way 6. The thresholds above
+and the question prices were left as they were. Covered by `cards.test.ts`.

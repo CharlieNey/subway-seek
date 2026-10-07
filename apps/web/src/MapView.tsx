@@ -16,6 +16,7 @@ import {
   questionKey,
   resolve,
   type SoloView,
+  SPOT_REVEAL_METERS,
   STREET_RADIUS_M,
   streetPoint,
   walkSeconds,
@@ -499,7 +500,9 @@ function WalkHere({
   const here = streetPoint(s, world.idx);
   const to = { lat: pointer.at[1], lon: pointer.at[0] };
   const station = world.ds.complexes[s.complex];
-  const tooFar = station && distanceMeters(station, to) > STREET_RADIUS_M;
+  // A hider in sight can be walked to past the radius (the engine allows the same).
+  const toward = view.spotNearby && distanceMeters(view.spotNearby, to) <= SPOT_REVEAL_METERS;
+  const tooFar = station && !toward && distanceMeters(station, to) > STREET_RADIUS_M;
   const seconds = Math.max(1, Math.round(walkSeconds(here, to) / speed));
   return (
     <div className="pointer-events-none absolute z-10" style={{ left: pointer.x, top: pointer.y }}>

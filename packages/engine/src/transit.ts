@@ -44,6 +44,8 @@ export interface OnStreet {
   /** Where you're standing, once you've walked away from the exit. */
   at?: StreetPoint;
   since: number;
+  /** Game time you came up at this exit (kept across walks). Older states may lack it. */
+  up?: number;
 }
 
 export interface OnTrain {
@@ -104,12 +106,19 @@ export function resolve(state: Transit, t: number, idx: TimetableIndex): Transit
   return state;
 }
 
+/** What the rules of the round allow beyond the plain transit rules. */
+export interface MoveOptions {
+  /** A street walk may go past STREET_RADIUS_M (toward a hider in sight). */
+  pastRadius?: boolean;
+}
+
 /** Apply a player's intent at game time t. The state is resolved to t first. */
 export function applyIntent(
   current: Transit,
   intent: TransitIntent,
   t: number,
   idx: TimetableIndex,
+  options: MoveOptions = {},
 ): ApplyResult {
   const state = resolve(current, t, idx);
   const { ds } = idx;
@@ -216,6 +225,7 @@ export function applyIntent(
             complex: station.complex,
             exit: intent.exit,
             since: t + EXIT_SECONDS,
+            up: t + EXIT_SECONDS,
           },
         },
       };
@@ -259,7 +269,7 @@ export function applyIntent(
       const complex = ds.complexes[state.complex];
       if (!complex) return fail("No such station.");
       const target: StreetPoint = { lat: intent.lat, lon: intent.lon, pano: intent.pano };
-      if (distanceMeters(complex, target) > STREET_RADIUS_M) {
+      if (!options.pastRadius && distanceMeters(complex, target) > STREET_RADIUS_M) {
         return fail("That's too far to walk — take the subway.");
       }
       const here = streetPoint(state, idx);
@@ -280,6 +290,7 @@ export function applyIntent(
             exit: state.exit,
             at: target,
             since: end,
+            up: state.up,
           },
         },
       };

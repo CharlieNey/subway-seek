@@ -105,7 +105,7 @@ export const CARDS: Record<CardId, CardDef> = {
     rule: "The seeker's next train must run the opposite way to their last one.",
     toSeeker: "Your next train has to run the opposite way to your last one.",
     line: "Change here for trains in the other direction.",
-    cost: 2,
+    cost: 1,
   },
   tourist: {
     title: "Tourist",
@@ -118,19 +118,23 @@ export const CARDS: Record<CardId, CardDef> = {
   shed: {
     title: "Sidewalk shed",
     kind: "curse",
-    rule: "The seeker walks at half speed for 10 min.",
-    toSeeker: "You walk at half speed for 10 min.",
+    rule: "The seeker walks at half speed for 20 min.",
+    toSeeker: "You walk at half speed for 20 min.",
     line: "Pardon our dust.",
     cost: 1,
-    durationSeconds: 10 * 60,
+    durationSeconds: 20 * 60,
   },
 };
 
-/** How many of each card are in the solo deck (38). */
+/**
+ * How many of each card are in the solo deck (31). Set by the S4 match sim (2026-10-07,
+ * `docs/match-balance.md`): with 19 time bonuses in 38 the held bonus was a flat +35–42 min
+ * on every score, so draws hardly mattered.
+ */
 export const DECK_COUNTS: Record<CardId, number> = {
-  late5: 10,
-  delays10: 6,
-  work15: 3,
+  late5: 6,
+  delays10: 4,
+  work15: 2,
   veto: 3,
   randomize: 3,
   redraw: 3,
@@ -172,18 +176,21 @@ export function shuffledDeck(random: () => number): CardId[] {
 
 /**
  * What a card is worth to the bot, in rough minutes of score, for choosing which to
- * keep and which to discard. Curses are worth about what they cost the seeker.
+ * keep and which to discard. Curses are worth about what they cost the seeker, as the
+ * S4 match sim measured it (`docs/match-balance.md`): Veto keeps ~7 stations in play,
+ * ~9–10 min; Tourist 8–10 min; Wrong way a median 0 and a mean 6; Sidewalk shed, at
+ * 20 min, see the doc.
  */
 export const CARD_VALUE: Record<CardId, number> = {
   late5: 5,
   delays10: 10,
   work15: 15,
-  veto: 12,
+  veto: 10,
   randomize: 8,
   redraw: 4,
   fog: 5,
   signalLoss: 8,
-  wrongWay: 10,
+  wrongWay: 6,
   tourist: 10,
   shed: 6,
 };

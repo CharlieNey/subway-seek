@@ -168,7 +168,10 @@ export interface SoloRound {
    * spot could be picked): finding the station ends the round, as in M2.
    */
   spot: HidingSpot | null;
-  /** When the seeker first stood in the hider's station: the endgame starts. */
+  /**
+   * When the seeker first stood in the hider's station: the endgame starts. Set at the
+   * catch instead when they came up at a neighbouring station and never stood in it.
+   */
   stationFoundAt: number | null;
   /** The panorama outside one exit of the hider's station, for "photo from your exit". */
   photoExit: string | null;
@@ -563,6 +566,7 @@ function spotOnTheWay(round: SoloRound, t: number): SoloRound {
     kind: "street",
     complex: s.dest.complex,
     exit: s.dest.exit,
+    up: s.dest.up,
     at: {
       lat: s.fromPoint[0] + f * (s.toPoint[0] - s.fromPoint[0]),
       lon: s.fromPoint[1] + f * (s.toPoint[1] - s.fromPoint[1]),
@@ -578,6 +582,33 @@ function metersToSpot(round: SoloRound, t: number, idx: TimetableIndex): number 
   const s = resolve(round.seeker, t, idx);
   if (s.kind !== "street") return null;
   return distanceMeters(streetPoint(s, idx), round.spot);
+}
+
+/** Whether the seeker can see the hider's marker from where they stand at t. */
+function spotInSight(round: SoloRound, t: number, idx: TimetableIndex): boolean {
+  return (metersToSpot(round, t, idx) ?? Number.POSITIVE_INFINITY) <= SPOT_REVEAL_METERS;
+}
+
+/**
+ * A hider in sight can be walked to even past STREET_RADIUS_M: a spot in a neighbouring
+ * station's zone can be 600 m or more from the station you came up at, and "seen but too
+ * far to walk" (the S4 sim, 2026-10-07) is no rule anyone would want. Only to within the
+ * reveal distance of them; the rest of the street keeps its limit.
+ */
+function walkPastRadius(round: SoloRound, intent: SoloIntent, t: number, idx: TimetableIndex) {
+  if (intent.type !== "walkTo" || !round.spot || !spotInSight(round, t, idx)) return false;
+  return distanceMeters({ lat: intent.lat, lon: intent.lon }, round.spot) <= SPOT_REVEAL_METERS;
+}
+
+/**
+ * When the hunt ended and the foot search began: the time you reached the hider's
+ * station, or, caught from a neighbouring station's street (a quarter of catches in the
+ * S4 sim), the time you came up there.
+ */
+function huntEndedAt(round: SoloRound, t: number, idx: TimetableIndex): number {
+  if (round.stationFoundAt !== null) return round.stationFoundAt;
+  const s = resolve(round.seeker, t, idx);
+  return s.kind === "street" ? (s.up ?? s.since) : t;
 }
 
 /**
@@ -718,7 +749,8 @@ export function applySoloIntent(
       const d = metersToSpot(round, t, idx);
       if (d === null) return { ok: false, error: "There's no one to catch here." };
       if (d > CATCH_METERS) return { ok: false, error: "Not close enough — get within 25 m." };
-      return { ok: true, round: { ...round, result: { kind: "found", at: t } } };
+      const stationFoundAt = huntEndedAt(round, t, idx);
+      return { ok: true, round: { ...round, stationFoundAt, result: { kind: "found", at: t } } };
     }
     case "startThermometer":
       return { ok: true, round: { ...round, thermometer: questionOrigin(round.seeker, t, idx) } };
@@ -734,7 +766,9 @@ export function applySoloIntent(
     default: {
       const blocked = curseBlocks(round, intent, t, idx);
       if (blocked) return { ok: false, error: blocked };
-      const moved = applyIntent(round.seeker, intent, t, idx);
+      const moved = applyIntent(round.seeker, intent, t, idx, {
+        pastRadius: walkPastRadius(round, intent, t, idx),
+      });
       if (!moved.ok) return moved;
       const seeker = underCurses(round, moved.state, t);
       const seekerTrail = [...round.seekerTrail, { t, state: seeker }];
@@ -816,7 +850,10 @@ export interface SoloView {
   replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
   /** Whether this round has a Street View endgame (a hiding spot to catch). */
   hasSpot: boolean;
-  /** When you first reached the hider's station — only revealed with the hider. */
+  /**
+   * When the hunt ended: you first reached the hider's station or, caught from a
+   * neighbouring station's street, came up there. Only revealed with the hider.
+   */
   stationFoundAt: number | null;
   /** The hider's spot once you're within SPOT_REVEAL_METERS on the street, or revealed with the hider. */
   spotNearby: { lat: number; lon: number } | null;

@@ -28,6 +28,7 @@ import {
   SPOT_RADAR_METERS,
   searchGrid,
   TENTACLE_MILES,
+  ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import { type ReactNode, useState } from "react";
 import {
@@ -446,7 +447,8 @@ function OnFootBlock({
             </QChip>
           </div>
           <p className="text-[11.5px] leading-[1.4] text-ink-2">
-            Only near them. From more than {ON_FOOT_RANGE_M} m away, every answer is "Not near you".
+            Only near them. "Not near you" means more than {ON_FOOT_RANGE_M} m: it clears the
+            {ON_FOOT_RANGE_M - ZONE_RADIUS_M} m around you, so a big station's tile can stay.
           </p>
         </>
       )}

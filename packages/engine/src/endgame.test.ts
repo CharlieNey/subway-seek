@@ -186,6 +186,53 @@ describe("the Street View endgame", () => {
     expect(soloView(practice.round, t, idx).spotNearby).not.toBeNull();
   });
 
+  it("walks past the 600 m radius only toward a hider in sight", () => {
+    const t = round.seekStart + 1200;
+    const c = ds.complexes[round.hider];
+    if (!c) throw new Error("complex");
+    // The spot lies in a neighbour's zone, 620 m from the station the seeker came up at.
+    const farSpot: HidingSpot = { ...east(c.lat, c.lon, 620), pano: "far-pano" };
+    const far: SoloRound = { ...round, spot: farSpot };
+    const standing = (m: number): SoloRound => ({
+      ...far,
+      seeker: { ...onStreetAt(round.hider, t), at: east(c.lat, c.lon, m) },
+    });
+    const walk = (r: SoloRound, m: number) =>
+      applySoloIntent(r, { type: "walkTo", ...east(c.lat, c.lon, m) }, t, idx);
+    // Out of sight at 500 m: the radius holds.
+    expect(walk(standing(500), 620).ok).toBe(false);
+    // In sight at 590 m: a walk to them, or to within 40 m of them, is allowed...
+    expect(soloView(standing(590), t, idx).spotNearby).not.toBeNull();
+    expect(walk(standing(590), 620).ok).toBe(true);
+    expect(walk(standing(590), 650).ok).toBe(true);
+    // ...but not anywhere else past the radius.
+    expect(walk(standing(590), 700).ok).toBe(false);
+  });
+
+  it("dates the hunt's end from coming up when the catch is from a neighbour's street", () => {
+    const t = round.seekStart + 1500;
+    const neighbour = ds.complexes.findIndex((c, i) => i !== round.hider && c.exits.length > 0);
+    const caught = (seeker: OnStreet) =>
+      applySoloIntent({ ...round, seeker, stationFoundAt: null }, { type: "catch" }, t, idx);
+    const here = { ...onStreetAt(neighbour, t), at: east(spot.lat, spot.lon, 10) };
+    const dated = caught({ ...here, up: t - 300 });
+    if (!dated.ok) throw new Error(dated.error);
+    expect(dated.round.stationFoundAt).toBe(t - 300);
+    // An older state without the time they came up falls back to when they last stopped.
+    const undated = caught({ ...here, since: t - 120 });
+    if (!undated.ok) throw new Error(undated.error);
+    expect(undated.round.stationFoundAt).toBe(t - 120);
+    // Standing in the hider's own station, the time it was reached stays.
+    const own = applySoloIntent(
+      { ...round, seeker: { ...onStreetAt(round.hider, t), at: east(spot.lat, spot.lon, 10) } },
+      { type: "catch" },
+      t,
+      idx,
+    );
+    if (!own.ok) throw new Error(own.error);
+    expect(own.round.stationFoundAt).toBe(t);
+  });
+
   it("can't catch while still walking", () => {
     const t = round.seekStart + 1200;
     const walking: SoloRound = {

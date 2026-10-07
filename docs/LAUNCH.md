@@ -34,7 +34,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 ## Before the first share
 
-- [ ] S4 bot-vs-bot balance run; deck mix and curse prices set from it (`docs/hider-bot.md`).
+- [x] S4 bot-vs-bot balance run; deck mix and curse prices set from it (2026-10-07, `docs/match-balance.md`).
 - [x] The share text ends with a link carrying the daily's number and the sharer's minutes, for the "a friend found…" band (2026-10-06).
 - [x] Open Graph title, description and card image, favicon and touch icon; `VITE_SITE_URL` makes the URLs absolute (2026-10-07).
 - [ ] Name check: trademark and app-store search for "Stand Clear" before buying the domain.

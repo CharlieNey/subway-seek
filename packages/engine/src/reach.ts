@@ -57,7 +57,13 @@ interface Scan {
   tripEnter: Int32Array;
 }
 
-function scan(idx: TimetableIndex, start: number, t0: number, tMax: number): Scan {
+/**
+ * `changes`: count the station's platform-change time (idx.selfTransfer) before boarding a
+ * new trip at a station you arrived at by train. The reachable set stays optimistic
+ * (reachableComplexes never passes it); route plans for a rider should, or the engine
+ * refuses the board ("Not enough time to change platforms").
+ */
+function scan(idx: TimetableIndex, start: number, t0: number, tMax: number, changes = false): Scan {
   const c = connections(idx);
   const arrival = new Float64Array(idx.ds.stations.length).fill(Number.POSITIVE_INFINITY);
   const reachedBy: (ReachedBy | undefined)[] = [];
@@ -85,7 +91,11 @@ function scan(idx: TimetableIndex, start: number, t0: number, tMax: number): Sca
     const dep = c.dep[k] as number;
     if (dep > tMax) break;
     const trip = c.trip[k] as number;
-    if ((tripEnter[trip] as number) >= 0 || (arrival[c.from[k] as number] as number) <= dep) {
+    const from = c.from[k] as number;
+    const ready =
+      (arrival[from] as number) +
+      (changes && reachedBy[from]?.kind === "ride" ? (idx.selfTransfer[from] ?? 0) : 0);
+    if ((tripEnter[trip] as number) >= 0 || ready <= dep) {
       if ((tripEnter[trip] as number) < 0) tripEnter[trip] = k;
       const to = c.to[k] as number;
       const arr = c.arr[k] as number;
@@ -116,6 +126,8 @@ export type Leg =
 /**
  * The fastest way from `start` (at `t0`) to any of `targets` by `tMax`, as legs in order:
  * rides (trip, board stop index, alight stop index) and walking transfers. Null if none.
+ * With `changes`, platform changes mid-journey take the station's change time (see scan);
+ * the start is taken as ready at `t0`.
  */
 export function earliestJourney(
   idx: TimetableIndex,
@@ -123,8 +135,9 @@ export function earliestJourney(
   t0: number,
   tMax: number,
   targets: readonly number[],
+  changes = false,
 ): Leg[] | null {
-  const { arrival, reachedBy, tripEnter } = scan(idx, start, t0, tMax);
+  const { arrival, reachedBy, tripEnter } = scan(idx, start, t0, tMax, changes);
   const c = connections(idx);
   let target = -1;
   for (const s of targets) {

@@ -7,8 +7,9 @@ game with `SIM_RULES` (question prices, as `pnpm sim`), `SIM_DECK='{"veto":2}'` 
 counts) and `SIM_COST='{"tourist":1}'` (curse costs), and `--endgame-at 2`, `--rounds`,
 `--hub 127`, `--difficulty hard`, `--seed`, `--failures`, `--trace 127:normal:5`.
 
-**Nothing in `src` was changed by this pass.** The numbers below are measurements; the
-recommendations at the end are for Charlie to decide.
+The numbers below are the first run's measurements, on the deck as it stood (38 cards). The
+recommendations at the end were all taken on 2026-10-07; **Decisions and re-run** at the
+bottom has the numbers after.
 
 ## Method
 
@@ -149,7 +150,7 @@ Variants tried:
    only 2–4% of rounds: its window (≤ 15 candidates, underground, two spare cards) rarely
    opens.
 
-## What the simulation showed in the engine
+## What the simulation showed in the engine (fixed 2026-10-07, see the end)
 
 - **A catch from a neighbouring station's street leaves `stationFoundAt` null** (22–25% of
   catches: the spot is inside the 400 m zone but the seeker came up one stop over). The
@@ -171,3 +172,42 @@ Variants tried:
   `alightAt` (3 rounds in 260): benign, the engine has already set the stop.
 - **Wrong way lapses unused in half its plays** (see Cards), a bot-policy finding more than
   an engine one.
+
+## Decisions and re-run (2026-10-07)
+
+Charlie took every recommendation: time bonuses 10/6/3 → **6/4/2** (deck 38 → 31), Wrong way
+**2 → 1 card**, Sidewalk shed **10 → 20 min**, `CARD_VALUE` Veto 12 → 10 and Wrong way
+10 → 6. Tourist, the Veto thresholds, Normal's ≤ 20 hold on movement curses, question
+prices, cooldowns and the difficulty bands are unchanged. Same 780 rounds, seed 1:
+
+| | Easy | Normal (the daily) | Hard |
+|---|---|---|---|
+| Found | 100% | 96% | 94% |
+| Station found: median (p25–p90) | 26 (17–46) | 38 (29–72) | 49 (38–82) |
+| Endgame: median (p25–p90) | 23 (17–36) | 25 (16–38) | 24 (18–37) |
+| Endgame share of seeking (median) | 47% | **38%** | 32% |
+| Seeking in all: median (p25–p90) | 48 (40–73) | **65 (51–98)** | 74 (60–108) |
+| Hider score: median (p25–p90) | 137 (118–178) | **176 (151–241)** | 204 (175–261) |
+| of which questions / held cards (mean) | 57 / 31 | 75 / 37 | 88 / 41 |
+| Wrong stations visited a round | 0.45 | 0.62 | 0.80 |
+| Caught from a neighbouring station's street | 24% | 19% | 20% |
+
+- **Cards (Normal):** Sidewalk shed is now played in 27% of rounds and costs the seeker
+  6 min (median 7) as the only curse; Hard 5.6 (median 9.8). Its hold value of 6 now
+  matches. Wrong way at 1 card is played in 11% (Hard 13%) and costs 1.6 min (median 4.5;
+  Hard mean 8.7). Tourist unchanged at 6.3 (median 8). Held bonuses fell by 2–4 min a
+  round; the hand still fills to its best six.
+- **Round shape unchanged:** station time, endgame share and the score are within the
+  seed-to-seed spread of the first run. The deck change took 4 min off the held bonus and
+  the longer shed gave 3 back in the endgame.
+- **Refused boards halved** (107 in 260 Normal rounds, from ~0.8 a round) now that the
+  seeker's planner counts platform-change time mid-journey; the rest are at the start
+  station, which the bot already re-plans.
+
+Engine fixes from the findings above, in the same change: a hider in sight can be walked to
+past the 600 m radius (to within 40 m of them); `stationFoundAt` is set at the catch, from
+the time the seeker came up, when they never stood in the hider's station (the sim now reads
+the neighbour catch from where the seeker stood); `earliestJourney(…, changes = true)`
+counts `selfTransfer` mid-journey while `reachableComplexes` stays optimistic; the on-foot
+help in the client says what "Not near you" clears. The Tourist `board` + `alightAt`
+refusal is left as it is (benign).

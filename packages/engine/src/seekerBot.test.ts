@@ -3,7 +3,7 @@ import { loadDataset } from "@stand-clear/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { seededRandom } from "./daily.ts";
 import { distanceMeters, offsetMeters } from "./geo.ts";
-import { earliestJourney } from "./reach.ts";
+import { earliestJourney, type Leg } from "./reach.ts";
 import { possibleSpots, searchGrid } from "./search.ts";
 import {
   aliveCount,
@@ -64,6 +64,33 @@ function roundWith(seeker: SoloRound["seeker"], seed = 1): SoloRound {
 }
 
 describe("planning a journey from intents", () => {
+  it("leaves time to change platforms when asked to", () => {
+    const t = TEN + 20 * 60;
+    /** Platform changes (ride to ride at one station) that are tighter than the station allows. */
+    const tightChanges = (legs: Leg[]) => {
+      let tight = 0;
+      for (let i = 1; i < legs.length; i++) {
+        const prev = legs[i - 1];
+        const next = legs[i];
+        if (prev?.kind !== "ride" || next?.kind !== "ride") continue;
+        const at = ds.trips[prev.trip]?.stops[prev.to] as number;
+        if (next.dep < prev.arr + (idx.selfTransfer[at] ?? 0)) tight++;
+      }
+      return tight;
+    };
+    let optimistic = 0;
+    for (const target of ["A09", "F27", "A41", "R31", "G22", "L29"]) {
+      const targets = stationsOf(ds.stations[station(target)]?.complex as number);
+      const loose = earliestJourney(idx, hub, t, t + 7200, targets) ?? [];
+      const strict = earliestJourney(idx, hub, t, t + 7200, targets, true) ?? [];
+      optimistic += tightChanges(loose);
+      expect(tightChanges(strict)).toBe(0);
+      expect(arrivalOf(strict, t)).toBeGreaterThanOrEqual(arrivalOf(loose, t));
+    }
+    // The plain planner really does plan changes the engine would refuse (96 St, Jay St).
+    expect(optimistic).toBeGreaterThan(0);
+  });
+
   it("boards the fastest train and gets there when the timetable says", () => {
     const t = TEN + 20 * 60;
     const targets = stationsOf(ds.stations[station("635")]?.complex as number); // Union Sq
