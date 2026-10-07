@@ -5,14 +5,14 @@ Online 1v1 hide and seek on the real NYC subway timetable and Google Street View
 ## Read first
 
 - `DESIGN.md` is the design and the build plan: rules, the Mosaic look, motion, screens, open questions, and a decision log. Read the relevant section before changing a rule or a screen.
-- `docs/` holds the rules the game already enforces and how they were tuned: `question-balance.md` (categories, prices, cooldowns), `endgame-balance.md` (street search, on-foot questions, the 40 m reveal), `hider-bot.md` (the solo deck and the bot's play), `street-view-spike.md` (Google terms and billing), `jet-lag-research.md` (the show's design, with sources), `ux-pass.md` (the UI/UX review, its sources, and which proposals Charlie accepted).
+- `docs/` holds the rules the game already enforces and how they were tuned: `question-balance.md` (categories, prices, cooldowns), `endgame-balance.md` (street search, on-foot questions, the 40 m reveal), `hider-bot.md` (the solo deck and the bot's play), `match-balance.md` (the bot-vs-bot rounds and what they recommend for the cards), `street-view-spike.md` (Google terms and billing), `jet-lag-research.md` (the show's design, with sources), `ux-pass.md` (the UI/UX review, its sources, and which proposals Charlie accepted).
 - UI work follows `DESIGN.md › Look and motion › Interaction`. Its decided rules win over the older screen mocks; its proposed rules need Charlie's review first.
 - `README.md` has the commands and env vars.
 
 ## How Charlie works
 
 - **Design before build.** For a new system (a rule, a screen, motion), write it into `DESIGN.md` first, in its terse style, grounded in an existing rule or a source, flagged as a proposal, and show it for review. Build only what was asked for. Make a visual artifact only when the visual itself is the deliverable.
-- **Simulate before pricing.** A rule change that touches questions or the endgame gets `pnpm sim` or `pnpm sim:endgame` re-run, and the doc in `docs/` updated with the result.
+- **Simulate before pricing.** A rule change that touches questions or the endgame gets `pnpm sim` or `pnpm sim:endgame` re-run, one that touches cards or curses `pnpm sim:match`, and the doc in `docs/` updated with the result.
 - **Log decisions.** Any rule or design decision gets a dated row in the decision log at the end of `DESIGN.md`, with the why. Mark finished milestones and open questions in the same file.
 - **Keep the docs truthful.** When code changes a number the design states, change the design (or note "solo today: …") in the same change.
 
@@ -36,4 +36,4 @@ The visual language is **Mosaic** (DESIGN.md, Look and motion): IRT tile for ide
 
 ## Commands
 
-`pnpm dev:server` and `pnpm dev:web` run the game; `pnpm test`, `pnpm typecheck`, `pnpm lint` before committing; `pnpm sim` and `pnpm sim:endgame` for balance. Node ≥ 22, pnpm 10.
+`pnpm dev:server` and `pnpm dev:web` run the game; `pnpm test`, `pnpm typecheck`, `pnpm lint` before committing; `pnpm sim`, `pnpm sim:endgame` and `pnpm sim:match` for balance. Node ≥ 22, pnpm 10.

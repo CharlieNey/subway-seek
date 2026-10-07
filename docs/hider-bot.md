@@ -100,7 +100,10 @@ The table costs up to ~0.2 s per hub the first time (Times Sq, 97 stations) and 
 
 ## Not tuned yet
 
-The card economy (deck mix, curse costs, the bot's thresholds) still needs the S4
-bot-vs-bot simulation: a bot seeker with real travel time, which can replan around
-Tourist and Wrong way. Until then these are reasoned starting values. They're covered by
-tests (`cards.test.ts`) but haven't been balanced.
+The card economy (deck mix, curse costs, the bot's thresholds) is still at its reasoned
+starting values, covered by tests (`cards.test.ts`). The S4 bot-vs-bot simulation now
+exists (`pnpm sim:match`, `docs/match-balance.md`): a bot seeker with real travel time that
+re-plans around Tourist and Wrong way. It measured Tourist at 8–10 min to the seeker (priced
+right at 2 cards), Wrong way at a median 0 (it lands too late on Normal), Sidewalk shed at
+1–2 min, and held time bonuses at a near-constant 35–42 min of every score. Its
+recommendations are in that doc, awaiting a decision.
