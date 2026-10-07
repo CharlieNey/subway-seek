@@ -1,8 +1,8 @@
 /**
  * Everything the game draws on the map, as deck.gl layers built from a snapshot of the
- * game ("scene"). deck.gl diffs layers by id, so rebuilding the list every frame is cheap;
- * static data keeps stable references so it's uploaded to the GPU once. Works the same
- * over MapLibre or Google Maps.
+ * game ("scene"). The frame loop rebuilds only the parts whose scene has changed
+ * (createLayerBuilder), and each layer's data keeps its reference while its inputs do, so
+ * it's uploaded to the GPU once. Works the same over MapLibre or Google Maps.
  *
  * The language (DESIGN.md, Look: Mosaic): squares are game information, circles are
  * trains. Stations still possible are ink squares, the rest outlines. A question draws its
@@ -218,12 +218,61 @@ function grow(path: Path, f: number): Path {
   return path.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f] as LonLat);
 }
 
-export function buildLayers(scene: Scene): Layer[] {
-  const { data, round, replay, shape, clearing, now } = scene;
+/** One value per (key, number) pair, kept for the latest pair only: a data array that stays the same object while its inputs do. */
+function lastOf<K, V>(make: (k: K, n: number) => V): (k: K, n: number) => V {
+  let last: { k: K; n: number; v: V } | null = null;
+  return (k, n) => {
+    if (!last || last.k !== k || last.n !== n) last = { k, n, v: make(k, n) };
+    return last.v;
+  };
+}
+
+/** One value per object, while the object lives. */
+function perObject<K extends object, V>(make: (k: K) => V): (k: K) => V {
+  const m = new WeakMap<K, V>();
+  return (k) => {
+    let v = m.get(k);
+    if (v === undefined) {
+      v = make(k);
+      m.set(k, v);
+    }
+    return v;
+  };
+}
+
+// The data each layer draws, kept the same object between frames while its inputs are,
+// so deck.gl doesn't upload it again.
+type Past = RoundData["past"][number];
+const pastPaths = perObject((round: RoundData) =>
+  round.past.flatMap((p: Past) =>
+    [...p.rings, ...p.lines].map((path) => ({ path, family: p.family })),
+  ),
+);
+const thermometerAt = perObject((round: RoundData) =>
+  round.thermometer ? [round.thermometer] : [],
+);
+const grownRingFill = lastOf((shape: Shape, g: number) =>
+  shape.rings.length === 1 ? [grow(shape.rings[0] as Path, g)] : [],
+);
+const grownRings = lastOf((shape: Shape, g: number) => shape.rings.map((r) => grow(r, g)));
+const grownLines = lastOf((shape: Shape, g: number) =>
+  shape.lines.map((l) => (shape.plaques.length > 0 ? l : grow(l, g))),
+);
+const yourCell = perObject((shape: Shape) => (shape.yourCell ? [shape.yourCell] : []));
+const grownSearchRing = lastOf((ring: [number, number][], g: number) => [grow(ring, g)]);
+const clearingTiles = perObject((tiles: NonNullable<Scene["tiles"]>) =>
+  tiles.tiles.map((p, id) => ({ p, id })),
+);
+
+/** Whether a clearing is still lifting squares at real time `now`. */
+const inFlight = (c: Clearing | null, now: number) => !!c && now - c.start < c.end + 50;
+
+/** Everything under the trains: boundaries, the question's shape, lines, the search, stations. */
+function underLayers(scene: Scene): Layer[] {
+  const { data, round, shape, clearing, now } = scene;
   const atlas = stationAtlas();
   const lift = (c: number) => (clearing ? liftOf(clearing, c, now) : 1);
-  const inFlight = clearing && now - clearing.start < clearing.end + 50;
-  const frame = inFlight ? Math.floor(now / 16) : 0;
+  const frame = inFlight(clearing, now) ? Math.floor(now / 16) : 0;
   const pickedRoute = shape?.route ?? null;
   // The boundary of the answer being read grows in before the squares lift.
   const growth = clearing ? boundaryProgress(clearing, now) : 1;
@@ -232,13 +281,10 @@ export function buildLayers(scene: Scene): Layer[] {
   const layers: Layer[] = [];
 
   // Answered boundaries, faint.
-  type Past = RoundData["past"][number];
   layers.push(
     new PathLayer<{ path: Path; family: Family }>({
       id: "past-boundaries",
-      data: round.past.flatMap((p: Past) =>
-        [...p.rings, ...p.lines].map((path) => ({ path, family: p.family })),
-      ),
+      data: pastPaths(round),
       getPath: (d) => d.path,
       getColor: (d) => family(d.family, 90),
       getWidth: 1.5,
@@ -263,7 +309,7 @@ export function buildLayers(scene: Scene): Layer[] {
       }),
       new PolygonLayer<Path>({
         id: "shape-your-cell",
-        data: shape.yourCell ? [shape.yourCell] : [],
+        data: yourCell(shape),
         getPolygon: (p) => p,
         getFillColor: family(f, 26),
         getLineColor: family(f),
@@ -274,7 +320,7 @@ export function buildLayers(scene: Scene): Layer[] {
       new PolygonLayer<Path>({
         id: "shape-ring-fill",
         // Radar's inside, softly: the ring is the answer's boundary.
-        data: shape.rings.length === 1 ? [grow(shape.rings[0] as Path, g)] : [],
+        data: grownRingFill(shape, g),
         getPolygon: (p) => p,
         getFillColor: family(f, 18),
         stroked: false,
@@ -282,7 +328,7 @@ export function buildLayers(scene: Scene): Layer[] {
       }),
       new PathLayer<Path>({
         id: "shape-rings",
-        data: shape.rings.map((r) => grow(r, g)),
+        data: grownRings(shape, g),
         getPath: (p) => p,
         getColor: family(f, shape.rings.length > 1 ? 170 : 255),
         getWidth: shape.rings.length > 1 ? 1.5 : 2.5,
@@ -291,7 +337,7 @@ export function buildLayers(scene: Scene): Layer[] {
       }),
       new PathLayer<Path, PathStyleExtensionProps<Path>>({
         id: "shape-lines",
-        data: shape.lines.map((l) => (shape.plaques.length > 0 ? l : grow(l, g))),
+        data: grownLines(shape, g),
         getPath: (p) => p,
         getColor: family(f),
         getWidth: shape.plaques.length > 0 ? 1.5 : 2.5,
@@ -328,6 +374,8 @@ export function buildLayers(scene: Scene): Layer[] {
   // On foot: where the hider could still be, as ink tesserae on the engine's 8 m grid.
   if (scene.search) {
     const tiles = scene.tiles;
+    // The tiles an on-foot answer ruled out lift while it plays, then the layer rests.
+    const tilesFrame = tiles && inFlight(tiles.clearing, now) ? Math.floor(now / 16) : 0;
     layers.push(
       new IconLayer<LonLat>({
         id: "search-tiles",
@@ -342,7 +390,7 @@ export function buildLayers(scene: Scene): Layer[] {
       }),
       new IconLayer<{ p: [number, number]; id: number }>({
         id: "search-tiles-clearing",
-        data: tiles ? tiles.tiles.map((p, id) => ({ p, id })) : [],
+        data: tiles ? clearingTiles(tiles) : [],
         iconAtlas: atlas.url,
         iconMapping: atlas.mapping,
         getIcon: () => "tile",
@@ -355,12 +403,12 @@ export function buildLayers(scene: Scene): Layer[] {
           27,
           tiles ? Math.round(120 * (1 - liftOf(tiles.clearing, d.id, now))) : 0,
         ],
-        updateTriggers: { getColor: tiles ? Math.floor(now / 16) : 0 },
+        updateTriggers: { getColor: tilesFrame },
       }),
       new PathLayer<[number, number][]>({
         id: "search-ring",
         // It draws out from its center as you come up (400 ms).
-        data: [grow(scene.search.ring, scene.searchGrow)],
+        data: grownSearchRing(scene.search.ring, scene.searchGrow),
         getPath: (p) => p,
         getColor: INK,
         getWidth: 2,
@@ -433,7 +481,7 @@ export function buildLayers(scene: Scene): Layer[] {
     }),
     new IconLayer<LonLat>({
       id: "thermometer-start",
-      data: round.thermometer ? [round.thermometer] : [],
+      data: thermometerAt(round),
       iconAtlas: atlas.url,
       iconMapping: atlas.mapping,
       getIcon: () => "tile",
@@ -442,7 +490,13 @@ export function buildLayers(scene: Scene): Layer[] {
       sizeUnits: "pixels",
       getColor: family("thermo"),
     }),
-    // Trains are circles, in their route's color.
+  );
+  return layers;
+}
+
+/** Trains are circles, in their route's color. */
+function trainLayers(scene: Scene): Layer[] {
+  return [
     new ScatterplotLayer<Train>({
       id: "trains",
       opacity: scene.fadeIn,
@@ -458,156 +512,257 @@ export function buildLayers(scene: Scene): Layer[] {
       getLineWidth: 1,
       lineWidthUnits: "pixels",
     }),
-  );
+  ];
+}
 
-  // Landmarks, as plaques, only while their question is chosen or read.
-  if (shape && shape.plaques.length > 0) {
-    const plaques = plaqueAtlas();
+/** Landmarks, as plaques, only while their question is chosen or read. */
+function plaqueLayers(scene: Scene): Layer[] {
+  const { shape } = scene;
+  if (!shape || shape.plaques.length === 0) return [];
+  const plaques = plaqueAtlas();
+  return [
+    new IconLayer<Plaque>({
+      id: "plaques",
+      data: shape.plaques,
+      iconAtlas: plaques.url,
+      iconMapping: plaques.mapping,
+      getIcon: (p) => plaqueKey(p.kind, p.nearest),
+      getPosition: (p) => p.position,
+      getSize: (p) => (p.nearest ? 22 : 17),
+      sizeUnits: "pixels",
+      updateTriggers: { getIcon: shape.plaques, getSize: shape.plaques },
+    }),
+    new TextLayer<Plaque>({
+      id: "plaque-labels",
+      // The nearest is named; the rest once you're close enough to read them.
+      data:
+        scene.zoom >= 14 || shape.plaques.length <= 10
+          ? shape.plaques
+          : shape.plaques.filter((p) => p.nearest),
+      getPosition: (p) => p.position,
+      getText: (p) => p.name,
+      getSize: 11.5,
+      getColor: INK,
+      getPixelOffset: [14, 0],
+      getTextAnchor: "start",
+      getAlignmentBaseline: "center",
+      fontFamily: FONT,
+      fontWeight: 700,
+      characterSet: "auto",
+      fontSettings: { sdf: true },
+      outlineWidth: 3,
+      outlineColor: GLAZE_HI,
+    }),
+  ];
+}
+
+function replayLayers(replay: ReplayScene | null): Layer[] {
+  if (!replay) return [];
+  const trail = (id: string, path: LonLat[], color: RGBA, alpha: number, offset: number) =>
+    new PathLayer<LonLat[], PathStyleExtensionProps<LonLat[]>>({
+      id,
+      data: path.length > 1 ? [path] : [],
+      getPath: (p) => p,
+      getColor: [color[0], color[1], color[2], alpha],
+      getWidth: 4,
+      widthUnits: "pixels",
+      // Square tesserae, offset so two trails on one track run side by side.
+      getDashArray: [1, 0.7],
+      dashJustified: false,
+      getOffset: offset,
+      extensions: [tesserae],
+      updateTriggers: { getPath: path.length },
+    });
+  const fams = familyAtlas();
+  const layers: Layer[] = [
+    trail("replay-hider-all", replay.hiderFull, TERRA, 64, 0.8),
+    trail("replay-seeker-all", replay.seekerFull, INK, 56, -0.8),
+    trail("replay-hider", replay.hiderPath, TERRA, 255, 0.8),
+    trail("replay-seeker", replay.seekerPath, INK, 255, -0.8),
+  ];
+  if (replay.zone) {
     layers.push(
-      new IconLayer<Plaque>({
-        id: "plaques",
-        data: shape.plaques,
-        iconAtlas: plaques.url,
-        iconMapping: plaques.mapping,
-        getIcon: (p) => plaqueKey(p.kind, p.nearest),
-        getPosition: (p) => p.position,
-        getSize: (p) => (p.nearest ? 22 : 17),
-        sizeUnits: "pixels",
-        updateTriggers: { getIcon: shape.plaques, getSize: shape.plaques },
-      }),
-      new TextLayer<Plaque>({
-        id: "plaque-labels",
-        // The nearest is named; the rest once you're close enough to read them.
-        data:
-          scene.zoom >= 14 || shape.plaques.length <= 10
-            ? shape.plaques
-            : shape.plaques.filter((p) => p.nearest),
-        getPosition: (p) => p.position,
-        getText: (p) => p.name,
-        getSize: 11.5,
-        getColor: INK,
-        getPixelOffset: [14, 0],
-        getTextAnchor: "start",
-        getAlignmentBaseline: "center",
-        fontFamily: FONT,
-        fontWeight: 700,
-        characterSet: "auto",
-        fontSettings: { sdf: true },
-        outlineWidth: 3,
-        outlineColor: GLAZE_HI,
-      }),
-    );
-  }
-
-  if (replay) {
-    const trail = (id: string, path: LonLat[], color: RGBA, alpha: number, offset: number) =>
-      new PathLayer<LonLat[], PathStyleExtensionProps<LonLat[]>>({
-        id,
-        data: path.length > 1 ? [path] : [],
+      new PathLayer<[number, number][]>({
+        id: "replay-zone",
+        data: [replay.zone],
         getPath: (p) => p,
-        getColor: [color[0], color[1], color[2], alpha],
-        getWidth: 4,
+        getColor: TERRA,
+        getWidth: 2,
         widthUnits: "pixels",
-        // Square tesserae, offset so two trails on one track run side by side.
-        getDashArray: [1, 0.7],
-        dashJustified: false,
-        getOffset: offset,
-        extensions: [tesserae],
-        updateTriggers: { getPath: path.length },
-      });
-    const fams = familyAtlas();
-    layers.push(
-      trail("replay-hider-all", replay.hiderFull, TERRA, 64, 0.8),
-      trail("replay-seeker-all", replay.seekerFull, INK, 56, -0.8),
-      trail("replay-hider", replay.hiderPath, TERRA, 255, 0.8),
-      trail("replay-seeker", replay.seekerPath, INK, 255, -0.8),
-    );
-    if (replay.zone) {
-      layers.push(
-        new PathLayer<[number, number][]>({
-          id: "replay-zone",
-          data: [replay.zone],
-          getPath: (p) => p,
-          getColor: TERRA,
-          getWidth: 2,
-          widthUnits: "pixels",
-        }),
-      );
-    }
-    layers.push(
-      new IconLayer<ReplayScene["questions"][number]>({
-        id: "replay-questions",
-        data: replay.questions,
-        iconAtlas: fams.url,
-        iconMapping: fams.mapping,
-        getIcon: (q) => q.icon,
-        getPosition: (q) => q.position,
-        getSize: (q) => 14 * (0.6 + 0.4 * q.set),
-        getColor: (q) => [0, 0, 0, Math.round(255 * q.set)],
-        getPixelOffset: (q) => [0, -15 * q.stack],
-        sizeUnits: "pixels",
-        updateTriggers: { getSize: replay.questions, getColor: replay.questions },
-      }),
-      new TextLayer<ReplayScene["questions"][number]>({
-        id: "replay-question-labels",
-        data: replay.questions,
-        getPosition: (q) => q.position,
-        getText: (q) => q.label,
-        getSize: 11.5,
-        getColor: (q) => [INK[0], INK[1], INK[2], Math.round(255 * q.set)],
-        getPixelOffset: (q) => [-11, -15 * q.stack],
-        getTextAnchor: "end",
-        getAlignmentBaseline: "center",
-        fontFamily: FONT,
-        fontWeight: 700,
-        characterSet: "auto",
-        fontSettings: { sdf: true },
-        outlineWidth: 4,
-        outlineColor: GLAZE_HI,
-        updateTriggers: { getColor: replay.questions },
       }),
     );
-    if (replay.tablet) {
-      const tb = replay.tablet;
-      layers.push(
-        new IconLayer<LonLat>({
-          id: "replay-tablet",
-          data: [tb.position],
-          iconAtlas: tb.url,
-          iconMapping: { t: { x: 0, y: 0, width: tb.width, height: tb.height } },
-          getIcon: () => "t",
-          getPosition: (p) => p,
-          getSize: tb.height / Math.min(2, window.devicePixelRatio || 1),
-          getPixelOffset: [0, tb.height / Math.min(2, window.devicePixelRatio || 1) / 2 + 16],
-          sizeUnits: "pixels",
-          opacity: tb.set,
-        }),
-      );
-    }
-    const hiderHead = replay.hiderPath.at(-1);
-    if (hiderHead) layers.push(dot("replay-hider", hiderHead, TERRA));
   }
-  if (scene.me) layers.push(...meDot(scene.me.position, scene.me.label));
-  // Found: the hider's spot sets gold, a square tile like the marker on Street View. You
-  // caught them within 25 m, so it sits over your dot rather than under it.
-  if (scene.found) {
-    const set = scene.found.set;
+  layers.push(
+    new IconLayer<ReplayScene["questions"][number]>({
+      id: "replay-questions",
+      data: replay.questions,
+      iconAtlas: fams.url,
+      iconMapping: fams.mapping,
+      getIcon: (q) => q.icon,
+      getPosition: (q) => q.position,
+      getSize: (q) => 14 * (0.6 + 0.4 * q.set),
+      getColor: (q) => [0, 0, 0, Math.round(255 * q.set)],
+      getPixelOffset: (q) => [0, -15 * q.stack],
+      sizeUnits: "pixels",
+      updateTriggers: { getSize: replay.questions, getColor: replay.questions },
+    }),
+    new TextLayer<ReplayScene["questions"][number]>({
+      id: "replay-question-labels",
+      data: replay.questions,
+      getPosition: (q) => q.position,
+      getText: (q) => q.label,
+      getSize: 11.5,
+      getColor: (q) => [INK[0], INK[1], INK[2], Math.round(255 * q.set)],
+      getPixelOffset: (q) => [-11, -15 * q.stack],
+      getTextAnchor: "end",
+      getAlignmentBaseline: "center",
+      fontFamily: FONT,
+      fontWeight: 700,
+      characterSet: "auto",
+      fontSettings: { sdf: true },
+      outlineWidth: 4,
+      outlineColor: GLAZE_HI,
+      updateTriggers: { getColor: replay.questions },
+    }),
+  );
+  if (replay.tablet) {
+    const tb = replay.tablet;
     layers.push(
       new IconLayer<LonLat>({
-        id: "found-spot",
-        data: [scene.found.position],
-        iconAtlas: atlas.url,
-        iconMapping: atlas.mapping,
-        getIcon: () => "found",
+        id: "replay-tablet",
+        data: [tb.position],
+        iconAtlas: tb.url,
+        iconMapping: { t: { x: 0, y: 0, width: tb.width, height: tb.height } },
+        getIcon: () => "t",
         getPosition: (p) => p,
-        getSize: 18 * (0.6 + 0.4 * set),
+        getSize: tb.height / Math.min(2, window.devicePixelRatio || 1),
+        getPixelOffset: [0, tb.height / Math.min(2, window.devicePixelRatio || 1) / 2 + 16],
         sizeUnits: "pixels",
-        opacity: set,
-        updateTriggers: { getSize: set },
+        opacity: tb.set,
       }),
     );
   }
+  const hiderHead = replay.hiderPath.at(-1);
+  if (hiderHead) layers.push(dot("replay-hider-head", hiderHead, TERRA));
   return layers;
+}
+
+/**
+ * Found: the hider's spot sets gold, a square tile like the marker on Street View. You
+ * caught them within 25 m, so it sits over your dot rather than under it.
+ */
+function foundLayers(found: Scene["found"]): Layer[] {
+  if (!found) return [];
+  const atlas = stationAtlas();
+  const set = found.set;
+  return [
+    new IconLayer<LonLat>({
+      id: "found-spot",
+      data: [found.position],
+      iconAtlas: atlas.url,
+      iconMapping: atlas.mapping,
+      getIcon: () => "found",
+      getPosition: (p) => p,
+      getSize: 18 * (0.6 + 0.4 * set),
+      sizeUnits: "pixels",
+      opacity: set,
+      updateTriggers: { getSize: set },
+    }),
+  ];
+}
+
+export function buildLayers(scene: Scene): Layer[] {
+  return [
+    ...underLayers(scene),
+    ...trainLayers(scene),
+    ...plaqueLayers(scene),
+    ...replayLayers(scene.replay),
+    ...(scene.me ? meDot(scene.me.position, scene.me.label) : []),
+    ...foundLayers(scene.found),
+  ];
+}
+
+/**
+ * buildLayers for a frame loop: each part of the map is rebuilt only when what it draws
+ * has changed, and deck.gl passes over a layer instance it has already seen. Returns null
+ * when nothing has, so the frame needn't touch deck.gl. Standing still, that's the trains'
+ * ten updates a second; riding, your dot's every frame.
+ */
+export function createLayerBuilder(): (scene: Scene) => Layer[] | null {
+  const ids = new WeakMap<object, number>();
+  let nextId = 0;
+  const id = (o: object | null | undefined) => {
+    if (!o) return 0;
+    let n = ids.get(o);
+    if (n === undefined) {
+      n = ++nextId;
+      ids.set(o, n);
+    }
+    return n;
+  };
+  const parts = new Map<string, { key: string; layers: Layer[] }>();
+  let changed = false;
+  const part = (name: string, key: string, build: () => Layer[]) => {
+    const kept = parts.get(name);
+    if (kept && kept.key === key) return kept.layers;
+    const layers = build();
+    parts.set(name, { key, layers });
+    changed = true;
+    return layers;
+  };
+  const r3 = (x: number) => x.toFixed(3);
+  return (scene) => {
+    changed = false;
+    const { clearing, tiles, now, shape, zoom, replay, me, found } = scene;
+    const growth = clearing ? boundaryProgress(clearing, now) : 1;
+    const under = part(
+      "under",
+      [
+        id(scene.round),
+        id(shape),
+        r3(clearing && shape && growth < 1 ? growth : scene.shapeGrow),
+        id(scene.search),
+        r3(scene.searchGrow),
+        id(tiles),
+        tiles && inFlight(tiles.clearing, now) ? Math.floor(now / 16) : 0,
+        id(clearing),
+        inFlight(clearing, now) ? Math.floor(now / 16) : 0,
+        Math.round(zoom * 4),
+        zoom >= 13.5,
+        zoom >= 15,
+        r3(scene.fadeIn),
+      ].join("|"),
+      () => underLayers(scene),
+    );
+    const trains = part("trains", `${id(scene.trains)}|${r3(scene.fadeIn)}`, () =>
+      trainLayers(scene),
+    );
+    const plaques = part("plaques", `${id(shape)}|${zoom >= 14}`, () => plaqueLayers(scene));
+    const replayed = part(
+      "replay",
+      replay
+        ? [
+            replay.hiderPath.length,
+            replay.hiderPath.at(-1)?.join(),
+            replay.seekerPath.length,
+            replay.seekerPath.at(-1)?.join(),
+            id(replay.hiderFull),
+            id(replay.seekerFull),
+            replay.questions.map((q) => `${q.icon}${q.stack}${q.set.toFixed(2)}`).join(),
+            replay.zone?.[0]?.join() ?? "",
+            replay.tablet ? replay.tablet.set.toFixed(2) : "",
+          ].join("|")
+        : "",
+      () => replayLayers(replay),
+    );
+    const you = part("me", me ? `${me.position.join()}|${me.label}` : "", () =>
+      me ? meDot(me.position, me.label) : [],
+    );
+    const spot = part("found", found ? `${found.position.join()}|${r3(found.set)}` : "", () =>
+      foundLayers(found),
+    );
+    return changed ? [...under, ...trains, ...plaques, ...replayed, ...you, ...spot] : null;
+  };
 }
 
 function dot(id: string, p: LonLat, color: RGBA): Layer {

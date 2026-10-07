@@ -9,6 +9,7 @@ import {
   nyDate,
   questionKey,
   resolve,
+  SOLO_PAUSES_ON_DROP,
   type SoloView,
   searchGrid,
 } from "@stand-clear/engine";
@@ -27,7 +28,7 @@ import {
 } from "./Connection.tsx";
 import { useMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
-import { useGame, type World } from "./game.ts";
+import { useGame, useGamePick, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
@@ -118,7 +119,7 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
 }
 
 function PanelTop({ t, world }: { t: number | null; world: World | null }) {
-  const { view, alreadyPlayed, busy, send } = useGame();
+  const { view, alreadyPlayed, busy, send } = useGamePick("view", "alreadyPlayed", "busy", "send");
   const paused = useGame((s) => s.sync?.paused ?? false);
   const live = view && !view.result && world && t !== null;
   return (
@@ -163,7 +164,7 @@ function useClearingCount(): number {
  * score. "Give up" is a quiet link.
  */
 function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
-  const { send, alreadyPlayed, busy } = useGame();
+  const { send, alreadyPlayed, busy } = useGamePick("send", "alreadyPlayed", "busy");
   const [soundOpen, setSoundOpen] = useState(false);
   // The count steps down one per square as an answer clears them (Motion: Ask → answer).
   const standing = useClearingCount();
@@ -176,8 +177,10 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
       : null;
   const n = view.candidates.length + standing;
   const giveUp = () => {
-    const note = view.daily && !alreadyPlayed ? " It counts as not found for today." : "";
-    if (window.confirm(`Give up and see where the hider was?${note}`)) send({ type: "giveUp" });
+    const ask = view.daily
+      ? `Give up and see where the hider was?${alreadyPlayed ? "" : " Today counts as not found."}`
+      : "Give up and see where the hider was?";
+    if (window.confirm(ask)) send({ type: "giveUp" });
   };
   const cells: [string, string][] = [
     pct !== null
@@ -290,7 +293,11 @@ function useHint(view: SoloView | null, onFoot: boolean) {
 
 /** The notice row: a refused action, then the first round's hints. Dismissed by clicking. */
 function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
-  const { notice, dismissNotice, alreadyPlayed } = useGame();
+  const { notice, dismissNotice, alreadyPlayed } = useGamePick(
+    "notice",
+    "dismissNotice",
+    "alreadyPlayed",
+  );
   const { hint, dismiss } = useHint(view, onFoot);
   const [playedSeen, setPlayedSeen] = useState(false);
   const text = notice ?? (hint ? HINTS[hint] : null);
@@ -317,7 +324,7 @@ function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
 
 /** The wainscot's confirm for the armed question: "Ask · Radar 1 mi" and its price. */
 function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: number }) {
-  const { armed, send, busy } = useGame();
+  const { armed, send, busy } = useGamePick("armed", "send", "busy");
   if (!armed) return null;
   const blocker = askBlocker(armed, view, t, world.idx);
   return (
@@ -355,6 +362,8 @@ function useKeys(world: World | null, view: SoloView | null, t: number | null) {
       const { world: w, view: v, t: now } = latest.current;
       const { armed, arm, send, busy, link, setTab } = useGame.getState();
       if (!w || !v || now === null || link.kind !== "open" || e.defaultPrevented) return;
+      // A dialog over the game (the photo lightbox) owns the keyboard.
+      if (document.querySelector('[aria-modal="true"]')) return;
       // The replay has its own keys, and typing stays typing.
       if (useReplay.getState().active || v.result) return;
       const target = e.target as HTMLElement | null;
@@ -415,7 +424,17 @@ function useDrops(lostNow: boolean) {
 }
 
 export function Panel() {
-  const { status, world, view, tab, setTab, everOpen, armed, hover, alreadyPlayed } = useGame();
+  const { status, world, view, tab, setTab, everOpen, armed, hover, alreadyPlayed } = useGamePick(
+    "status",
+    "world",
+    "view",
+    "tab",
+    "setTab",
+    "everOpen",
+    "armed",
+    "hover",
+    "alreadyPlayed",
+  );
   const replaying = useReplay((s) => s.active);
   const t = useGameTime(4);
   const now = useNow(4);
@@ -478,18 +497,23 @@ export function Panel() {
       {lost.value && (
         <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
           <LostBand screen={lost.value} />
-          {drops.drop !== null && lineFor(roundKey(view), "lost", drops.drop) && (
-            <div className="mx-4 mt-1.5">
-              <Line>{LINES.lost}</Line>
-            </div>
-          )}
+          {/* The dispatcher's lines say the round is held: only where a drop pauses it. */}
+          {SOLO_PAUSES_ON_DROP &&
+            drops.drop !== null &&
+            lineFor(roundKey(view), "lost", drops.drop) && (
+              <div className="mx-4 mt-1.5">
+                <Line>{LINES.lost}</Line>
+              </div>
+            )}
         </div>
       )}
-      {drops.back !== null && lineFor(roundKey(view), "back", drops.back) && (
-        <div className="sc-anim-set mx-4 mt-2.5">
-          <Line>{LINES.back}</Line>
-        </div>
-      )}
+      {SOLO_PAUSES_ON_DROP &&
+        drops.back !== null &&
+        lineFor(roundKey(view), "back", drops.back) && (
+          <div className="sc-anim-set mx-4 mt-2.5">
+            <Line>{LINES.back}</Line>
+          </div>
+        )}
       {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}
       {screen.kind === "takenOver" && <TakenOverPlaque />}
       <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>

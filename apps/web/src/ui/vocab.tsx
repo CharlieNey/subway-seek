@@ -424,14 +424,19 @@ export function ExpressBand({
   );
 }
 
-/** The answer window: ten tiles, one a game-second's worth of real seconds, "Answer in 6 s". */
+/**
+ * The answer window: ten tiles, one a game-second's worth of real seconds, "Answer in 6 s".
+ * It sits in the question's live band, so the count is hidden from screen readers (they'd
+ * hear every second); they get one line that doesn't change, and the answer when it lands.
+ */
 export function AnswerWindow({ secondsLeft, total = 10 }: { secondsLeft: number; total?: number }) {
   const s = Math.max(0, Math.ceil(secondsLeft));
   return (
     <div className="sc-answer-window">
-      <span>
+      <span aria-hidden="true">
         Answer in <b className="sc-num">{s}</b> s
       </span>
+      <span className="sr-only">The answer comes in about {total} seconds.</span>
       <TileTimer total={total} left={s} size={9} onDark />
     </div>
   );

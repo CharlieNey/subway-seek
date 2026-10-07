@@ -2,7 +2,7 @@
  * The map: route lines, stations as squares, every running train, the question you're
  * choosing or reading in its family's shape, the elimination when an answer lands, your
  * search area on foot, you, and the replay. All deck.gl layers over a swappable base map,
- * rebuilt every frame.
+ * each part rebuilt only when what it draws changes.
  *
  * The base map comes first, because Google loads it on its own; the game's lines and
  * stations set onto it once the timetable is in (DESIGN.md, Loading).
@@ -30,10 +30,10 @@ import { MapLegend } from "./MapLegend.tsx";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
 import { createGoogleBase } from "./map/googleBase.ts";
 import {
-  buildLayers,
   buildRound,
   buildStatic,
   circle,
+  createLayerBuilder,
   frameAround,
   type ReplayScene,
   type RoundData,
@@ -113,6 +113,16 @@ function shapeFor(
 
 /** Real ms since the replay reached its end, for the tablet's set; 0 while it hasn't. */
 let replayEndedAt = 0;
+/** A trail's whole path, the same array for as long as the replay has the same samples. */
+const fullPaths = new WeakMap<{ t: number; p: LonLat }[], LonLat[]>();
+function fullPath(samples: { t: number; p: LonLat }[]): LonLat[] {
+  let path = fullPaths.get(samples);
+  if (!path) {
+    path = samples.map((x) => x.p);
+    fullPaths.set(samples, path);
+  }
+  return path;
+}
 const tablets = new Map<string, { url: string; width: number; height: number }>();
 
 /** The hider's station tablet as an image for the map, drawn once per name. */
@@ -173,8 +183,8 @@ function replaySceneAt(
   return {
     hiderPath: pathUntil(replay.hider, t),
     seekerPath: pathUntil(replay.seeker, t),
-    hiderFull: replay.hider.map((x) => x.p),
-    seekerFull: replay.seeker.map((x) => x.p),
+    hiderFull: fullPath(replay.hider),
+    seekerFull: fullPath(replay.seeker),
     questions,
     zone,
     tablet:
@@ -197,7 +207,8 @@ function meLabel(world: World, view: SoloView, t: number): string {
   return route ? `You · on the ${route.display}` : "You";
 }
 
-export function MapView() {
+/** `credits`: how far up the map's own attribution reaches (map/attribution.ts). */
+export function MapView({ credits = 0 }: { credits?: number }) {
   const container = useRef<HTMLDivElement>(null);
   const world = useGame((s) => s.world);
   const mapFailed = useGame((s) => s.mapFailed);
@@ -258,6 +269,7 @@ export function MapView() {
   useEffect(() => {
     if (!base || !world) return;
     const data = buildStatic(world);
+    const build = createLayerBuilder();
     let version = 0;
     let round: RoundData = buildRound(world, useGame.getState().view, version);
     let trains: Train[] = [];
@@ -375,27 +387,27 @@ export function MapView() {
       if (spot && foundSince === 0) foundSince = now;
       if (!spot) foundSince = 0;
       const motion = useMotion.getState();
-      base.setLayers(
-        buildLayers({
-          data,
-          shape,
-          search,
-          round,
-          zoom: base.getZoom(),
-          trains,
-          me,
-          replay: replayScene,
-          clearing: motion.clearing,
-          tiles: motion.tiles,
-          now,
-          shapeGrow: reduced ? 1 : decel((now - shapeSince) / 300),
-          searchGrow: reduced ? 1 : decel((now - searchSince) / 400),
-          fadeIn: reduced ? 1 : Math.min(1, (now - shownAt) / 400),
-          found: spot
-            ? { position: [spot.lon, spot.lat], set: reduced ? 1 : decel((now - foundSince) / 160) }
-            : null,
-        }),
-      );
+      const layers = build({
+        data,
+        shape,
+        search,
+        round,
+        zoom: base.getZoom(),
+        trains,
+        me,
+        replay: replayScene,
+        clearing: motion.clearing,
+        tiles: motion.tiles,
+        now,
+        shapeGrow: reduced ? 1 : decel((now - shapeSince) / 300),
+        searchGrow: reduced ? 1 : decel((now - searchSince) / 400),
+        fadeIn: reduced ? 1 : Math.min(1, (now - shownAt) / 400),
+        found: spot
+          ? { position: [spot.lon, spot.lat], set: reduced ? 1 : decel((now - foundSince) / 160) }
+          : null,
+      });
+      // Null: nothing on the map has changed since the last frame.
+      if (layers) base.setLayers(layers);
     };
     tick();
     // The map shrinks to a strip under Street View: frame the search area again once it has.
@@ -422,7 +434,7 @@ export function MapView() {
       {world && pointer && <WalkHere world={world} pointer={pointer} />}
       {hasView && (
         // "Following you" is a map state, so it's a toggle on the map, beside the zoom buttons.
-        <div className="absolute right-[58px] bottom-[28px] z-10">
+        <div className="absolute right-[58px] z-10" style={{ bottom: Math.max(28, credits + 8) }}>
           <FollowToggle
             on={follow && !mapFailed}
             disabled={!!mapFailed}
@@ -440,7 +452,7 @@ export function MapView() {
  * The map didn't load: a plain tile field with the plaque. The round carries on, because
  * the departure boards and questions don't need the map.
  */
-function MapFailed({ reason, onReload }: { reason: string; onReload: () => void }) {
+export function MapFailed({ reason, onReload }: { reason: string; onReload: () => void }) {
   const google = chooseProvider() === "google";
   return (
     <div className="sc-tilefield absolute inset-0 z-30 flex items-center justify-center p-4">

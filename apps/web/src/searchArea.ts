@@ -33,6 +33,11 @@ export function searchScene(world: World, view: SoloView, t: number): SearchScen
     return cache.scene;
   }
   const possible = possibleSpots(world.ds, c, view.asked, view.candidates, view.footpath, t);
+  // Standing still, nothing clears: keep the same scene, so the map has nothing to redraw.
+  if (cache && cache.complex === complex && samePlaces(cache.scene.possible, possible)) {
+    cache = { view, complex, tick, scene: cache.scene };
+    return cache.scene;
+  }
   const scene: SearchScene = {
     complex,
     ring: circle(c.lat, c.lon, ZONE_RADIUS_M),
@@ -40,4 +45,14 @@ export function searchScene(world: World, view: SoloView, t: number): SearchScen
   };
   cache = { view, complex, tick, scene };
   return scene;
+}
+
+function samePlaces(a: LonLat[], b: { lat: number; lon: number }[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const p = a[i] as LonLat;
+    const q = b[i] as { lat: number; lon: number };
+    if (p[0] !== q.lon || p[1] !== q.lat) return false;
+  }
+  return true;
 }

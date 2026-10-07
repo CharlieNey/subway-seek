@@ -2,13 +2,15 @@
  * The Signal loss curse on the map (DESIGN.md, Motion › Curse lands): glazed tiles on a
  * grout bed set across the map in a diagonal sweep (900 ms) once the card is in its chip,
  * so nothing of the map shows between them, and lift in reverse when it ends. The
- * departure boards in the panel still work.
+ * departure boards in the panel still work. The map's own credits (Google's logo and its
+ * Terms row) stay uncovered and clickable: the tiles leave holes for them.
  */
 import type { ActiveCurse } from "@stand-clear/engine";
 import { useEffect, useRef } from "react";
 import { reducedMotion } from "./clearings.ts";
 import { SET_MS, SWEEP_MS, tileSet } from "./curseMotion.ts";
 import { useLanded, useLandings } from "./landing.ts";
+import { attributionRects, mergeRects, type Rect } from "./map/attribution.ts";
 import { useLeaving } from "./ui/useLeaving.ts";
 import { Caption } from "./ui/vocab.tsx";
 
@@ -21,6 +23,7 @@ export function SignalLoss({ curse }: { curse: ActiveCurse | null }) {
   const shown = useLeaving(curse && landed ? curse : null, SWEEP_MS);
   const ref = useRef<HTMLCanvasElement>(null);
   const cap = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const on = shown.value !== null;
   const leaving = shown.leaving;
   const key = shown.value ? `${shown.value.card}@${shown.value.at}` : null;
@@ -35,7 +38,27 @@ export function SignalLoss({ curse }: { curse: ActiveCurse | null }) {
     const landedAt = key ? (useLandings.getState().landedAt[key] ?? 0) : 0;
     const still = reducedMotion() || (!leaving && start - landedAt > 500);
     let id = 0;
+    /** The credits under the cover, in its pixels, a little wider than drawn, merged. */
+    let holes: Rect[] = [];
+    const findHoles = () => {
+      const map = box.current?.parentElement;
+      holes = map
+        ? mergeRects(
+            attributionRects(map).map((r) => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 })),
+          )
+        : [];
+      // Clicks go through the holes to the links; the rest of the cover blocks the map.
+      const el = box.current;
+      if (el) {
+        const outer = `M0 0H${el.clientWidth}V${el.clientHeight}H0Z`;
+        const cut = holes.map((r) => `M${r.x} ${r.y}h${r.w}v${r.h}h${-r.w}Z`).join("");
+        el.style.clipPath = holes.length ? `path(evenodd, "${outer}${cut}")` : "";
+      }
+    };
+    const inHole = (x: number, y: number) =>
+      holes.some((r) => x < r.x + r.w && x + N > r.x && y < r.y + r.h && y + N > r.y);
     const draw = () => {
+      findHoles();
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const dpr = window.devicePixelRatio || 1;
@@ -49,7 +72,7 @@ export function SignalLoss({ curse }: { curse: ActiveCurse | null }) {
       for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
           const u = tileSet((c + r) / Math.max(1, cols + rows - 2), ms, leaving);
-          if (u <= 0) continue;
+          if (u <= 0 || inHole(c * N, r * N)) continue;
           const sz = (N - 1.4) * (0.55 + 0.45 * u);
           ctx.globalAlpha = u;
           ctx.fillStyle = GROUT;
@@ -72,15 +95,25 @@ export function SignalLoss({ curse }: { curse: ActiveCurse | null }) {
       draw();
     });
     ro.observe(canvas);
+    // Google lays its credits out again now and then: keep the holes where they are.
+    const again = setInterval(() => {
+      const before = holes.map((r) => `${r.x},${r.y},${r.w},${r.h}`).join();
+      findHoles();
+      if (holes.map((r) => `${r.x},${r.y},${r.w},${r.h}`).join() !== before) {
+        cancelAnimationFrame(id);
+        draw();
+      }
+    }, 1000);
     return () => {
       cancelAnimationFrame(id);
       ro.disconnect();
+      clearInterval(again);
     };
   }, [on, leaving, key]);
 
   if (!on) return null;
   return (
-    <div className="absolute inset-0 z-20">
+    <div ref={box} className="absolute inset-0 z-20">
       <canvas ref={ref} className="absolute inset-0 h-full w-full" />
       <div
         ref={cap}

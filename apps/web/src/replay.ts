@@ -32,7 +32,11 @@ interface ReplayStore {
   footStart: number | null;
   /** When the hider reached their spot, for the zone ring (null if they never did). */
   settled: number | null;
-  open: (world: World, view: SoloView) => void;
+  /**
+   * `street: false` for a round kept without its street positions (history.ts, keptView):
+   * the on-foot answers' shares of the circle can't be worked out again.
+   */
+  open: (world: World, view: SoloView, opts?: { street?: boolean }) => void;
   close: () => void;
   toggle: () => void;
   seek: (t: number) => void;
@@ -50,7 +54,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
   seekStart: 0,
   footStart: null,
   settled: null,
-  open: (world, view) => {
+  open: (world, view, { street = true } = {}) => {
     if (!view.replay || !view.result) return;
     const start = view.hideStart;
     const end = view.result.at;
@@ -63,7 +67,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       const left = possibleSpots(world.ds, c, asked, view.candidates, view.footpath, at + 0.001);
       return left.length / Math.max(1, searchGrid(c).length);
     };
-    const log = replayLog(world.ds, world.idx, view, spotsLeft);
+    const log = replayLog(world.ds, world.idx, view, street ? spotsLeft : undefined);
     const reached = log.find((e) => e.text === "Hider reaches their spot");
     set({
       active: true,

@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef } from "react";
 import { hhmm } from "./ask.ts";
-import { useGame, type World } from "./game.ts";
+import { useGamePick, type World } from "./game.ts";
 import { displayName } from "./names.ts";
 import { hm, Numbers, shareFor, useNewRound } from "./Result.tsx";
 import { REPLAY_REAL_SECONDS, useReplay } from "./replay.ts";
@@ -30,7 +30,13 @@ function Mark({ e }: { e: LogEvent }) {
 }
 
 export function ReplayPanel({ world, roundLine }: { world: World; roundLine: string }) {
-  const { view, results, alreadyPlayed, busy, replayOnly } = useGame();
+  const { view, results, alreadyPlayed, busy, replayOnly } = useGamePick(
+    "view",
+    "results",
+    "alreadyPlayed",
+    "busy",
+    "replayOnly",
+  );
   const newRound = useNewRound();
   const { log, t, seek } = useReplay();
   const box = useRef<HTMLDivElement>(null);
@@ -64,10 +70,14 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
         </small>
       </header>
       <div className="flex flex-col items-center gap-1.5 border-b border-grout px-4 pt-3 pb-2.5">
-        <span className="font-display text-[10px] font-bold tracking-[0.14em] text-ink-2 uppercase">
-          The hider was at
-        </span>
-        {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={250} />}
+        {hider && (
+          <>
+            <span className="font-display text-[10px] font-bold tracking-[0.14em] text-ink-2 uppercase">
+              The hider was at
+            </span>
+            <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={250} />
+          </>
+        )}
         <span className="text-[12.5px] text-ink-2">
           {kind === "found"
             ? `Found at ${hhmm(view.result.at)}`

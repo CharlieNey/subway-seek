@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
-import { hubName, useGame, type World } from "./game.ts";
+import { hubName, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
 import { dailyStats } from "./history.ts";
 import { displayName } from "./names.ts";
@@ -44,7 +44,7 @@ const DIFFICULTY_HINT: Record<Difficulty, string> = {
 
 /** Start a round; confirms before leaving one in progress. */
 export function useNewRound() {
-  const { view, send } = useGame();
+  const { view, send } = useGamePick("view", "send");
   return (mode: "daily" | "practice", difficulty?: Difficulty) => {
     const inProgress = view && !view.result && view.asked.length > 0;
     if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
@@ -143,7 +143,7 @@ export function shareFor(
 ) {
   const counted = view.daily && alreadyPlayed ? results[view.daily.date]?.share : undefined;
   const share = () => {
-    const text = counted ?? shareText(view, hubName(world, view));
+    const text = counted ?? shareText(view, hubName(world, view), location.origin);
     const copied = () => {
       useGame.setState({ notice: "Copied" });
       setTimeout(() => {
@@ -159,15 +159,20 @@ export function shareFor(
 }
 
 export function ResultCard({ world }: { world: World }) {
-  const { view, busy, results, alreadyPlayed } = useGame();
+  const { view, busy, results, alreadyPlayed } = useGamePick(
+    "view",
+    "busy",
+    "results",
+    "alreadyPlayed",
+  );
   const newRound = useNewRound();
   const [difficulty, setDifficulty] = useState<Difficulty>(view?.difficulty ?? "normal");
   const live = useEndedLive();
   const tiles = view?.result ? tallyTiles(view) : [];
   const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
   const tallied = useTallyCount(tiles.length, live, tallyDelay);
-  if (!view?.result || view.hider === null) return null;
-  const hider = world.ds.complexes[view.hider];
+  if (!view?.result) return null;
+  const hider = view.hider === null ? undefined : world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
   const kind = view.result.kind;
   const stats = dailyStats(results);
@@ -190,7 +195,7 @@ export function ResultCard({ world }: { world: World }) {
           <Line>{LINES.timeUp}</Line>
         </div>
       ) : (
-        <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
+        hider && <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
       )}
       {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={320} />}
       <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">

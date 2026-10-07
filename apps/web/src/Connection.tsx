@@ -4,7 +4,7 @@
  * and the express band while a dropped link reconnects. Each says what's happening,
  * what's safe, and what to do.
  */
-import { RECONNECT_GRACE_MS } from "@stand-clear/engine";
+import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { type LinkScreen, LOST_TRIES, linkScreen } from "./connection.ts";
 import { useGame } from "./game.ts";
@@ -196,7 +196,9 @@ export function ServerPlaque({ screen }: { screen: Extract<LinkScreen, { kind: "
   const safe = !screen.midRound
     ? "Nothing is lost. Today's daily hasn't started, and it'll be the same round when you get in."
     : now < keptUntil
-      ? `Your round is paused on the server and kept until ${clockTime(keptUntil)}.`
+      ? SOLO_PAUSES_ON_DROP
+        ? `Your round is paused on the server and kept until ${clockTime(keptUntil)}.`
+        : `Your round is kept on the server until ${clockTime(keptUntil)}. Its clock keeps running.`
       : "The server kept your round for 3 minutes. When you get in, a new one starts.";
   const online = navigator.onLine;
   const close = screen.lastClose;
@@ -265,7 +267,10 @@ export function LostBand({ screen }: { screen: Extract<LinkScreen, { kind: "lost
     <div className="sc-express-ink sc-grid-lines" role="status">
       <b>Connection lost · reconnecting</b>
       <span>
-        The round is paused on the server until you're back. Try {screen.attempt} of {LOST_TRIES}.
+        {SOLO_PAUSES_ON_DROP
+          ? "The round is paused on the server until you're back."
+          : "The clock keeps running, and the server keeps your round for 3 minutes."}{" "}
+        Try {screen.attempt} of {LOST_TRIES}.
       </span>
       <TileTimer total={10} left={screen.tilesLeft} size={9} onDark className="self-start" />
     </div>

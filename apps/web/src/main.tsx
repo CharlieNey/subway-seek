@@ -3,6 +3,7 @@ import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { ErrorBoundary, PageBroke } from "./ErrorBoundary.tsx";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root missing");
@@ -17,4 +18,19 @@ const page =
       ? Promise.resolve(<App />)
       : import("./home/Home.tsx").then(({ Home }) => <Home />);
 
-void page.then((el) => createRoot(root).render(<StrictMode>{el}</StrictMode>));
+// What a broken page can promise: the game's round lives on the server, the homepage's
+// results in this browser.
+const safe =
+  path === "/play"
+    ? "Your round is kept on the server for 3 minutes, its clock running. Reload to pick it up."
+    : "Nothing is lost. Your results are kept in this browser.";
+
+void page.then((el) =>
+  createRoot(root).render(
+    <StrictMode>
+      <ErrorBoundary fallback={(error) => <PageBroke error={error} safe={safe} />}>
+        {el}
+      </ErrorBoundary>
+    </StrictMode>,
+  ),
+);

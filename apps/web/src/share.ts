@@ -23,10 +23,25 @@ export function formatMinutes(seconds: number): string {
 }
 
 /**
- * The shareable result line for a finished round. Shows which kinds of questions you
- * asked (not their answers), so it doesn't spoil the day's station.
+ * The link a daily's share ends with: the homepage, with the daily's number and, on a find,
+ * your minutes. The homepage reads it as "A friend found Daily #23 in 41 min. Your turn."
+ * (home/record.ts, friendLine). It never names the station.
  */
-export function shareText(view: SoloView, startName?: string): string {
+export function shareLink(view: SoloView, origin: string): string | null {
+  if (!view.daily || !view.result) return null;
+  const q = new URLSearchParams({ d: String(view.daily.number) });
+  if (view.result.kind === "found") {
+    q.set("t", String(Math.round((view.result.at - view.seekStart) / 60)));
+  }
+  return `${origin}/?${q}`;
+}
+
+/**
+ * The shareable result line for a finished round. Shows which kinds of questions you
+ * asked (not their answers), so it doesn't spoil the day's station. Given the site's
+ * origin, a daily's ends with its link (shareLink).
+ */
+export function shareText(view: SoloView, startName?: string, origin?: string): string {
   if (!view.result) return "";
   const elapsed = view.result.at - view.seekStart;
   const n = view.asked.length;
@@ -40,7 +55,14 @@ export function shareText(view: SoloView, startName?: string): string {
         ? `Gave up after ${formatMinutes(elapsed)} · ${qs}`
         : `Didn't find it in ${formatMinutes(elapsed)} · ${qs}`;
   const trail = view.asked.map((a) => EMOJI[a.q.kind]).join("");
-  return [`${title} 🚇`, line, trail, `Hider score: ${formatMinutes(elapsed + view.bonusSeconds)}`]
+  const link = origin ? shareLink(view, origin) : null;
+  return [
+    `${title} 🚇`,
+    line,
+    trail,
+    `Hider score: ${formatMinutes(elapsed + view.bonusSeconds)}`,
+    link,
+  ]
     .filter(Boolean)
     .join("\n");
 }

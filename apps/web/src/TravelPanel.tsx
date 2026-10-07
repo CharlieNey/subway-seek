@@ -19,7 +19,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
-import { useGame, type World } from "./game.ts";
+import { useGame, useGamePick, type World } from "./game.ts";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
 import { play } from "./sound.ts";
@@ -108,7 +108,7 @@ function PlatformView({
   t: number;
   view: SoloView;
 }) {
-  const { send, busy } = useGame();
+  const { send, busy } = useGamePick("send", "busy");
   const st = world.ds.stations[state.station];
   if (!st) return null;
   const groups = platformBoard(world.idx, state, t, view.curses);
@@ -212,7 +212,7 @@ function nextStop(world: World, state: OnTrain, t: number): number {
 }
 
 function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
-  const { send, busy } = useGame();
+  const { send, busy } = useGamePick("send", "busy");
   const speed = useGame((s) => s.sync?.speed ?? 6);
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
@@ -457,7 +457,7 @@ function nearestStation(world: World, state: OnStreet): number | null {
 }
 
 function StreetPanel({ world, state, view }: { world: World; state: OnStreet; view: SoloView }) {
-  const { send, busy } = useGame();
+  const { send, busy } = useGamePick("send", "busy");
   const complex = world.ds.complexes[state.complex];
   if (!complex) return null;
   const others = complex.stations.length > 1 ? complex.stations : [];
@@ -521,7 +521,7 @@ export function TravelPanel({ world, t }: { world: World; t: number }) {
  * is usually the point.
  */
 export function TravelAction({ world, t }: { world: World; t: number }) {
-  const { view, send, busy } = useGame();
+  const { view, send, busy } = useGamePick("view", "send", "busy");
   if (!view) return null;
   const s = resolve(view.seeker, t, world.idx);
   switch (s.kind) {

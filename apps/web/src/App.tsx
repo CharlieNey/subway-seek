@@ -1,45 +1,71 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CardLanding } from "./CardLanding.tsx";
-import { useLinkScreen } from "./Connection.tsx";
 import { cn } from "./cn.ts";
+import { linkScreen } from "./connection.ts";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { startGame, useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
 import { watchLandings } from "./landing.ts";
-import { MapView } from "./MapView.tsx";
+import { MapFailed, MapView } from "./MapView.tsx";
+import { useAttributionClearance } from "./map/attribution.ts";
 import { Panel } from "./Panel.tsx";
 import { ReplayControls } from "./ReplayControls.tsx";
 import { SignalLoss } from "./SignalLoss.tsx";
-import { StreetView } from "./StreetView.tsx";
+import { StreetView, StreetViewFailed } from "./StreetView.tsx";
 import { onStreet } from "./street.ts";
-import { useGameTime } from "./useGameTime.ts";
+import { useClockValue } from "./useGameTime.ts";
+
+/**
+ * Can't reach the server before the round: the map waits under a glaze veil. Read from
+ * the link itself, not the 4 Hz link screen, so its countdown doesn't re-render the page.
+ */
+function useVeiled(everOpen: boolean): boolean {
+  const link = useGame((s) => s.link);
+  return (
+    !everOpen &&
+    (link.kind === "takenOver" || linkScreen(link, everOpen, Date.now()).kind === "unreachable")
+  );
+}
 
 export function App() {
   useEffect(() => {
     void startGame();
   }, []);
   useEffect(() => watchLandings(), []);
-  const { view, world, everOpen } = useGame();
-  const t = useGameTime(4);
-  const link = useLinkScreen();
-  // Can't reach the server before the round: the map waits under a glaze veil.
-  const veiled = !everOpen && (link.kind === "unreachable" || link.kind === "takenOver");
+  const view = useGame((s) => s.view);
+  const world = useGame((s) => s.world);
+  const everOpen = useGame((s) => s.everOpen);
+  const veiled = useVeiled(everOpen);
   // On the street, Street View takes the top of the screen and the map shrinks below it.
-  const street = onStreet(view, t, world);
+  // The top of the tree re-renders only when these change, not with the clock.
+  const street = useClockValue((t) => onStreet(view, t, world));
+  const signalLoss = useClockValue((t) => cursed(view, "signalLoss", t));
+  // Overlays on the map keep clear of its own credits (Google's logo and Terms).
+  const mapBox = useRef<HTMLDivElement>(null);
+  const credits = useAttributionClearance(mapBox);
 
   return (
     <main className="flex h-screen w-screen overflow-hidden bg-glaze text-ink">
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Kept mounted once created: one Street View panorama per page keeps billing down. */}
         <div className={cn("relative min-h-0", street ? "flex-[3]" : "hidden")}>
-          <StreetView visible={street} />
+          <ErrorBoundary
+            fallback={(error, reset) => <StreetViewFailed reason={error.message} onRetry={reset} />}
+          >
+            <StreetView visible={street} />
+          </ErrorBoundary>
         </div>
         {/* The trim band between street and map, like the trim line on a platform wall. */}
         {street && <div className="sc-trim h-2.5 flex-none" />}
-        <div className={cn("relative min-h-0", street ? "flex-[2]" : "flex-1")}>
-          <MapView />
+        <div ref={mapBox} className={cn("relative min-h-0", street ? "flex-[2]" : "flex-1")}>
+          <ErrorBoundary
+            fallback={(error, reset) => <MapFailed reason={error.message} onReload={reset} />}
+          >
+            <MapView credits={credits} />
+          </ErrorBoundary>
           {veiled && <span className="sc-veil strong z-20" />}
-          <ReplayControls />
-          <SignalLoss curse={cursed(view, "signalLoss", t)} />
+          <ReplayControls credits={credits} />
+          <SignalLoss curse={signalLoss} />
         </div>
       </div>
       <Panel />

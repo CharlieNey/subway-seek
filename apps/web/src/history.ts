@@ -2,7 +2,16 @@
  * Daily challenge results, kept in this browser only (per-viewer convenience; nothing
  * else depends on it). Every access is guarded: storage can be blocked or cleared.
  */
-import type { SoloView } from "@stand-clear/engine";
+import type { Dataset, LatLon } from "@stand-clear/data";
+import {
+  type Answer,
+  categoryOf,
+  type OnStreet,
+  type Place,
+  type SoloView,
+  type TrailEntry,
+  type Transit,
+} from "@stand-clear/engine";
 import { type Family, familyOf } from "./ui/family.ts";
 
 const KEY = "stand-clear:daily-results:v1";
@@ -27,11 +36,14 @@ export function loadResults(): Record<string, DailyResult> {
   }
 }
 
-const REPLAY_KEY = "stand-clear:daily-replay:v1";
+/** v2 keeps no Google coordinates (keptView). v1 kept the whole view, so it's cleared. */
+const REPLAY_KEY = "stand-clear:daily-replay:v2";
+const OLD_REPLAY_KEYS = ["stand-clear:daily-replay:v1"];
 
-/** The last daily's finished view, for the homepage's Watch replay. */
+/** The last daily's finished round as keptView left it, for the homepage's Watch replay. */
 export function loadReplay(): { date: string; view: SoloView } | null {
   try {
+    for (const k of OLD_REPLAY_KEYS) localStorage.removeItem(k);
     const kept = JSON.parse(localStorage.getItem(REPLAY_KEY) ?? "null") as {
       date: string;
       view: SoloView;
@@ -42,13 +54,86 @@ export function loadReplay(): { date: string; view: SoloView } | null {
   }
 }
 
-export function saveResult(view: SoloView, share: string): void {
+/**
+ * A finished round as this browser keeps it for Watch replay: the trails and the station,
+ * with no coordinate that came from Google, since its terms forbid caching them. Anywhere
+ * on the street was a Street View panorama, so the kept trails stand at the exit you came
+ * up at (MTA data) for as long as you were up there, walks keep their times but not their
+ * places, the hider's spot and your searched streets go, on-foot questions sit at their
+ * station, and photos keep their panorama ID (which may be stored) but not their URL.
+ * The replay right after a round, from the server's view, has everything.
+ */
+export function keptView(ds: Dataset, view: SoloView): SoloView {
+  const exitOf = (s: OnStreet): LatLon => {
+    const c = ds.complexes[s.complex];
+    return c?.exits[s.exit] ?? [c?.lat ?? 0, c?.lon ?? 0];
+  };
+  const atExit = (s: OnStreet): OnStreet => ({
+    kind: "street",
+    complex: s.complex,
+    exit: s.exit,
+    since: s.since,
+  });
+  const keepTrail = (trail: readonly TrailEntry[]): TrailEntry[] => {
+    let up: LatLon | null = null;
+    return trail.map(({ t, state }) => {
+      const kept = keepState(state, up);
+      if (kept.kind === "street") up = exitOf(kept);
+      if (kept.kind === "walking" && kept.dest.kind === "street") up = exitOf(kept.dest);
+      return { t, state: kept };
+    });
+  };
+  const keepState = (s: Transit, up: LatLon | null): Transit => {
+    if (s.kind === "street") return atExit(s);
+    if (s.kind !== "walking") return s;
+    if (s.reason === "street" && s.dest.kind === "street") {
+      const exit = exitOf(s.dest);
+      return { ...s, fromPoint: exit, toPoint: exit, dest: atExit(s.dest) };
+    }
+    if (s.reason === "enter") return { ...s, fromPoint: up ?? s.toPoint };
+    return s.dest.kind === "street" ? { ...s, dest: atExit(s.dest) } : s;
+  };
+  const atStation = (p: Place): Place => {
+    const c = ds.complexes[p.complex];
+    return c ? { lat: c.lat, lon: c.lon, complex: p.complex } : p;
+  };
+  return {
+    ...view,
+    seeker: keepState(view.seeker, null),
+    asked: view.asked.map((a) => {
+      const answer = a.answer as Answer | null;
+      let photo = answer;
+      if (answer && typeof answer === "object" && "photo" in answer) {
+        const { url: _signed, ...rest } = answer.photo;
+        photo = { photo: rest };
+      }
+      if (categoryOf(a.q) !== "onFoot") return { ...a, answer: photo };
+      const ctx = {
+        origin: atStation(a.ctx.origin),
+        baseline: a.ctx.baseline && atStation(a.ctx.baseline),
+      };
+      return { ...a, ctx, answer: photo };
+    }),
+    spotNearby: null,
+    footThermometer: null,
+    footpath: [],
+    replay: view.replay && {
+      hider: keepTrail(view.replay.hider),
+      seeker: keepTrail(view.replay.seeker),
+    },
+  };
+}
+
+export function saveResult(ds: Dataset, view: SoloView, share: string): void {
   if (!view.daily || !view.result) return;
   const results = loadResults();
   if (results[view.daily.date]) return; // first finish of the day is the one that counts
   try {
-    // Only the latest daily: the round is over, so the view holds the whole replay.
-    localStorage.setItem(REPLAY_KEY, JSON.stringify({ date: view.daily.date, view }));
+    // Only the latest daily, and only what keptView keeps.
+    localStorage.setItem(
+      REPLAY_KEY,
+      JSON.stringify({ date: view.daily.date, view: keptView(ds, view) }),
+    );
   } catch {
     // Too big or refused: the homepage just doesn't offer the replay.
   }

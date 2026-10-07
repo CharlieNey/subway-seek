@@ -9,10 +9,11 @@ import {
   compassLetters,
   compassWord,
 } from "./compass.ts";
-import { useGame } from "./game.ts";
+import { useGame, useGamePick } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
 import { ARROWS, type Arrow } from "./keys.ts";
 import { useLanded } from "./landing.ts";
+import { useAttributionClearance } from "./map/attribution.ts";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { play } from "./sound.ts";
@@ -53,9 +54,12 @@ export function StreetView({ visible }: { visible: boolean }) {
   const [failed, setFailed] = useState<string | null>(null);
   /** Bumped by "Try again". */
   const [retry, setRetry] = useState(0);
-  const { world, view, send, busy } = useGame();
+  const { world, view, send, busy } = useGamePick("world", "view", "send", "busy");
   const t = useGameTime(4);
   const usesGoogle = chooseProvider() === "google";
+  // The walk tiles and the walking band sit above Street View's own credits.
+  const credits = useAttributionClearance(el);
+  const tilesBottom = Math.max(30, credits + 6);
 
   // One panorama, created the first time you're on the street and reused after.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` is the try-again trigger
@@ -237,9 +241,18 @@ export function StreetView({ visible }: { visible: boolean }) {
         <Stairs state={walking} t={t ?? 0} speed={speed} />
       )}
       {walking && walking.reason === "street" && (
-        <WalkingBand state={walking} t={t ?? 0} speed={speed} halfSpeed={!!shed} />
+        <WalkingBand
+          state={walking}
+          t={t ?? 0}
+          speed={speed}
+          halfSpeed={!!shed}
+          bottom={tilesBottom + 66}
+        />
       )}
-      <div className="absolute inset-x-0 bottom-[30px] z-10 flex flex-wrap justify-center gap-1.5 px-3">
+      <div
+        className="absolute inset-x-0 z-10 flex flex-wrap justify-center gap-1.5 px-3"
+        style={{ bottom: tilesBottom }}
+      >
         {sortedLinks.map((l, i) => (
           <WalkTile
             key={l.pano}
@@ -313,17 +326,23 @@ function WalkingBand({
   t,
   speed,
   halfSpeed,
+  bottom,
 }: {
   state: Walking;
   t: number;
   speed: number;
   halfSpeed: boolean;
+  /** Above the walk tiles. */
+  bottom: number;
 }) {
   const f = Math.min(1, Math.max(0, (t - state.start) / Math.max(1, state.end - state.start)));
   const left = Math.max(0, Math.ceil((state.end - t) / speed));
   const way = compassWord(bearing(state.fromPoint, state.toPoint));
   return (
-    <div className="absolute right-3.5 bottom-[96px] left-3.5 z-10 flex flex-col items-start gap-1.5">
+    <div
+      className="absolute right-3.5 left-3.5 z-10 flex flex-col items-start gap-1.5"
+      style={{ bottom }}
+    >
       <Caption>
         Walking {way} · <Num>{left} s</Num>
         {halfSpeed && " · half speed"}
@@ -401,7 +420,7 @@ function CatchBand() {
  * Street View didn't load: the pane keeps its place, with a dark tile field and the
  * plaque. The walk still counted; the map and the questions work.
  */
-function StreetViewFailed({ reason, onRetry }: { reason: string; onRetry: () => void }) {
+export function StreetViewFailed({ reason, onRetry }: { reason: string; onRetry: () => void }) {
   return (
     <div className="sc-tilefield-dark absolute inset-0 z-30 flex items-center justify-center p-4">
       <Plaque

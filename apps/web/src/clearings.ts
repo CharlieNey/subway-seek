@@ -30,6 +30,20 @@ export const useMotion = create<MotionStore>(() => ({ clearing: null, tiles: nul
 export const reducedMotion = () =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/**
+ * Once a clearing has played, let it go, so nothing keeps re-reading its timings: the
+ * squares it lifted are gone from the view by then.
+ */
+function dropWhenDone(
+  key: "clearing" | "tiles",
+  value: MotionStore["clearing" | "tiles"],
+  ms: number,
+) {
+  setTimeout(() => {
+    if (useMotion.getState()[key] === value) useMotion.setState({ [key]: null });
+  }, ms + 100);
+}
+
 /** The answers that landed between two views, in the order they landed. */
 function landed(prev: SoloView, next: SoloView): AskedQuestion[] {
   const before = new Set(prev.asked.filter(isAnswered).map((a) => a.at));
@@ -70,9 +84,9 @@ export function watchClearings(getWorld: () => World | null) {
         return cx ? [{ id: c, at: { lat: cx.lat, lon: cx.lon }, complex: c }] : [];
       });
     if (cleared.length > 0) {
-      useMotion.setState({
-        clearing: clearingFor(world.ds, a.q, a.answer as Answer, a.ctx, cleared, now, reduced),
-      });
+      const clearing = clearingFor(world.ds, a.q, a.answer as Answer, a.ctx, cleared, now, reduced);
+      useMotion.setState({ clearing });
+      dropWhenDone("clearing", clearing, clearing.end);
     }
     if (a.q.kind === "spotRadar" || a.q.kind === "spotThermometer") {
       const t = a.answerAt;
@@ -90,7 +104,9 @@ export function watchClearings(getWorld: () => World | null) {
         now,
         reduced,
       );
-      useMotion.setState({ tiles: { clearing, tiles: gone } });
+      const tiles = { clearing, tiles: gone };
+      useMotion.setState({ tiles });
+      dropWhenDone("tiles", tiles, clearing.end);
     }
   });
 }

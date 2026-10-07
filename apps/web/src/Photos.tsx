@@ -11,7 +11,7 @@ import {
   type SoloView,
   syncedGameTime,
 } from "@stand-clear/engine";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type ChipState, hhmm, LOOK_WORD } from "./ask.ts";
 import { reducedMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
@@ -200,8 +200,16 @@ export function Lightbox({
   onIndex: (i: number) => void;
   onClose: () => void;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  // Focus moves into the dialog and back to where it was when it closes.
+  useEffect(() => {
+    const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    box.current?.querySelector<HTMLElement>("button")?.focus();
+    return () => back?.focus();
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab") return trapTab(e, box.current);
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft") onIndex(Math.max(0, index - 1));
       else if (e.key === "ArrowRight") onIndex(Math.min(photos.length - 1, index + 1));
@@ -216,6 +224,7 @@ export function Lightbox({
   if (!p) return null;
   return (
     <div
+      ref={box}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(36_32_27/0.82)] p-6"
       role="dialog"
       aria-modal="true"
@@ -236,6 +245,31 @@ export function Lightbox({
       </div>
     </div>
   );
+}
+
+/** Tab and Shift+Tab go round the dialog's own controls and never leave it. */
+function trapTab(e: KeyboardEvent, dialog: HTMLElement | null) {
+  if (!dialog) return;
+  const controls = [
+    ...dialog.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])',
+    ),
+  ];
+  const first = controls[0];
+  const last = controls.at(-1);
+  const at = document.activeElement;
+  e.preventDefault();
+  e.stopPropagation();
+  if (!first || !last) return;
+  const i = controls.indexOf(at as HTMLElement);
+  const next = e.shiftKey
+    ? i <= 0
+      ? last
+      : controls[i - 1]
+    : i < 0 || at === last
+      ? first
+      : controls[i + 1];
+  next?.focus();
 }
 
 /** The question's band body for a photo: the empty frame while it's on its way. */

@@ -1,6 +1,6 @@
 import type { SoloView } from "@stand-clear/engine";
 import { describe, expect, it } from "vitest";
-import { shareText } from "./share.ts";
+import { shareLink, shareText } from "./share.ts";
 
 const view = (over: Partial<SoloView>): SoloView => ({
   mode: "daily",
@@ -73,6 +73,17 @@ describe("shareText", () => {
       "Grand Central",
     );
     expect(text.split("\n")[0]).toBe("Stand Clear #1 · from Grand Central 🚇");
+  });
+
+  it("ends a daily with its link: the number, and the minutes on a find", () => {
+    const found = view({ result: { kind: "found", at: 37_200 + 41 * 60 }, hider: 5 });
+    expect(shareText(found, undefined, "https://example.test").split("\n").at(-1)).toBe(
+      "https://example.test/?d=1&t=41",
+    );
+    const gaveUp = view({ result: { kind: "gaveUp", at: 37_200 + 600 } });
+    expect(shareLink(gaveUp, "https://example.test")).toBe("https://example.test/?d=1");
+    const practice = view({ mode: "practice", daily: null, result: { kind: "found", at: 37_260 } });
+    expect(shareLink(practice, "https://example.test")).toBeNull();
   });
 
   it("is empty while the round is running", () => {

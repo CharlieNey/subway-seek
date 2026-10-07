@@ -12,7 +12,8 @@ import { useReplay } from "./replay.ts";
 import { FAMILY_COLORS } from "./ui/family.ts";
 import { Button, Caption } from "./ui/vocab.tsx";
 
-export function ReplayControls() {
+/** `credits`: how far up the map's own attribution reaches; the bar floats above it. */
+export function ReplayControls({ credits = 0 }: { credits?: number }) {
   const { active, playing, start, end, t, toggle, seek, close, log, seekStart, footStart } =
     useReplay();
   const scrub = useRef<HTMLDivElement>(null);
@@ -45,7 +46,7 @@ export function ReplayControls() {
   };
   const finished = t >= end;
   return (
-    <div className="sc-rp-bar z-10">
+    <div className="sc-rp-bar z-10" style={{ bottom: Math.max(30, credits + 8) }}>
       <button
         type="button"
         className="sc-rp-play sc-focus"

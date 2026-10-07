@@ -19,11 +19,13 @@ import {
   type Question,
   SESSION_PARAM,
   type ServerMessage,
+  SOLO_PAUSES_ON_DROP,
   type SoloView,
   syncedGameTime,
   type TimetableIndex,
 } from "@stand-clear/engine";
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { keepArmed } from "./ask.ts";
 import { ATTEMPT_TIMEOUT_MS, attemptFailed, type Link, startAttempt } from "./connection.ts";
 import { doorOf, type StoredSession, tokenFor, withoutDoor } from "./doors.ts";
@@ -120,8 +122,12 @@ let socket: WebSocket | null = null;
 let seq = 0;
 /** Intents sent but not yet answered: resent after a reconnect that resumed the session. */
 let pending: { seq: number; msg: string }[] = [];
-/** The next state answers a "newRound": recentre and reset the panel. */
-let awaitingNewRound = false;
+/**
+ * The seq of a "newRound" not yet answered. Only its answer starts the new round in the
+ * panel (recentre, clear what's armed): frames the old round pushes meanwhile carry lower
+ * seqs.
+ */
+let newRoundSeq: number | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 let attemptTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -149,7 +155,7 @@ export const useGame = create<GameStore>((set) => ({
     const msg = JSON.stringify({ type: "intent", seq, intent });
     pending.push({ seq, msg });
     socket.send(msg);
-    if (intent.type === "newRound") awaitingNewRound = true;
+    if (intent.type === "newRound") newRoundSeq = seq;
     set({ busy: true, notice: null });
   },
   dismissNotice: () => set({ notice: null }),
@@ -170,6 +176,20 @@ export const useGame = create<GameStore>((set) => ({
 }));
 
 if (import.meta.env.DEV) (window as unknown as { __game: typeof useGame }).__game = useGame;
+
+/**
+ * Just these fields of the store: the component re-renders when one of them changes, not
+ * on every change to the store (a hover, a notice, the clock's sync).
+ */
+export function useGamePick<K extends keyof GameStore>(...keys: K[]): Pick<GameStore, K> {
+  return useGame(
+    useShallow((s) => {
+      const out = {} as Pick<GameStore, K>;
+      for (const k of keys) out[k] = s[k];
+      return out;
+    }),
+  );
+}
 
 /** Current game time from the last clock sync. */
 export function nowGameTime(): number | null {
@@ -246,14 +266,26 @@ function onView(view: SoloView): Partial<GameStore> {
     return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
   const { alreadyPlayed, world } = useGame.getState();
-  if (view.daily && !alreadyPlayed) saveResult(view, shareText(view, hubName(world, view)));
+  if (view.daily && !alreadyPlayed && world) {
+    saveResult(world.ds, view, shareText(view, hubName(world, view), location.origin));
+  }
   return { results: loadResults() };
 }
 
-/** The server has answered intents up to `upTo`. */
+/**
+ * The server has answered intents up to `upTo`. A refusal with no seq (-1) answers
+ * whatever was in flight, so the buttons never stay waiting for an answer that won't come.
+ */
 function settled(upTo: number): Partial<GameStore> {
-  pending = pending.filter((p) => p.seq > upTo);
+  const last = upTo < 0 ? seq : upTo;
+  pending = pending.filter((p) => p.seq > last);
+  if (newRoundSeq !== null && newRoundSeq <= last) newRoundSeq = null;
   return { busy: pending.length > 0 };
+}
+
+/** Whether a frame answering `upTo` brings the new round asked for. */
+function bringsNewRound(upTo: number): boolean {
+  return newRoundSeq !== null && upTo >= newRoundSeq;
 }
 
 function handle(msg: ServerMessage) {
@@ -277,9 +309,10 @@ function handle(msg: ServerMessage) {
         history.replaceState(null, "", location.pathname + withoutDoor(location.search));
       }
       const { view } = useGame.getState();
-      const fresh = !msg.resumed && view !== null;
+      // A fresh session, or the new round asked for before the drop, answered while away.
+      const fresh = (!msg.resumed && view !== null) || bringsNewRound(msg.seq);
       if (fresh) useReplay.getState().close();
-      awaitingNewRound = false;
+      if (!msg.resumed || bringsNewRound(msg.seq)) newRoundSeq = null;
       useGame.setState({
         status: "ready",
         link: { kind: "open" },
@@ -296,8 +329,7 @@ function handle(msg: ServerMessage) {
     }
     case "state": {
       // A fresh round: follow the seeker again.
-      const fresh = awaitingNewRound;
-      awaitingNewRound = false;
+      const fresh = bringsNewRound(msg.seq);
       if (fresh) useReplay.getState().close();
       useGame.setState({
         ...armedFor(msg.view, fresh),
@@ -324,7 +356,7 @@ function handle(msg: ServerMessage) {
 
 // --- The connection -----------------------------------------------------------------
 
-/** The clock stops where it is while the link is down: the server paused it too. */
+/** The clock stops where it is: the server paused it, or another tab has the round. */
 function freezeClock() {
   const { sync } = useGame.getState();
   if (!sync || sync.paused) return;
@@ -347,7 +379,8 @@ function dropSocket() {
 /** The link failed or dropped: wait, then try again. */
 function failed(code: number, opened: boolean) {
   const { link, everOpen } = useGame.getState();
-  if (link.kind === "open") freezeClock();
+  // A solo round's clock runs on through a drop, on the server and here.
+  if (link.kind === "open" && SOLO_PAUSES_ON_DROP) freezeClock();
   const next = attemptFailed(link, { code, opened }, Date.now(), everOpen);
   useGame.setState({ link: next });
   clearTimeout(retryTimer);
@@ -406,16 +439,22 @@ window.addEventListener("online", () => useGame.getState().retryNow());
 
 // --- Loading ------------------------------------------------------------------------
 
-/** Fetch JSON, reporting bytes as they arrive (and the total, when the server says it). */
+/**
+ * Fetch JSON, reporting decoded bytes as they arrive, and the total: `size` when the build
+ * knows it, else the server's length if it isn't compressed, else null (the board then
+ * counts megabytes without its tiles).
+ */
 async function fetchJson<T>(
   url: string,
   onProgress?: (loaded: number, total: number | null) => void,
+  size?: number,
 ): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   const length = Number(res.headers.get("content-length"));
   // A compressed response's length is the compressed size, so it can't measure progress.
-  const total = length > 0 && !res.headers.get("content-encoding") ? length : null;
+  const total =
+    size && size > 0 ? size : length > 0 && !res.headers.get("content-encoding") ? length : null;
   if (!res.body || !onProgress) return (await res.json()) as T;
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -453,12 +492,16 @@ export async function loadWorld(): Promise<boolean> {
   try {
     let lastPaint = 0;
     const [subway, landmarks] = await Promise.all([
-      fetchJson<SubwayData>(datasetUrl, (loaded, total) => {
-        const now = performance.now();
-        if (now - lastPaint < 50) return;
-        lastPaint = now;
-        setBoot((b) => ({ timetable: { ...b.timetable, loaded, total } }));
-      }),
+      fetchJson<SubwayData>(
+        datasetUrl,
+        (loaded, total) => {
+          const now = performance.now();
+          if (now - lastPaint < 50) return;
+          lastPaint = now;
+          setBoot((b) => ({ timetable: { ...b.timetable, loaded, total } }));
+        },
+        Number(import.meta.env.VITE_DATASET_BYTES),
+      ),
       fetchJson<LandmarkData>(landmarksUrl).then((l) => {
         const places = Object.values(l.kinds).reduce((n, list) => n + list.length, 0);
         setBoot(() => ({ landmarks: { done: true, places } }));
@@ -511,6 +554,7 @@ function showStoredReplay() {
     location.replace("/");
     return;
   }
+  // Kept without Google's coordinates (history.ts, keptView): no street search to measure.
   const view = kept.view;
   useGame.setState({
     status: "ready",
@@ -521,5 +565,5 @@ function showStoredReplay() {
     sync: { gameTime: view.result?.at ?? 0, speed: 6, serverNow: Date.now(), paused: true },
     results: loadResults(),
   });
-  useReplay.getState().open(world, view);
+  useReplay.getState().open(world, view, { street: false });
 }

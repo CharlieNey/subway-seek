@@ -43,7 +43,7 @@ import {
   toggleArm,
 } from "./ask.ts";
 import { cn } from "./cn.ts";
-import { useGame, type World } from "./game.ts";
+import { useGame, useGamePick, type World } from "./game.ts";
 import { displayName } from "./names.ts";
 import {
   type ArrivedPhoto,
@@ -389,7 +389,7 @@ function OnFootBlock({
   open: boolean;
   onToggle: () => void;
 }) {
-  const { send, busy } = useGame();
+  const { send, busy } = useGamePick("send", "busy");
   const standing = resolve(view.seeker, t, world.idx).kind === "street";
   const search = searchScene(world, view, t);
   const center = search ? world.ds.complexes[search.complex] : undefined;
@@ -528,7 +528,7 @@ function StationCategories({
   skipPhotos?: boolean;
 }) {
   const { ds } = world;
-  const { send, busy } = useGame();
+  const { send, busy } = useGamePick("send", "busy");
   const origin = questionOrigin(view.seeker, t, world.idx);
   const here = ds.complexes[origin.complex];
   const thermoFrom = view.thermometer;
