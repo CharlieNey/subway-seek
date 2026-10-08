@@ -13,6 +13,7 @@ export * from "./questions.ts";
 export * from "./reach.ts";
 export * from "./search.ts";
 export * from "./seekerBot.ts";
+export * from "./seekerDriver.ts";
 export * from "./solo.ts";
 export * from "./timetable.ts";
 export * from "./trail.ts";

@@ -211,3 +211,13 @@ the neighbour catch from where the seeker stood); `earliestJourney(…, changes 
 counts `selfTransfer` mid-journey while `reachableComplexes` stays optimistic; the on-foot
 help in the client says what "Not near you" clears. The Tourist `board` + `alightAt`
 refusal is left as it is (benign).
+
+## S3 seeker on the clock (2026-10-08)
+
+Charlie approved a starting seeker mapping: Easy goes up at ≤ 4 candidates, Normal at ≤ 3, Hard at ≤ 2; all use 0.25 minimum bits and a 45-game-minute journey horizon. The headline difficulty columns above vary the **bot hider**, not these seeker settings. Step 6 re-measures the mapping with pacing, and changes the mapping, not prices, if Hard does not catch more than Easy.
+
+`SeekerDriver` receives only `SoloView`. Each action is at least 3 real running seconds after the last (18 game-seconds at 6×), including the separate board and alight-selection actions. It respects `waitUntil`, re-plans on public answers/curses, and backs off after refusals. A pause advances neither the game nor this floor. After a restart memory is rebuilt from the view; only the last action time is persisted, so there is no catch-up burst. The full-speed `runSeeker` and existing bot-hider policy remain unchanged.
+
+The Step 1 regression run matched the current working-tree baseline on all 780 rounds, including every reported card and outcome metric (runtime 37 / 45 seconds). This baseline includes the other session's landmark correction; it differs slightly from the older headline table.
+
+**Known S3 limitations, carried to M3:** Fog and Signal loss cost this bot nothing, and it never asks photos. Human-hider photo screens are exercised by fixtures. The bot never reads a photo's panorama ID as a location. A human seeker in M3 will ask photos and experience the visual curses. Watch dead time while the bot rides in Step 6; event-by-event skipping is the fix if it bores.
