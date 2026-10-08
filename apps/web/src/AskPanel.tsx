@@ -996,7 +996,10 @@ export function QuestionLog({ world, title = "Asked" }: { world: World; title?: 
                 </span>
                 {a.randomizedFrom && (
                   <span className="block text-[11.5px] text-ink-2">
-                    Swapped by the hider · you asked: {shortQuestion(a.randomizedFrom)}
+                    {"role" in view
+                      ? "Swapped · seeker asked: "
+                      : "Swapped by the hider · you asked: "}
+                    {shortQuestion(a.randomizedFrom)}
                   </span>
                 )}
                 {photo && (

@@ -7,6 +7,7 @@
 import {
   ENTER_SECONDS,
   EXIT_SECONDS,
+  lastStation,
   type OnPlatform,
   type OnStreet,
   type OnTrain,
@@ -20,6 +21,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
+import { isHider, ownTransit } from "./hide.ts";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
 import { play } from "./sound.ts";
@@ -111,12 +113,15 @@ function PlatformView({
   const { send, busy } = useGamePick("send", "busy");
   const st = world.ds.stations[state.station];
   if (!st) return null;
-  const groups = platformBoard(world.idx, state, t, view.curses);
+  const groups = platformBoard(world.idx, state, t, isHider(view) ? [] : view.curses);
   const transfers = world.idx.transfersFrom[state.station] ?? [];
   const firstBoardable = groups.flatMap((g) => g.lines).find((l) => !l.reason);
   // The round opens: the daily's line, or in practice the trains' (Voice).
   const opening =
-    view.asked.length === 0 && state.station === view.hub && t < view.seekStart + 15 * 60;
+    !isHider(view) &&
+    view.asked.length === 0 &&
+    state.station === view.hub &&
+    t < view.seekStart + 15 * 60;
   const openLine = view.daily ? "dailyOpens" : "trainsOpen";
   return (
     <>
@@ -170,7 +175,9 @@ function PlatformView({
                 <span className="text-[12px] text-ink-2 tabular-nums">
                   {minutes(x.seconds)} min
                 </span>
-                <Button small disabled={busy} onClick={() => send({ type: "transfer", to: x.to })}>
+                <Button small disabled={busy || (isHider(view) && t + x.seconds > view.seekStart)}
+                  reason={isHider(view) && t + x.seconds > view.seekStart ? "That transfer arrives after 10:20." : undefined}
+                  onClick={() => send({ type: "transfer", to: x.to })}>
                   Walk
                 </Button>
               </div>
@@ -214,6 +221,9 @@ function nextStop(world: World, state: OnTrain, t: number): number {
 function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
   const { send, busy } = useGamePick("send", "busy");
   const speed = useGame((s) => s.sync?.speed ?? 6);
+  const view = useGame((s) => s.view);
+  const deadline = isHider(view) ? view.seekStart : null;
+  const deadlineStation = deadline === null ? null : lastStation(state, deadline, world.idx);
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
   const route = trip && world.ds.routes[trip.route];
@@ -314,6 +324,18 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
         {stops.map((k) => {
           const st = world.ds.stations[trip.stops[k] as number];
           const time = hhmm(trip.arr[k] as number);
+          if (deadline !== null && (trip.arr[k] as number) > deadline) {
+            const firstLate = k === first || (trip.arr[k - 1] as number) <= deadline;
+            return (
+              <div key={k}>
+                {firstLate && <div className="sc-hide-deadline">10:20 · Time’s up</div>}
+                <div className="flex gap-3 border-b border-dashed border-grout py-2 text-[13px] text-ink-3">
+                  <span>{time}</span>
+                  {nameOf(k)}
+                </div>
+              </div>
+            );
+          }
           if (k === state.to) {
             // The stop you're getting off at is the one express band.
             return (
@@ -359,6 +381,12 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
           </button>
         )}
       </section>
+      {deadline !== null && deadlineStation !== null && (
+        <p className="px-4 pt-3 text-[12px] text-ink-2">
+          Stay on past 10:20 and your station is{" "}
+          <b>{displayName(world.ds.stations[deadlineStation]?.name ?? "")}</b>.
+        </p>
+      )}
       {connections && connections.lines.length > 0 && (
         <div className="mx-4 mt-3">
           <CountdownBoard label={`Connections at ${nameOf(state.to)}`}>
@@ -502,7 +530,7 @@ function StreetPanel({ world, state, view }: { world: World; state: OnStreet; vi
 export function TravelPanel({ world, t }: { world: World; t: number }) {
   const view = useGame((s) => s.view);
   if (!view) return null;
-  const s = resolve(view.seeker, t, world.idx);
+  const s = resolve(ownTransit(view), t, world.idx);
   switch (s.kind) {
     case "platform":
       return <PlatformView world={world} state={s} t={t} view={view} />;
@@ -523,9 +551,10 @@ export function TravelPanel({ world, t }: { world: World; t: number }) {
 export function TravelAction({ world, t }: { world: World; t: number }) {
   const { view, send, busy } = useGamePick("view", "send", "busy");
   if (!view) return null;
-  const s = resolve(view.seeker, t, world.idx);
+  const s = resolve(ownTransit(view), t, world.idx);
   switch (s.kind) {
     case "platform":
+      if (isHider(view)) return <WainscotText>Exits open at 10:20.</WainscotText>;
       return (
         <>
           <Button

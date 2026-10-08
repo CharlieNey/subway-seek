@@ -41,7 +41,7 @@ export function CardEmblem({ card, size = 30 }: { card: CardId; size?: number })
   );
 }
 
-export function CardFace({ card }: { card: CardId }) {
+export function CardFace({ card, hider = false }: { card: CardId; hider?: boolean }) {
   const def = CARDS[card];
   const frameRef = useRef<HTMLCanvasElement>(null);
   const embRef = useRef<HTMLCanvasElement>(null);
@@ -76,7 +76,7 @@ export function CardFace({ card }: { card: CardId }) {
         </div>
         <canvas ref={embRef} className="sc-card-emb" />
         <h4>{def.title}</h4>
-        <p className="sc-card-rule">{def.toSeeker ?? def.rule}</p>
+        <p className="sc-card-rule">{hider ? def.rule : (def.toSeeker ?? def.rule)}</p>
         <p className="sc-card-line">“{def.line}”</p>
         <span className="sc-card-when">{kind.when}</span>
       </div>

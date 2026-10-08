@@ -28,8 +28,10 @@ import {
 } from "./Connection.tsx";
 import { useMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
-import { useGame, useGamePick, type World } from "./game.ts";
+import { openingRound, useGame, useGamePick, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
+import { HiderPanel } from "./HiderPanel.tsx";
+import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
 import { formatDay } from "./names.ts";
@@ -61,9 +63,13 @@ const DIFFICULTY_LABEL = { easy: "Easy", normal: "Normal", hard: "Hard" } as con
 /** The round on one line: before the server answers, today's daily from the date. */
 function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
   if (!view) {
+    const opening = openingRound();
+    if (opening.kind === "hide")
+      return `You hide · ${DIFFICULTY_LABEL[opening.difficulty ?? "normal"]}`;
     const date = nyDate(new Date());
     return `Daily #${dailyNumber(date)} · ${formatDay(date)}`;
   }
+  if (isHider(view)) return `You hide · ${DIFFICULTY_LABEL[view.difficulty]}`;
   return view.daily
     ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
     : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`;
@@ -75,7 +81,8 @@ function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
  */
 function fastForward(world: World, view: SoloView, t: number, busy: boolean): FastForward[] {
   const send = useGame.getState().send;
-  const s = resolve(view.seeker, t, world.idx);
+  if (isHider(view) && t >= view.seekStart) return [];
+  const s = resolve(ownTransit(view), t, world.idx);
   const go = (to: "next" | "end") => () => send({ type: "skip", to });
   if (s.kind === "train") {
     const trip = world.ds.trips[s.trip];
@@ -87,7 +94,7 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
         title: waiting
           ? "Skip to the departure · Space"
           : "Skip to 30 s before the next stop · Space",
-        disabled: busy || nextEventTime(view.seeker, t, world.idx, "next") === null,
+        disabled: busy || nextEventTime(ownTransit(view), t, world.idx, "next") === null,
         onClick: go("next"),
       },
       {
@@ -135,7 +142,7 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
         paused={paused}
         ff={live ? fastForward(world, view, t, busy) : undefined}
         onPause={
-          live && view.mode === "practice"
+          live && (view.mode === "practice" || view.mode === "hide")
             ? () => send({ type: paused ? "resume" : "pause" })
             : undefined
         }
@@ -482,6 +489,9 @@ export function Panel() {
       </aside>
     );
   }
+
+  if (isHider(view) && !view.result)
+    return <HiderPanel world={world} view={view} t={t} top={<PanelTop t={t} world={world} />} />;
 
   // Mid-round with the link down: the round is paused, the controls dim, one band explains.
   const down = screen.kind !== "none";

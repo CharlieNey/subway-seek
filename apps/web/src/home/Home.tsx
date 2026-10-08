@@ -4,7 +4,7 @@
  * modes are a departures board, the footer is the wainscot. It never connects to a round
  * (the server starts one the moment a page connects); its doors are links to /play.
  */
-import { dailyNumber, nyDate, RECONNECT_GRACE_MS } from "@stand-clear/engine";
+import { dailyNumber, nyDate, RECONNECT_GRACE_MS, SEEKER_LEVELS } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
@@ -269,6 +269,7 @@ function Departures({
       )}
     </div>
   );
+  const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard">("normal");
   const practice = (
     <div className="hp-dep" key="practice">
       <span
@@ -292,10 +293,7 @@ function Departures({
     <section className="hp-s" id="modes">
       <div className="hp-s-head">
         <h2>Departures</h2>
-        <p>
-          Four ways to play. Two are running today. The others are on the timetable and not yet in
-          service.
-        </p>
+        <p>Four ways to play.</p>
       </div>
       <div className="hp-board">
         <div className="hp-board-hd">
@@ -309,7 +307,7 @@ function Departures({
         </div>
         {/* Once today's daily is done, practice moves up. */}
         {done ? [practice, daily] : [daily, practice]}
-        <div className="hp-dep off">
+        <div className="hp-dep">
           <span
             className="mk"
             aria-hidden="true"
@@ -320,11 +318,24 @@ function Departures({
           <div>
             <h3>You hide</h3>
             <p>You ride and hide, a bot seeks. Watch the net close around you.</p>
+            <div className="mt-2 flex gap-1">
+              {(["easy", "normal", "hard"] as const).map((d) => (
+                <button
+                  type="button"
+                  className={`sc-btn sm${difficulty === d ? " ink" : ""}`}
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                >
+                  {d}
+                </button>
+              ))}
+              <p>Searches with {SEEKER_LEVELS[difficulty].endgameAt} stations left.</p>
+            </div>
           </div>
-          <span className="st off">Not in service</span>
-          <span className="sc-btn go" aria-disabled="true">
-            Soon
-          </span>
+          <span className="st">Now boarding</span>
+          <a className="sc-btn go" href={`/play?hide&difficulty=${difficulty}`}>
+            Play
+          </a>
         </div>
         <div className="hp-dep off">
           <span

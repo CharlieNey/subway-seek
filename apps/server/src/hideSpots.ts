@@ -3,6 +3,7 @@ import type { Dataset } from "@stand-clear/data";
 import {
   distanceMeters,
   type HidingSpot,
+  offsetMeters,
   resolve,
   type SoloView,
   streetPoint,
@@ -26,11 +27,25 @@ export async function exitSpot(
   if (!process.env.GOOGLE_STREETVIEW_SERVER_KEY) return null;
   const point = ds.complexes[complex]?.exits[exit];
   if (!point) return null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      return await nearestPano(point[0], point[1]);
-    } catch {
-      if (attempt === 1) return null;
+  const origin = { lat: point[0], lon: point[1] };
+  // The metadata API can return a contributor photosphere in front of Google's
+  // connected street imagery. Probe around that answer, retaining only official
+  // panoramas inside the original 40 m exit search and the allowed zone.
+  const targets = [
+    origin,
+    ...[0, 1, 2, 3].map((i) =>
+      offsetMeters(origin, 25 * Math.cos((i * Math.PI) / 2), 25 * Math.sin((i * Math.PI) / 2)),
+    ),
+  ];
+  for (const target of targets) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const spot = await nearestPano(target.lat, target.lon);
+        if (spot && distanceMeters(origin, spot) <= 40) return spot;
+        break;
+      } catch {
+        if (attempt === 1) return null;
+      }
     }
   }
   return null;

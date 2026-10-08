@@ -11,6 +11,7 @@ import {
 } from "./compass.ts";
 import { useGame, useGamePick } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
+import { isHider, ownTransit } from "./hide.ts";
 import { ARROWS, type Arrow } from "./keys.ts";
 import { useLanded } from "./landing.ts";
 import { useAttributionClearance } from "./map/attribution.ts";
@@ -105,7 +106,7 @@ export function StreetView({ visible }: { visible: boolean }) {
     if (visible && panoRef.current) google.maps.event.trigger(panoRef.current, "resize");
   }, [visible]);
 
-  const s = world && view && t !== null ? resolve(view.seeker, t, world.idx) : null;
+  const s = world && view && t !== null ? resolve(ownTransit(view), t, world.idx) : null;
   const standing = s?.kind === "street" ? s : null;
   const standingKey = standing
     ? (standing.at?.pano ?? `exit:${standing.complex}:${standing.exit}`)
@@ -134,7 +135,7 @@ export function StreetView({ visible }: { visible: boolean }) {
   }, [ready, standingKey, retry]);
 
   // The hider's marker, once you're close enough to see them.
-  const spot = view?.spotNearby ?? null;
+  const spot = isHider(view) ? null : (view?.spotNearby ?? null);
   const spotLat = spot?.lat ?? null;
   const spotLon = spot?.lon ?? null;
   // "Someone's here" sounds as they come into sight, not when a refresh finds them there.
@@ -176,9 +177,9 @@ export function StreetView({ visible }: { visible: boolean }) {
   // Real ms since you came up the stairs (the daylight): standing at the exit, not walked off.
   const sinceArrival =
     standing && !standing.at && t !== null ? ((t - standing.since) * 1000) / speed : 9e9;
-  const shed = view?.curses.some(
-    (c) => c.card === "shed" && t !== null && "until" in c && t < c.until,
-  );
+  const shed =
+    !isHider(view) &&
+    view?.curses.some((c) => c.card === "shed" && t !== null && "until" in c && t < c.until);
   // The arrows walk relative to where you face: ↑ is the street ahead.
   const sortedLinks = [...links].sort((a, b) => (a.heading ?? 0) - (b.heading ?? 0));
   const arrowOf: Record<number, string> = {};
@@ -190,7 +191,7 @@ export function StreetView({ visible }: { visible: boolean }) {
   ))
     arrowOf[i] = key;
   // Fog ramps in once its card is in its chip (Motion: Curse lands).
-  const fog = cursed(view, "fog", t);
+  const fog = isHider(view) ? null : cursed(view, "fog", t);
   const fogLanded = useLanded(fog ? `fog@${fog.at}` : null);
 
   if (!usesGoogle) {

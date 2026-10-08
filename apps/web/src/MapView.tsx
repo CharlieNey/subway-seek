@@ -27,9 +27,11 @@ import { liveQuestion } from "./AskPanel.tsx";
 import { askContext } from "./ask.ts";
 import { reducedMotion, useMotion, watchClearings } from "./clearings.ts";
 import { nowGameTime, useGame, type World } from "./game.ts";
+import { isHider, ownTransit } from "./hide.ts";
 import { MapLegend } from "./MapLegend.tsx";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
 import { createGoogleBase } from "./map/googleBase.ts";
+import { hideLayers } from "./map/hideLayers.ts";
 import {
   buildRound,
   buildStatic,
@@ -201,7 +203,7 @@ function replaySceneAt(
 
 /** "You", or "You · on the Q" while you ride. */
 function meLabel(world: World, view: SoloView, t: number): string {
-  const s = resolve(view.seeker, t, world.idx);
+  const s = resolve(ownTransit(view), t, world.idx);
   if (s.kind !== "train") return "You";
   const trip = world.ds.trips[s.trip];
   const route = trip ? world.ds.routes[trip.route] : undefined;
@@ -216,6 +218,8 @@ export function MapView({ credits = 0 }: { credits?: number }) {
   const follow = useGame((s) => s.follow);
   const setFollow = useGame((s) => s.setFollow);
   const hasView = useGame((s) => s.view !== null);
+  const hiding = useGame((s) => isHider(s.view));
+  const watching = useGame((s) => isHider(s.view) && !!s.view.lock);
   const [base, setBase] = useState<BaseMap | null>(null);
   /** The pointer over the map: on the street, where a click would walk to. */
   const [pointer, setPointer] = useState<{ at: LonLat; x: number; y: number } | null>(null);
@@ -280,6 +284,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     /** The search circle the map last framed. */
     let framed: number | null = null;
     let veiled: number | null = null;
+    let enteredAt: number | null = null;
     // Motion clocks (real ms): when the game's layers came in, when the search circle
     // started drawing, when the preview shape changed, when the round was found.
     const shownAt = performance.now();
@@ -353,11 +358,26 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       } else {
         const { view, follow: following } = useGame.getState();
         if (view) {
-          const position = world.geo.playerPosition(view.seeker, t);
+          const position = world.geo.playerPosition(ownTransit(view), t);
           me = { position, label: meLabel(world, view, t) };
-          if (following) base.setCenter(position);
-          search = searchScene(world, view, t);
+          if (following)
+            base.setCenter(
+              isHider(view) && view.lock ? world.geo.playerPosition(view.seeker, t) : position,
+            );
+          search = isHider(view)
+            ? view.zone && !view.lock && view.station !== null
+              ? {
+                  complex: world.ds.stations[view.station]?.complex ?? 0,
+                  ring: [],
+                  possible: [],
+                }
+              : null
+            : searchScene(world, view, t);
           shape = shapeFor(world, view, t, search);
+          if (isHider(view) && view.entered && view.zone && view.entered.at !== enteredAt) {
+            enteredAt = view.entered.at;
+            base.frameCircle(view.zone, view.zone.radius);
+          }
           // Coming up to the street: frame the search circle (the design's "Search area"),
           // so it nearly fills the strip. Again whenever the strip resizes (below).
           if (search && search.complex !== framed) {
@@ -408,7 +428,10 @@ export function MapView({ credits = 0 }: { credits?: number }) {
           : null,
       });
       // Null: nothing on the map has changed since the last frame.
-      if (layers) base.setLayers(layers);
+      if (layers)
+        base.setLayers(
+          isHider(v) && !replay.active ? [...layers, ...hideLayers(world, v, t)] : layers,
+        );
     };
     tick();
     // The map shrinks to a strip under Street View: frame the search area again once it has.
@@ -431,7 +454,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" />
-      {world && hasView && !mapFailed && <MapLegend world={world} />}
+      {world && hasView && !mapFailed && !hiding && <MapLegend world={world} />}
       {world && pointer && <WalkHere world={world} pointer={pointer} />}
       {hasView && (
         // "Following you" is a map state, so it's a toggle on the map, beside the zoom buttons.
@@ -439,7 +462,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
           <FollowToggle
             on={follow && !mapFailed}
             disabled={!!mapFailed}
-            label={mapFailed ? "No map" : "Following you"}
+            label={mapFailed ? "No map" : watching ? "Following the seeker" : "Following you"}
             onToggle={() => setFollow(!follow)}
           />
         </div>
@@ -494,15 +517,18 @@ function WalkHere({
   const view = useGame((s) => s.view);
   const speed = useGame((s) => s.sync?.speed ?? 6);
   const t = nowGameTime();
-  if (!view || t === null || view.result) return null;
-  const s = resolve(view.seeker, t, world.idx);
+  if (!view || t === null || view.result || (isHider(view) && view.lock)) return null;
+  const s = resolve(ownTransit(view), t, world.idx);
   if (s.kind !== "street") return null;
   const here = streetPoint(s, world.idx);
   const to = { lat: pointer.at[1], lon: pointer.at[0] };
   const station = world.ds.complexes[s.complex];
   // A hider in sight can be walked to past the radius (the engine allows the same).
   const toward = view.spotNearby && distanceMeters(view.spotNearby, to) <= SPOT_REVEAL_METERS;
-  const tooFar = station && !toward && distanceMeters(station, to) > STREET_RADIUS_M;
+  const tooFar =
+    station &&
+    !toward &&
+    distanceMeters(station, to) > (isHider(view) ? ZONE_RADIUS_M : STREET_RADIUS_M);
   const seconds = Math.max(1, Math.round(walkSeconds(here, to) / speed));
   return (
     <div className="pointer-events-none absolute z-10" style={{ left: pointer.x, top: pointer.y }}>

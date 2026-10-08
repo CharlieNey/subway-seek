@@ -5,6 +5,8 @@ import { linkScreen } from "./connection.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { startGame, useGame } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
+import { HiderMapBand } from "./HiderMapBand.tsx";
+import { isHider } from "./hide.ts";
 import { watchLandings } from "./landing.ts";
 import { MapFailed, MapView } from "./MapView.tsx";
 import { useAttributionClearance } from "./map/attribution.ts";
@@ -39,7 +41,7 @@ export function App() {
   // On the street, Street View takes the top of the screen and the map shrinks below it.
   // The top of the tree re-renders only when these change, not with the clock.
   const street = useClockValue((t) => onStreet(view, t, world));
-  const signalLoss = useClockValue((t) => cursed(view, "signalLoss", t));
+  const signalLoss = useClockValue((t) => (isHider(view) ? null : cursed(view, "signalLoss", t)));
   // Overlays on the map keep clear of its own credits (Google's logo and Terms).
   const mapBox = useRef<HTMLDivElement>(null);
   const credits = useAttributionClearance(mapBox);
@@ -65,6 +67,7 @@ export function App() {
           </ErrorBoundary>
           {veiled && <span className="sc-veil strong z-20" />}
           <ReplayControls credits={credits} />
+          <HiderMapBand />
           <SignalLoss curse={signalLoss} />
         </div>
       </div>

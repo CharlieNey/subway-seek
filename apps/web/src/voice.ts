@@ -7,6 +7,9 @@
 import type { SoloView } from "@stand-clear/engine";
 
 export const LINES = {
+  hideDeadline: "This is your station. Everyone off, please.",
+  hideLocked: "You’re set. Hold on and watch them come.",
+  hideZone: "Stay where you are. They’re on your block.",
   dailyOpens: "Now boarding. Today's hider went underground at 10:00.",
   trainsOpen: "Trains are running. Ride toward what's left.",
   firstQuestion: "Your question is on its way. Answers take a minute.",

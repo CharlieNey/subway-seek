@@ -8,21 +8,21 @@ import type { Difficulty } from "@stand-clear/engine";
 export type Door =
   | { kind: "daily" }
   | { kind: "practice"; difficulty?: Difficulty }
+  | { kind: "hide"; difficulty?: Difficulty }
   /** The last daily's replay, kept in this browser: no round, no server. */
   | { kind: "replay" }
   /** No door: carry on with this browser's round, or start the daily. */
   | { kind: "resume" };
 
-const DOOR_PARAMS = ["daily", "practice", "difficulty", "replay"];
+const DOOR_PARAMS = ["daily", "practice", "hide", "difficulty", "replay"];
 
 export function doorOf(search: string): Door {
   const p = new URLSearchParams(search);
   if (p.has("replay")) return { kind: "replay" };
-  if (p.has("practice")) {
+  if (p.has("practice") || p.has("hide")) {
+    const kind = p.has("hide") ? "hide" : "practice";
     const d = p.get("difficulty");
-    return d === "easy" || d === "normal" || d === "hard"
-      ? { kind: "practice", difficulty: d }
-      : { kind: "practice" };
+    return d === "easy" || d === "normal" || d === "hard" ? { kind, difficulty: d } : { kind };
   }
   if (p.has("daily")) return { kind: "daily" };
   return { kind: "resume" };

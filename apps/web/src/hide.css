@@ -1,0 +1,100 @@
+.sc-hide-deadline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  color: var(--color-terra);
+  font: 700 12px var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sc-hide-deadline::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: currentColor;
+}
+.sc-hide-exit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border-bottom: 1px dashed var(--color-grout);
+  padding: 10px 6px;
+  font-size: 13px;
+  text-align: left;
+}
+.sc-hide-exit:disabled {
+  color: var(--color-ink-3);
+}
+.sc-hide-exit-number {
+  border: 2px solid currentColor;
+  min-width: 19px;
+  height: 19px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 15px;
+}
+.sc-hide-lock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.sc-hide-lock > i {
+  flex: none;
+  width: 25px;
+  height: 25px;
+  border: 2px dashed var(--color-ink-3);
+  padding: 5px;
+}
+.sc-hide-lock > i::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--color-ink-3);
+}
+.sc-hide-lock.locked > i {
+  border: 3px solid var(--color-grout);
+  padding: 3px;
+}
+.sc-hide-lock.locked > i::after {
+  background: var(--color-ink);
+  border: 0;
+}
+.sc-hide-rules {
+  padding-left: 14px;
+  margin-top: 12px;
+  list-style: square;
+  font-size: 13px;
+}
+.sc-hide-rules li {
+  margin: 8px 0;
+}
+.sc-hide-rules li::marker {
+  color: var(--color-terra);
+}
+.sc-hide-card {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--color-grout);
+  text-align: left;
+  background: var(--color-glaze-hi);
+}
+.sc-hide-card.selected {
+  border: 2px solid var(--color-ink);
+  padding: 9px;
+  background: var(--color-glaze);
+}
+.sc-hide-card:active {
+  transform: translateY(2px);
+}
+
+.sc-hide-exit.sc-express-ink {
+  flex-direction: row;
+  align-items: center;
+}

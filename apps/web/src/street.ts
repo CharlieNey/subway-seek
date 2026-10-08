@@ -5,6 +5,7 @@
  */
 import { type Photo, resolve, type SoloView } from "@stand-clear/engine";
 import { nowGameTime, useGame, type World } from "./game.ts";
+import { isHider, ownTransit } from "./hide.ts";
 import { GOOGLE_MAPS_KEY, loadGoogleMaps } from "./map/loadGoogle.ts";
 
 export interface PanoPoint {
@@ -59,7 +60,8 @@ export async function panoPoint(pano: string): Promise<PanoPoint | null> {
 /** You're on the street (standing, or walking up/along it): Street View takes over. */
 export function onStreet(view: SoloView | null, t: number | null, world: World | null): boolean {
   if (!view || t === null || !world || view.result) return false;
-  const s = resolve(view.seeker, t, world.idx);
+  if (isHider(view) && view.lock) return false;
+  const s = resolve(ownTransit(view), t, world.idx);
   return (
     s.kind === "street" || (s.kind === "walking" && (s.reason === "street" || s.reason === "exit"))
   );

@@ -8,6 +8,7 @@ import {
   TOURIST_WALK_M,
 } from "@stand-clear/engine";
 import type { World } from "./game.ts";
+import { isHider } from "./hide.ts";
 import { useLanded } from "./landing.ts";
 import { displayName } from "./names.ts";
 import { CardEmblem } from "./ui/Card.tsx";
@@ -74,7 +75,15 @@ export function CurseChips({ world, t, view }: { world: World; t: number; view: 
   return (
     <div className="mx-4 mt-2.5 flex flex-col gap-1.5">
       {view.curses.map((c) => (
-        <CurseChip key={`${c.card}-${c.at}`} c={c} line={curseLine(c, t, world, view)} />
+        <CurseChip
+          key={`${c.card}-${c.at}`}
+          c={c}
+          line={
+            isHider(view)
+              ? { ...curseLine(c, t, world, view), what: CARDS[c.card].rule }
+              : curseLine(c, t, world, view)
+          }
+        />
       ))}
     </div>
   );

@@ -10,7 +10,7 @@ export function useGameTime(hz = 4): number | null {
     const id = setInterval(() => setNow(Date.now()), 1000 / hz);
     return () => clearInterval(id);
   }, [hz]);
-  return sync ? syncedGameTime(sync, now) : null;
+  return sync ? syncedGameTime(sync, Math.max(now, sync.serverNow)) : null;
 }
 
 /**

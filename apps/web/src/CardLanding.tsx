@@ -7,6 +7,8 @@
 import { CARDS } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
 import { type Landing, landingPhase } from "./curseMotion.ts";
+import { useGame } from "./game.ts";
+import { isHider } from "./hide.ts";
 import { useLandings } from "./landing.ts";
 import { CardFace } from "./ui/Card.tsx";
 
@@ -24,6 +26,7 @@ function targetOf(l: Landing): DOMRect | null {
 
 export function CardLanding() {
   const queue = useLandings((s) => s.queue);
+  const hider = useGame((s) => isHider(s.view));
   const [active, setActive] = useState<Landing | null>(null);
   const card = useRef<HTMLDivElement>(null);
 
@@ -95,7 +98,7 @@ export function CardLanding() {
         className="absolute top-0 left-0 origin-top-left will-change-transform"
         style={{ opacity: 0 }}
       >
-        <CardFace card={active.card} />
+        <CardFace card={active.card} hider={hider} />
       </div>
     </div>
   );

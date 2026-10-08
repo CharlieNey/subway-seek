@@ -12,7 +12,7 @@
  * Cloud console can go to 0 (docs/LAUNCH.md).
  */
 import { createHmac } from "node:crypto";
-import type { Photo, SoloView } from "@stand-clear/engine";
+import type { HiderView, Photo, SoloView } from "@stand-clear/engine";
 
 /** Google's URL signing: the secret is URL-safe base64; so is the signature. */
 export function signUrl(url: string, secret: string): string {
@@ -59,7 +59,7 @@ export function staticPhotoUrl(
  * options (no secret configured) the view is returned as is and the client builds
  * unsigned URLs itself.
  */
-export function withPhotoUrls(view: SoloView, opts: StaticPhotoOptions | null): SoloView {
+export function withPhotoUrls<T extends SoloView>(view: T, opts: StaticPhotoOptions | null): T {
   if (!opts) return view;
   let changed = false;
   const asked = view.asked.map((a) => {
@@ -69,5 +69,19 @@ export function withPhotoUrls(view: SoloView, opts: StaticPhotoOptions | null): 
     const photo = answer.photo;
     return { ...a, answer: { photo: { ...photo, url: staticPhotoUrl(photo, opts) } } };
   });
+  if ("role" in view && view.role === "hider") {
+    const h = view as unknown as HiderView;
+    return {
+      ...view,
+      asked,
+      spotPhoto: h.spotPhoto ? { ...h.spotPhoto, url: staticPhotoUrl(h.spotPhoto, opts) } : null,
+      incoming: h.incoming.map((p) => {
+        const a = p.trueAnswer;
+        return typeof a === "object" && "photo" in a
+          ? { ...p, trueAnswer: { photo: { ...a.photo, url: staticPhotoUrl(a.photo, opts) } } }
+          : p;
+      }),
+    };
+  }
   return changed ? { ...view, asked } : view;
 }

@@ -473,8 +473,19 @@ describe("human answers and cards", () => {
       kind: "train",
       to: (ds.trips[d.trip]?.stops.length as number) - 1,
     });
+    const alternative = s(r, { type: "alightAt", stop: d.stop + 2 }, t);
+    expect(hiderView(alternative, t, idx).seekerTrail).toEqual(view.seekerTrail);
     expect(view).not.toHaveProperty("beliefs");
-    expect(view).not.toHaveProperty("seekerTrail");
+    expect(view.seekerTrail.every((e) => e.t <= t)).toBe(true);
+    expect(
+      view.seekerTrail
+        .filter((e) => e.state.kind === "train")
+        .every(
+          (e) =>
+            e.state.kind === "train" &&
+            e.state.to === (idx.ds.trips[e.state.trip]?.stops.length ?? 0) - 1,
+        ),
+    ).toBe(true);
   });
 });
 

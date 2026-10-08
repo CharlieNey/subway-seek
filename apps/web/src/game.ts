@@ -16,6 +16,7 @@ import {
   type ClientIntent,
   type ClockSync,
   Geometry,
+  type HiderView,
   type Question,
   SESSION_PARAM,
   type ServerMessage,
@@ -79,7 +80,7 @@ interface GameStore {
   everOpen: boolean;
   world: World | null;
   sync: ClockSync | null;
-  view: SoloView | null;
+  view: SoloView | HiderView | null;
   tab: "travel" | "ask";
   /** This daily was already finished in this browser: playing it again doesn't count. */
   alreadyPlayed: boolean;
@@ -215,7 +216,7 @@ export function loadSession(): StoredSession | null {
     return {
       token: s.token,
       live: !!s.live,
-      mode: s.mode === "daily" || s.mode === "practice" ? s.mode : null,
+      mode: s.mode === "daily" || s.mode === "practice" || s.mode === "hide" ? s.mode : null,
       daily: typeof s.daily === "number" ? s.daily : null,
       at: typeof s.at === "number" ? s.at : 0,
     };
@@ -247,6 +248,12 @@ window.addEventListener("pagehide", rememberSession);
 
 /** How this page was opened: today's daily, practice, the last daily's replay, or carry on. */
 const door = doorOf(location.search);
+
+export function openingRound(): Extract<Door, { kind: "hide" }> | { kind: "daily" } {
+  if (door.kind === "hide") return door;
+  const stored = door.kind === "resume" ? loadSession() : null;
+  return stored?.live && stored.mode === "hide" ? { kind: "hide" } : { kind: "daily" };
+}
 
 let sessionToken: string | null = null;
 
@@ -398,9 +405,9 @@ function connect() {
   const url = new URL(SERVER_URL);
   const token = sessionToken ?? tokenFor(door, loadSession());
   if (token) url.searchParams.set(SESSION_PARAM, token);
-  else if (door.kind === "practice") {
+  else if (door.kind === "practice" || door.kind === "hide") {
     // A new session starts the round the door asked for.
-    url.searchParams.set("mode", "practice");
+    url.searchParams.set("mode", door.kind);
     if (door.difficulty) url.searchParams.set("difficulty", door.difficulty);
   }
   const ws = new WebSocket(url);

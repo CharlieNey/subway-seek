@@ -22,6 +22,7 @@ import {
   isMapQuestion,
   isSpotQuestion,
   PHOTO_LOOKS,
+  type Photo,
   photoCamera,
   type Question,
   questionKey,
@@ -636,6 +637,26 @@ function visibleTransit(s: Transit, t: number, idx: TimetableIndex): Transit {
     ? { ...resolved, to: (idx.ds.trips[resolved.trip]?.stops.length ?? 1) - 1 }
     : resolved;
 }
+/** A completed public trail: hide private alighting choices and their no-op events. */
+function publicSeekerTrail(round: SoloRound, t: number, idx: TimetableIndex): TrailEntry[] {
+  const out: TrailEntry[] = [];
+  const add = (at: number, state: Transit) => {
+    if (JSON.stringify(out.at(-1)?.state) !== JSON.stringify(state)) out.push({ t: at, state });
+  };
+  for (let i = 0; i < round.seekerTrail.length; i++) {
+    const e = round.seekerTrail[i] as TrailEntry;
+    if (e.t > t) break;
+    add(e.t, visibleTransit(e.state, e.t, idx));
+    const until = Math.min(t, round.seekerTrail[i + 1]?.t ?? t);
+    const end = resolve(e.state, until, idx);
+    if (
+      (e.state.kind === "train" || e.state.kind === "walking") &&
+      (end.kind === "platform" || end.kind === "street")
+    )
+      add(end.since, end);
+  }
+  return out;
+}
 export type HideStatus = "riding" | "changing" | "walking";
 export function hideStatus(round: SoloRound, t: number, idx: TimetableIndex): HideStatus {
   const s = round.human && resolve(round.human.transit, t, idx);
@@ -648,9 +669,11 @@ export interface HiderView extends Omit<SoloView, "seeker"> {
   seeker: Transit;
   self: Transit;
   ownTrail: TrailEntry[];
+  seekerTrail: TrailEntry[];
   station: number | null;
   zone: { lat: number; lon: number; radius: number } | null;
   spot: HidingSpot | null;
+  spotPhoto: Photo | null;
   lock: HumanHider["lock"];
   entered: HumanHider["entered"];
   hand: CardId[];
@@ -683,9 +706,11 @@ export function hiderView(round: SoloRound, t: number, idx: TimetableIndex): Hid
     seeker: visibleTransit(round.seeker, t, idx),
     self: h.transit,
     ownTrail: round.hiderTrail,
+    seekerTrail: publicSeekerTrail(round, t, idx),
     station: h.station,
     zone: c ? { lat: c.lat, lon: c.lon, radius: ZONE_RADIUS_M } : null,
     spot: hiderPoint(round, t, idx),
+    spotPhoto: round.spot ? photoCamera(round.spot.pano, "N") : null,
     lock: h.lock,
     entered: h.entered,
     hand: round.hand,
