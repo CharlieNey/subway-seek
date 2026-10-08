@@ -40,7 +40,8 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [ ] Name check: trademark and app-store search for "Stand Clear" before buying the domain.
 - [x] Limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; a refused connection shows the server's reason (2026-10-07).
 - [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the instance's volume.
-- [ ] Play a full daily and a practice round on the deployed site, on Chrome, Safari and Firefox.
+- [ ] Play a full daily, practice seeking and You hide on the deployed site, on Chrome, Safari and Firefox.
+- [x] S3 role-filtered sockets, paced seeker, panorama-ID persistence, hider results and separate browser history (2026-10-08). Photo screens use fixtures; the bot has no photo perception.
 
 ## Pre-launch review (2026-10-06)
 

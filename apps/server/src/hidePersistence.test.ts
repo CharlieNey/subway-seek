@@ -1,9 +1,12 @@
 import { loadDataset } from "@stand-clear/data/node";
 import {
+  advanceSolo,
+  applySoloIntent,
   buildIndex,
   createHideRound,
   type HidingSpot,
   type HumanHider,
+  offsetMeters,
   type SoloRound,
   startClock,
 } from "@stand-clear/engine";
@@ -85,4 +88,44 @@ it("a missing panorama fails restoration rather than making up a location", asyn
       async () => null,
     ),
   ).rejects.toThrow("could not be restored");
+});
+
+it("rehydrates the seeker's partial walk when the hider comes into sight", async () => {
+  const ds = loadDataset();
+  const idx = buildIndex(ds);
+  const hub = ds.stations.findIndex((s) => s.id === "127");
+  const base = createHideRound(idx, { hub, hideStart: 36000 });
+  const complex = base.reachable[0] as number;
+  const c = ds.complexes[complex];
+  if (!c) throw new Error("station");
+  const a = { ...offsetMeters(c, -100, 0), pano: "a" };
+  const b = { ...offsetMeters(c, 100, 0), pano: "b" };
+  const spot = { ...c, pano: "spot" };
+  const at = 37400;
+  const seeker = { kind: "street" as const, complex, exit: 0, since: at, up: at, at: a };
+  const initial: SoloRound = {
+    ...base,
+    hider: complex,
+    spot,
+    seeker,
+    seekerTrail: [{ t: at, state: seeker }],
+    human: {
+      ...(base.human as HumanHider),
+      station: c.stations[0] as number,
+      transit: { ...seeker, at: spot },
+      lock: { at: 37320, cause: "hideHere" },
+    },
+  };
+  const moved = applySoloIntent(initial, { type: "walkTo", ...b }, at, idx);
+  if (!moved.ok) throw new Error(moved.error);
+  const stopped = advanceSolo(moved.round, at + 180, idx);
+  expect(stopped.seeker.kind).toBe("street");
+  const saved = storeHideRound(stopped, ds);
+  const json = JSON.stringify(saved);
+  expect(json).not.toContain(String(a.lon));
+  expect(json).not.toContain(String(b.lon));
+  const restored = await restoreHideRound(saved, async (id) =>
+    id === "a" ? a : id === "b" ? b : spot,
+  );
+  expect(restored).toEqual(stopped);
 });

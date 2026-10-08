@@ -1,0 +1,157 @@
+n,hub,strategy,difficulty,crossover,station,found,minutes,score,stationMinutes,lock,questions,actions,minActionRealSeconds,longestRideIdleRealSeconds
+0,127,platform-wait,easy,4,34 St-Penn Station,True,58.1,148.1,29,hideHere,9,53,3,42
+1,631,latest-exit,easy,4,3 Av-138 St,True,104.5,232.5,102.5,latestExit,9,36,3,166
+2,235,never-lock,easy,4,Brooklyn Bridge-City Hall,True,82.2,204.2,58,zone,9,60,3,50
+3,635,lock-far,easy,4,Brooklyn Bridge-City Hall,True,48.7,165.7,23,hideHere,8,43,3,42
+4,G14,lock-near,easy,4,Kew Gardens-Union Tpke,True,37.5,128.5,28,hideHere,7,28,3,42
+5,A38,platform-wait,easy,4,Chambers St,True,49.6,141.6,27,hideHere,8,39,3,49
+6,A24,latest-exit,easy,4,116 St,True,92.3,207.3,49,latestExit,10,64,3,101
+7,A41,never-lock,easy,4,Utica Av,True,70.9,177.9,48,zone,8,36,3,102
+8,D17,lock-far,easy,4,116 St,True,83.2,213.2,64.5,hideHere,11,56,3,103
+9,414,lock-near,easy,4,Burnside Av,True,105.5,173.5,84.5,hideHere,8,61,3,151
+10,A51,platform-wait,easy,4,Liberty Av,True,33.2,91.2,8,hideHere,4,25,3,83
+11,D20,latest-exit,easy,4,Queens Plaza,True,69.4,196.4,51.5,latestExit,11,52,3,108
+12,A15,never-lock,easy,4,Tremont Av,True,102,193,46,zone,11,56,3,68
+13,127,lock-far,easy,4,96 St,True,101.5,229.5,61.5,hideHere,12,67,3,58
+14,631,lock-near,easy,4,125 St,True,57.8,167.8,32,hideHere,10,53,3,62
+15,235,platform-wait,easy,4,Bergen St,True,94.3,187.3,38,hideHere,10,62,3,58
+16,635,latest-exit,easy,4,Brooklyn Bridge-City Hall,True,57.9,142.9,23,latestExit,9,52,3,42
+17,G14,never-lock,easy,4,Forest Hills-71 Av,True,61.8,153.8,12,zone,8,50,3,68
+18,A38,lock-far,easy,4,Utica Av,False,120,249,80.5,hideHere,14,59,3,141
+19,A24,lock-near,easy,4,W 4 St-Wash Sq,True,55.9,164.9,47,hideHere,11,40,3,49
+20,A41,platform-wait,easy,4,Hoyt-Schermerhorn Sts,True,58.6,145.6,7.5,hideHere,7,50,3,42
+21,D17,latest-exit,easy,4,Delancey St-Essex St,True,66.5,181.5,64.5,latestExit,7,33,3,107
+22,414,never-lock,easy,4,Grand Central-42 St,True,88.2,201.2,51.5,zone,11,42,3,94
+23,A51,lock-far,easy,4,Clinton-Washington Avs,False,120,202,117,hideHere,8,46,3,146
+24,D20,lock-near,easy,4,York St,False,120,218,103,hideHere,12,65,3,122
+25,A15,platform-wait,easy,4,116 St,True,33.3,85.3,7.5,hideHere,6,37,3,42
+26,127,latest-exit,easy,4,Rector St,True,91.1,196.1,57.5,latestExit,10,71,3,126
+27,631,never-lock,easy,4,125 St,True,73.3,189.3,43.5,zone,12,47,3,48
+28,235,lock-far,easy,4,Fulton St,True,89.3,238.3,40,hideHere,14,58,3,116
+29,635,lock-near,easy,4,86 St,True,32.7,140.7,28,hideHere,7,25,3,42
+30,G14,platform-wait,easy,4,65 St,True,81.4,180.4,38.5,hideHere,11,57,3,85
+31,A38,latest-exit,easy,4,Utica Av,True,66.5,190.5,52.5,latestExit,10,47,3,135
+32,A24,never-lock,easy,4,W 4 St-Wash Sq,True,66,188,23.5,zone,11,48,3,42
+33,A41,lock-far,easy,4,Broadway Junction,True,67.3,182.3,36.5,hideHere,11,56,3,56
+34,D17,lock-near,easy,4,Grand St,True,79.5,212.5,47.5,hideHere,13,57,3,78
+35,414,platform-wait,easy,4,149 St-Hostos,True,51.1,112.1,38.5,hideHere,4,34,3,65
+36,A51,latest-exit,easy,4,Howard Beach-JFK Airport,True,79,195,77,latestExit,8,28,3,128
+37,D20,never-lock,easy,4,Carroll St,True,84.3,194.3,60,zone,10,43,3,101
+38,A15,lock-far,easy,4,W 4 St-Wash Sq,True,62.5,160.5,34.5,hideHere,10,36,3,74
+39,127,lock-near,easy,4,Wall St,True,71.4,198.4,47.5,hideHere,11,53,3,42
+40,631,platform-wait,easy,4,59 St,False,120,193,6.5,hideHere,8,62,3,42
+41,235,latest-exit,easy,4,Church Av,True,96.5,181.5,94,latestExit,9,70,3,62
+42,635,never-lock,easy,4,103 St,True,75.5,195.5,51,zone,11,55,3,83
+43,G14,lock-far,easy,4,Roosevelt Island,True,75.4,188.4,60,hideHere,10,51,3,49
+44,A38,lock-near,easy,4,50 St,True,56.9,176.9,28.5,hideHere,10,60,3,42
+45,A24,platform-wait,easy,4,Times Sq-42 St,True,71.8,161.8,6.5,hideHere,10,42,3,45
+46,A41,latest-exit,easy,4,4 Av-9 St,True,12,57,12,,2,6,3,42
+47,D17,never-lock,easy,4,Delancey St-Essex St,True,103.7,235.7,64.5,zone,11,57,3,77
+48,414,lock-far,easy,4,125 St,True,31.8,85.8,14.5,hideHere,4,27,3,128
+49,A51,lock-near,easy,4,Howard Beach-JFK Airport,True,81.7,158.7,77,hideHere,8,41,3,128
+50,D20,platform-wait,easy,4,34 St-Herald Sq,True,49.6,122.6,6,hideHere,9,52,3,42
+51,A15,latest-exit,easy,4,145 St,True,39.8,111.8,17,latestExit,6,42,3,88
+0,127,platform-wait,normal,3,34 St-Penn Station,True,58.1,148.1,29,hideHere,9,53,3,42
+1,631,latest-exit,normal,3,3 Av-138 St,True,104.5,232.5,102.5,latestExit,9,36,3,166
+2,235,never-lock,normal,3,Brooklyn Bridge-City Hall,True,82.2,204.2,58,zone,9,60,3,50
+3,635,lock-far,normal,3,Brooklyn Bridge-City Hall,True,49.5,168.5,36,hideHere,8,38,3,42
+4,G14,lock-near,normal,3,Kew Gardens-Union Tpke,True,37.5,128.5,28,hideHere,7,28,3,42
+5,A38,platform-wait,normal,3,Chambers St,True,71.9,176.9,27,hideHere,10,51,3,49
+6,A24,latest-exit,normal,3,116 St,True,92.3,207.3,49,latestExit,10,64,3,101
+7,A41,never-lock,normal,3,Utica Av,True,70.9,187.9,48,zone,9,37,3,81
+8,D17,lock-far,normal,3,116 St,True,83.2,213.2,64.5,hideHere,11,56,3,103
+9,414,lock-near,normal,3,Burnside Av,True,81.5,143.5,60.5,hideHere,7,50,3,176
+10,A51,platform-wait,normal,3,Liberty Av,True,44.3,148.3,8,hideHere,9,33,3,49
+11,D20,latest-exit,normal,3,Queens Plaza,True,69.4,196.4,51.5,latestExit,11,52,3,108
+12,A15,never-lock,normal,3,Tremont Av,True,102,193,46,zone,11,56,3,68
+13,127,lock-far,normal,3,96 St,True,65,211,52,hideHere,10,49,3,52
+14,631,lock-near,normal,3,125 St,True,57.8,167.8,32,hideHere,10,53,3,62
+15,235,platform-wait,normal,3,Bergen St,True,94.3,187.3,38,hideHere,10,62,3,58
+16,635,latest-exit,normal,3,Brooklyn Bridge-City Hall,True,61.9,166.9,24.3,latestExit,10,57,3,42
+17,G14,never-lock,normal,3,Forest Hills-71 Av,True,61.8,153.8,12,zone,8,50,3,68
+18,A38,lock-far,normal,3,Utica Av,False,120,249,80.5,hideHere,14,59,3,141
+19,A24,lock-near,normal,3,W 4 St-Wash Sq,True,55.9,164.9,47,hideHere,11,40,3,49
+20,A41,platform-wait,normal,3,Hoyt-Schermerhorn Sts,True,52.2,162.2,7.5,hideHere,9,37,3,42
+21,D17,latest-exit,normal,3,Delancey St-Essex St,True,66.5,181.5,64.5,latestExit,7,33,3,107
+22,414,never-lock,normal,3,Grand Central-42 St,True,88.2,201.2,51.5,zone,11,42,3,94
+23,A51,lock-far,normal,3,Clinton-Washington Avs,False,120,220,106,hideHere,10,52,3,146
+24,D20,lock-near,normal,3,York St,False,120,237,99.5,hideHere,11,57,3,170
+25,A15,platform-wait,normal,3,116 St,True,33.3,85.3,7.5,hideHere,6,37,3,42
+26,127,latest-exit,normal,3,Rector St,True,91.1,196.1,57.5,latestExit,10,71,3,126
+27,631,never-lock,normal,3,125 St,True,73.3,189.3,43.5,zone,12,47,3,48
+28,235,lock-far,normal,3,Fulton St,True,87.5,241.5,72.5,hideHere,11,44,3,303
+29,635,lock-near,normal,3,86 St,True,73.9,223.9,57,hideHere,12,49,3,48
+30,G14,platform-wait,normal,3,65 St,True,61.1,153.1,30.5,hideHere,8,55,3,80
+31,A38,latest-exit,normal,3,Utica Av,True,70.7,224.7,52.5,latestExit,12,49,3,49
+32,A24,never-lock,normal,3,W 4 St-Wash Sq,True,66,188,23.5,zone,11,48,3,42
+33,A41,lock-far,normal,3,Broadway Junction,True,67.3,182.3,36.5,hideHere,11,56,3,56
+34,D17,lock-near,normal,3,Grand St,True,79.5,212.5,47.5,hideHere,13,57,3,78
+35,414,platform-wait,normal,3,149 St-Hostos,True,51.1,112.1,38.5,hideHere,4,34,3,65
+36,A51,latest-exit,normal,3,Howard Beach-JFK Airport,True,79,195,77,latestExit,8,28,3,128
+37,D20,never-lock,normal,3,Carroll St,False,120,255,40,zone,11,61,3,67
+38,A15,lock-far,normal,3,W 4 St-Wash Sq,True,62.5,160.5,34.5,hideHere,10,36,3,74
+39,127,lock-near,normal,3,Wall St,True,71.4,198.4,47.5,hideHere,11,53,3,42
+40,631,platform-wait,normal,3,59 St,True,33.3,110.3,6.5,hideHere,7,34,3,42
+41,235,latest-exit,normal,3,Church Av,True,96.5,181.5,94,latestExit,9,70,3,62
+42,635,never-lock,normal,3,103 St,True,75.5,195.5,51,zone,11,55,3,83
+43,G14,lock-far,normal,3,Roosevelt Island,True,75.4,177.4,60,hideHere,9,51,3,61
+44,A38,lock-near,normal,3,50 St,True,46,164,42,hideHere,7,32,3,50
+45,A24,platform-wait,normal,3,Times Sq-42 St,True,71.8,161.8,6.5,hideHere,10,42,3,45
+46,A41,latest-exit,normal,3,4 Av-9 St,True,12,57,12,,2,6,3,42
+47,D17,never-lock,normal,3,Delancey St-Essex St,True,103.7,235.7,64.5,zone,11,57,3,77
+48,414,lock-far,normal,3,125 St,True,31.8,85.8,14.5,hideHere,4,27,3,128
+49,A51,lock-near,normal,3,Howard Beach-JFK Airport,True,98.9,209.9,61,hideHere,12,55,3,122
+50,D20,platform-wait,normal,3,34 St-Herald Sq,True,49.6,122.6,6,hideHere,9,52,3,42
+51,A15,latest-exit,normal,3,145 St,True,39.8,111.8,17,latestExit,6,42,3,88
+0,127,platform-wait,hard,2,34 St-Penn Station,True,44.6,125.6,29,hideHere,7,30,3,42
+1,631,latest-exit,hard,2,3 Av-138 St,True,104.5,232.5,102.5,latestExit,9,36,3,166
+2,235,never-lock,hard,2,Brooklyn Bridge-City Hall,True,84.8,216.8,58,zone,10,65,3,47
+3,635,lock-far,hard,2,Brooklyn Bridge-City Hall,True,64.9,206.9,41.5,hideHere,10,44,3,88
+4,G14,lock-near,hard,2,Kew Gardens-Union Tpke,True,37.5,128.5,28,hideHere,7,28,3,42
+5,A38,platform-wait,hard,2,Chambers St,True,71.9,176.9,27,hideHere,10,51,3,49
+6,A24,latest-exit,hard,2,116 St,True,53.4,171.4,48,latestExit,7,30,3,62
+7,A41,never-lock,hard,2,Utica Av,True,63.7,202.7,40.5,zone,9,33,3,116
+8,D17,lock-far,hard,2,116 St,True,84.5,226.5,64.5,hideHere,13,54,3,67
+9,414,lock-near,hard,2,Burnside Av,True,81.5,143.5,60.5,hideHere,7,50,3,176
+10,A51,platform-wait,hard,2,Liberty Av,True,44.3,148.3,8,hideHere,9,33,3,49
+11,D20,latest-exit,hard,2,Queens Plaza,True,77.6,224.6,51.5,latestExit,13,47,3,49
+12,A15,never-lock,hard,2,Tremont Av,True,68.1,171.1,29,zone,11,50,3,60
+13,127,lock-far,hard,2,96 St,True,65,211,52,hideHere,10,49,3,52
+14,631,lock-near,hard,2,125 St,True,57.8,177.8,32,hideHere,11,54,3,62
+15,235,platform-wait,hard,2,Bergen St,True,70.7,178.7,38,hideHere,11,46,3,58
+16,635,latest-exit,hard,2,Brooklyn Bridge-City Hall,True,63.5,143.5,61.5,latestExit,7,26,3,76
+17,G14,never-lock,hard,2,Forest Hills-71 Av,True,61.8,153.8,12,zone,8,50,3,68
+18,A38,lock-far,hard,2,Utica Av,True,99.8,214.8,72.5,hideHere,12,53,3,94
+19,A24,lock-near,hard,2,W 4 St-Wash Sq,True,85.9,247.9,45,hideHere,13,52,3,49
+20,A41,platform-wait,hard,2,Hoyt-Schermerhorn Sts,True,52.2,162.2,7.5,hideHere,9,37,3,42
+21,D17,latest-exit,hard,2,Delancey St-Essex St,True,66.5,181.5,64.5,latestExit,7,33,3,107
+22,414,never-lock,hard,2,Grand Central-42 St,True,70.7,200.7,44,zone,11,42,3,50
+23,A51,lock-far,hard,2,Clinton-Washington Avs,True,81.9,193.9,61,hideHere,10,53,3,142
+24,D20,lock-near,hard,2,York St,False,120,237,99.5,hideHere,11,57,3,170
+25,A15,platform-wait,hard,2,116 St,True,33.3,85.3,7.5,hideHere,6,37,3,42
+26,127,latest-exit,hard,2,Rector St,True,78.5,148.5,76.5,latestExit,6,33,3,136
+27,631,never-lock,hard,2,125 St,True,63.5,180.5,31.5,zone,10,46,3,42
+28,235,lock-far,hard,2,Fulton St,True,87.5,241.5,72.5,hideHere,11,44,3,303
+29,635,lock-near,hard,2,86 St,True,64.1,213.1,53.5,hideHere,11,46,3,50
+30,G14,platform-wait,hard,2,65 St,True,61.1,153.1,30.5,hideHere,8,55,3,80
+31,A38,latest-exit,hard,2,Utica Av,True,70.7,224.7,52.5,latestExit,12,49,3,49
+32,A24,never-lock,hard,2,W 4 St-Wash Sq,True,66,188,23.5,zone,11,48,3,42
+33,A41,lock-far,hard,2,Broadway Junction,True,67.3,182.3,36.5,hideHere,11,56,3,56
+34,D17,lock-near,hard,2,Grand St,True,102.9,246.9,79.5,hideHere,12,55,3,59
+35,414,platform-wait,hard,2,149 St-Hostos,True,51.1,112.1,38.5,hideHere,4,34,3,65
+36,A51,latest-exit,hard,2,Howard Beach-JFK Airport,True,79,212,77,latestExit,8,24,3,172
+37,D20,never-lock,hard,2,Carroll St,False,120,255,40,zone,11,61,3,67
+38,A15,lock-far,hard,2,W 4 St-Wash Sq,True,74.4,215.4,36.5,hideHere,13,36,3,42
+39,127,lock-near,hard,2,Wall St,True,82.8,233.8,71.5,hideHere,10,55,3,88
+40,631,platform-wait,hard,2,59 St,True,33.3,110.3,6.5,hideHere,7,34,3,42
+41,235,latest-exit,hard,2,Church Av,True,89.5,191.5,87,latestExit,9,62,3,62
+42,635,never-lock,hard,2,103 St,True,58.6,192.6,47,zone,10,33,3,47
+43,G14,lock-far,hard,2,Roosevelt Island,True,75.4,177.4,60,hideHere,9,51,3,61
+44,A38,lock-near,hard,2,50 St,True,46,164,42,hideHere,7,32,3,50
+45,A24,platform-wait,hard,2,Times Sq-42 St,True,49.8,148.8,6.5,hideHere,9,31,3,45
+46,A41,latest-exit,hard,2,4 Av-9 St,True,18.9,98.9,10,latestExit,4,9,3,42
+47,D17,never-lock,hard,2,Delancey St-Essex St,True,103.7,235.7,64.5,zone,11,57,3,77
+48,414,lock-far,hard,2,125 St,True,31.8,85.8,14.5,hideHere,4,27,3,128
+49,A51,lock-near,hard,2,Howard Beach-JFK Airport,True,98.9,209.9,61,hideHere,12,55,3,122
+50,D20,platform-wait,hard,2,34 St-Herald Sq,True,79.1,194.1,6,hideHere,10,72,3,42
+51,A15,latest-exit,hard,2,145 St,True,39.8,111.8,17,latestExit,6,42,3,88

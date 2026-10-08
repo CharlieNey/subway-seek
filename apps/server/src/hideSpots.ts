@@ -8,6 +8,7 @@ import {
   type SoloView,
   streetPoint,
   type TimetableIndex,
+  ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import { nearestPano, officialSpot } from "./spot.ts";
 
@@ -25,8 +26,16 @@ export async function exitSpot(
   exit: number,
 ): Promise<HidingSpot | null> {
   if (!process.env.GOOGLE_STREETVIEW_SERVER_KEY) return null;
-  const point = ds.complexes[complex]?.exits[exit];
-  if (!point) return null;
+  const station = ds.complexes[complex];
+  const point = station?.exits[exit];
+  if (!point || !station) return null;
+  const anyInside = station.exits.some(
+    ([lat, lon]) => distanceMeters(station, { lat, lon }) <= ZONE_RADIUS_M,
+  );
+  const nearest = station.exits
+    .map(([lat, lon], i) => ({ i, meters: distanceMeters(station, { lat, lon }) }))
+    .sort((a, b) => a.meters - b.meters)[0]?.i;
+  const exception = !anyInside && exit === nearest;
   const origin = { lat: point[0], lon: point[1] };
   // The metadata API can return a contributor photosphere in front of Google's
   // connected street imagery. Probe around that answer, retaining only official
@@ -41,7 +50,12 @@ export async function exitSpot(
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const spot = await nearestPano(target.lat, target.lon);
-        if (spot && distanceMeters(origin, spot) <= 40) return spot;
+        if (
+          spot &&
+          distanceMeters(origin, spot) <= 40 &&
+          (exception || distanceMeters(station, spot) <= ZONE_RADIUS_M)
+        )
+          return spot;
         break;
       } catch {
         if (attempt === 1) return null;

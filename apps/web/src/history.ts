@@ -3,16 +3,15 @@
  * else depends on it). Every access is guarded: storage can be blocked or cleared.
  */
 import type { Dataset, LatLon } from "@stand-clear/data";
-import {
-  type Answer,
-  categoryOf,
-  type Difficulty,
-  type HiderView,
-  type OnStreet,
-  type Place,
-  type SoloView,
-  type TrailEntry,
-  type Transit,
+import type {
+  Answer,
+  Difficulty,
+  HiderView,
+  OnStreet,
+  Place,
+  SoloView,
+  TrailEntry,
+  Transit,
 } from "@stand-clear/engine";
 import { isHider } from "./hide.ts";
 import { type Family, familyOf } from "./ui/family.ts";
@@ -39,9 +38,9 @@ export function loadResults(): Record<string, DailyResult> {
   }
 }
 
-/** v2 keeps no Google coordinates (keptView). v1 kept the whole view, so it's cleared. */
-const REPLAY_KEY = "stand-clear:daily-replay:v2";
-const OLD_REPLAY_KEYS = ["stand-clear:daily-replay:v1"];
+/** v3 also strips station-question origins and thermometers taken on the street. */
+const REPLAY_KEY = "stand-clear:daily-replay:v3";
+const OLD_REPLAY_KEYS = ["stand-clear:daily-replay:v1", "stand-clear:daily-replay:v2"];
 
 /** The last daily's finished round as keptView left it, for the homepage's Watch replay. */
 export function loadReplay(): { date: string; view: SoloView } | null {
@@ -62,7 +61,7 @@ export function loadReplay(): { date: string; view: SoloView } | null {
  * with no coordinate that came from Google, since its terms forbid caching them. Anywhere
  * on the street was a Street View panorama, so the kept trails stand at the exit you came
  * up at (MTA data) for as long as you were up there, walks keep their times but not their
- * places, the hider's spot and your searched streets go, on-foot questions sit at their
+ * places, the hider's spot and your searched streets go, question origins sit at their
  * station, and photos keep their panorama ID (which may be stored) but not their URL.
  * The replay right after a round, from the server's view, has everything.
  */
@@ -130,13 +129,13 @@ export function keptView(ds: Dataset, view: SoloView): SoloView {
         const { url: _signed, ...rest } = answer.photo;
         photo = { photo: rest };
       }
-      if (categoryOf(a.q) !== "onFoot") return { ...a, answer: photo };
       const ctx = {
         origin: atStation(a.ctx.origin),
         baseline: a.ctx.baseline && atStation(a.ctx.baseline),
       };
       return { ...a, ctx, answer: photo };
     }),
+    thermometer: view.thermometer && atStation(view.thermometer),
     spotNearby: null,
     footThermometer: null,
     footpath: [],
@@ -198,7 +197,7 @@ export function dailyStats(results: Record<string, DailyResult>): DailyStats {
 }
 
 const HIDE_KEY = "stand-clear:hide-results:v1";
-const HIDE_REPLAY_KEY = "stand-clear:hide-replays:v1";
+const HIDE_REPLAY_KEY = "stand-clear:hide-replays:v2";
 export interface HideResult {
   id: string;
   mode: "hide";
@@ -223,6 +222,7 @@ export function loadHideResults(): Record<string, HideResult> {
 }
 export function loadHideReplays(): Record<string, HideReplay> {
   try {
+    localStorage.removeItem("stand-clear:hide-replays:v1");
     return JSON.parse(localStorage.getItem(HIDE_REPLAY_KEY) ?? "{}");
   } catch {
     return {};

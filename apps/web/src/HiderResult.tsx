@@ -18,7 +18,7 @@ import { NameTablet } from "./ui/NameTablet.tsx";
 import { Bullets, Button } from "./ui/vocab.tsx";
 
 export function HiderResult({ world, view }: { world: World; view: HiderView }) {
-  const { busy, results } = useGamePick("busy", "results");
+  const { busy, results, replayOnly } = useGamePick("busy", "results", "replayOnly");
   const [difficulty, setDifficulty] = useState<Difficulty>(view.difficulty);
   const newRound = useNewRound();
   if (!view.result) return null;
@@ -73,7 +73,13 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
           </Button>
         )}
         {!view.incomplete && <Button onClick={share}>Share result</Button>}
-        <Button disabled={busy} onClick={() => newRound("hide", difficulty)}>
+        <Button
+          disabled={busy}
+          onClick={() => {
+            if (replayOnly) location.assign(`/play?hide&difficulty=${difficulty}`);
+            else newRound("hide", difficulty);
+          }}
+        >
           Play again
         </Button>
       </div>

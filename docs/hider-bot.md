@@ -108,3 +108,31 @@ bonuses at a near-constant 35–42 min of every score with 19 bonuses in 38 card
 took its recommendations: bonuses 6 / 4 / 2 (deck 31), Wrong way at 1 card, Sidewalk shed
 for 20 min (now 6 min of cost), `CARD_VALUE` Veto 10 and Wrong way 6. The thresholds above
 and the question prices were left as they were. Covered by `cards.test.ts`.
+
+
+## Human hider (S3, 2026-10-08)
+
+`/play?hide` uses this same 31-card deck, prices, six-card hand, curse limits and
+`CARD_VALUE` fallback. The human replaces the bot's decisions: one committed answer
+choice in the 60-game-second station-question window (photos included), immediate
+on-foot answers, explicit curse payments, and a private ten-real-second keep/overflow
+choice. Draw 1 / keep 1 commits automatically if it fits. Pause stops the shared clock.
+Veto draws nothing; Randomize keeps the original deadline and photo source.
+
+The human rides during the twenty-minute hide, can wait on a platform after arriving,
+and can walk between verified Google panoramas inside the zone without locking. The
+10:20 deadline uses the last called platform. Staying at the start is incomplete. Exits
+open at 10:20; at 10:35 a hider still underground is placed at the nearest allowed exit
+and frozen. A seeker arriving on foot in the zone before that catches an underground
+hider at the station. Street entry, Hide here and a spot-photo answer freeze a hider
+who is already outside; a mid-walk freeze chooses the endpoint nearer by elapsed time.
+
+These freedoms are exercised by `pnpm sim:hide`; measurements and their limits are in
+`match-balance.md`. Candidate street evidence starts only at the seeker's first public
+entry into that candidate's circle, so moving before entry cannot make the seeker rule
+out a legal hiding place. Bot-hidden rounds keep their fixed-spot search.
+
+The S3 seeker never asks photos and has no visual perception: Fog and Signal loss do
+not slow it, and it never locates a hider from a photo panorama ID. Human photo screens
+are fixture-tested. M3 still needs human-seeker playtests of photos and visual curses.
+Move, Signal problems and Local only remain outside this deck (M6).

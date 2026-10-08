@@ -57,6 +57,17 @@ it("removes Google locations in every hider field, including an exit walk and li
     self,
     seeker: self,
     spot,
+    thermometer: { ...spot, complex },
+    asked: [
+      {
+        q: { kind: "radar", miles: 1 },
+        ctx: { origin: { ...spot, complex }, baseline: { ...spot, complex } },
+        answer: true,
+        at: 37200,
+        answerAt: 37260,
+        remaining: 1,
+      },
+    ],
     spotPhoto: { pano: spot.pano, heading: 0, pitch: 5, fov: 90, url: "secret-signed-url" },
     ownTrail: [{ t: 37200, state: self }],
     seekerTrail: [{ t: 37200, state: self }],

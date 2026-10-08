@@ -218,6 +218,78 @@ Charlie approved a starting seeker mapping: Easy goes up at ≤ 4 candidates, No
 
 `SeekerDriver` receives only `SoloView`. Each action is at least 3 real running seconds after the last (18 game-seconds at 6×), including the separate board and alight-selection actions. It respects `waitUntil`, re-plans on public answers/curses, and backs off after refusals. A pause advances neither the game nor this floor. After a restart memory is rebuilt from the view; only the last action time is persisted, so there is no catch-up burst. The full-speed `runSeeker` and existing bot-hider policy remain unchanged.
 
-The Step 1 regression run matched the current working-tree baseline on all 780 rounds, including every reported card and outcome metric (runtime 37 / 45 seconds). This baseline includes the other session's landmark correction; it differs slightly from the older headline table.
+Both the Step 1 and final `pnpm sim:match` regression runs matched the working-tree baseline on all 780 rounds, including every reported card and outcome metric (excluding runtime). This baseline includes the other session's landmark correction; it differs slightly from the older headline table.
 
 **Known S3 limitations, carried to M3:** Fog and Signal loss cost this bot nothing, and it never asks photos. Human-hider photo screens are exercised by fixtures. The bot never reads a photo's panorama ID as a location. A human seeker in M3 will ask photos and experience the visual curses. Watch dead time while the bot rides in Step 6; event-by-event skipping is the fix if it bores.
+
+
+## S3 paced human-hide checks (2026-10-08)
+
+`pnpm sim:hide` is a reproducible **automated** playcheck: ten paired scenarios per
+seeker level, identical human routes and deck seeds, one-second virtual server ticks
+at 6×, the production `SeekerDriver` and its three-real-second action floor. Human
+choices go through `applyHiderIntent`; the seeker receives only `SoloView`. There are
+no seeking skips in the game. Virtual simulation advances the test clock.
+
+Five human strategies rotate through the hubs: alight early and wait on a platform for
+the rest of hiding; stay underground until the latest exit; never lock and keep moving
+away from the public seeker position until zone entry freezes you; lock about 320 m
+out; lock about 100 m out. Every route starts by boarding an actual departure. Keep
+choices time out to the shared value table; the human policy vetoes strong answers,
+randomizes when useful and explicitly pays for movement curses or Sidewalk shed.
+It does not use the bot's private plan or the true candidate location to guide the seeker.
+
+The first 10 per level all finished in catches. Median seeking was Easy 82.2, Normal
+81.5, Hard 71.9 game-minutes; a ceiling of 10/10 cannot establish catch-rate ordering.
+The expanded paired run, **52 per level / 156 rounds**, seed 1, gives:
+
+| Seeker level | Crossover | Caught | Median seeking, game-min | Median hider score, min | Longest quiet ride, real s |
+|---|---:|---:|---:|---:|---:|
+| Easy | 4 | 48/52 (92.3%) | 71.8 | 182.3 | 166 |
+| Normal | 3 | 48/52 (92.3%) | 71.4 | 187.3 | 303 |
+| Hard | 2 | 50/52 (96.2%) | 68.1 | 188.0 | 303 |
+
+Every measured action gap was at least 3 real seconds. **Keep 4/3/2 and 0.25 bits**:
+Hard caught two more paired hides than Easy and was faster at the median. This is a
+small difference, not a claim of statistical certainty. No prices, deck counts, curse
+limits or bot-hider decisions changed. Per-round results: [`s3-playchecks.csv`](s3-playchecks.csv).
+Reproduce with `pnpm sim:hide --rounds 52 --seed 1 --json /tmp/s3.json`.
+
+Platform waiting and never locking did not bypass the end conditions: platform hides
+still selected their actual station, late underground hides froze at the nearest allowed
+exit, and mobile hides froze on zone entry. Engine tests separately cover not leaving
+the starting complex (incomplete), an underground station catch before 10:35, and the
+nearer-endpoint mid-walk freeze. These freedoms increase the range of human choices;
+they do not demonstrate a balance-breaking escape in this sample.
+
+**Riding dead time is real:** one quiet ride lasted 303 real seconds. Pause is available;
+there is still no seeking skip. Event-by-event skipping, stopping before a human answer
+or keep decision, remains the fix to consider if watching those rides bores players.
+
+### Browser and integration checks
+
+- Read the eight supplied design PNGs before building the client. MapLibre fixture checks
+  covered all eight live screen states, Veto, photo Move first / Lock & answer, and private
+  keep choices; no browser errors.
+- Live Google check: board, skip only the hide to 10:20, choose an exit, climb the stairs,
+  load official imagery and lock. The bot asked during this sequence.
+- A separate, explicitly seeded **endgame fixture** at 59 St–Columbus Circle used two
+  verified Google panoramas 76 m apart. The real server restored IDs, the paced bot asked
+  an on-foot radar, took two verified walks and caught the hider. Result, both replay
+  trails and held-card score displayed with no browser errors. This was a final-phase
+  integration fixture, not a newly played full round.
+- Found, timeout and incomplete result fixtures rendered; a saved incomplete replay opened
+  from Hide history with no server connection. Incomplete rounds have no score or share.
+- Socket tests cover ordering/deduplication, role isolation, pause, capped hiding skip,
+  restart, opaque round identity and Play again. Persistence tests cover the seeker's
+  partial walk when a hider comes into sight. Saved replay question origins and thermometer
+  baselines are reduced to MTA station coordinates too, including station questions asked
+  from the street. Older replay caches are cleared; scored history remains.
+
+**Limits:** these are automated virtual-clock rounds plus the live checks above, not
+thirty real-time manual browser playtests. The street simulation uses synthetic panoramas,
+straight walks and conservative candidate-circle deductions, not a connected Google
+panorama graph. The actual Google endgame check covers one location. A full human
+pacing pass, especially long quiet rides, and deployed Chrome/Safari/Firefox checks
+remain before launch. Fog and Signal loss still cost the bot nothing; photos are fixtures,
+and no photo panorama ID is used to locate the hider. Those perception gaps carry to M3.

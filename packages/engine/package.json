@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p .",
     "sim": "tsx scripts/simulate.ts",
     "sim:endgame": "tsx scripts/endgame-sim.ts",
-    "sim:match": "tsx scripts/match-sim.ts"
+    "sim:match": "tsx scripts/match-sim.ts",
+    "sim:hide": "tsx scripts/hide-sim.ts"
   },
   "dependencies": {
     "@stand-clear/data": "workspace:*",

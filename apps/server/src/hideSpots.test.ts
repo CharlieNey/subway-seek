@@ -1,3 +1,5 @@
+import type { Dataset } from "@stand-clear/data";
+import { offsetMeters } from "@stand-clear/engine";
 import { afterEach, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -28,4 +30,26 @@ it("refuses contributor imagery and a second failed lookup", async () => {
   fetch.mockRejectedValue(new Error("network"));
   expect(await verifyHideSpot(40.7, -74, "p")).toBeNull();
   expect(fetch).toHaveBeenCalledTimes(3);
+});
+
+it("keeps an exit's verified panorama inside the zone, with only the all-exits-outside exception", async () => {
+  const center = { lat: 40.7, lon: -74 };
+  const edge = offsetMeters(center, 390, 0);
+  const outside = offsetMeters(center, 410, 0);
+  const ds = { complexes: [{ ...center, exits: [[edge.lat, edge.lon]] }] } as unknown as Dataset;
+  const fetch = vi.fn().mockResolvedValue({
+    json: async () => ({
+      status: "OK",
+      pano_id: "edge",
+      location: { lat: outside.lat, lng: outside.lon },
+      copyright: "© Google",
+    }),
+  });
+  vi.stubGlobal("fetch", fetch);
+  const { exitSpot } = await load();
+  expect(await exitSpot(ds, 0, 0)).toBeNull();
+  const station = ds.complexes[0];
+  if (!station) throw new Error("station");
+  station.exits[0] = [outside.lat, outside.lon];
+  expect(await exitSpot(ds, 0, 0)).toEqual({ ...outside, pano: "edge" });
 });

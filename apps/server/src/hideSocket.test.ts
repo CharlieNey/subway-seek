@@ -79,6 +79,7 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
     const hello = await connect("mode=hide&difficulty=hard");
     const view = hello.view as HiderView;
     expect(view.role).toBe("hider");
+    expect(view.roundId).toMatch(/^[0-9a-f-]{36}$/);
     expect(view.difficulty).toBe("hard");
     expect(JSON.stringify(view)).not.toMatch(/beliefs|waitUntil|pending/);
     const paused = await send(0, { type: "pause" });
@@ -104,11 +105,15 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
     const back = await connect(`session=${hello.session}`);
     expect(back.resumed).toBe(true);
     expect(back.seq).toBe(5);
+    expect((back.view as HiderView).roundId).toBe(view.roundId);
     expect(back.clock.gameTime).toBe(last.clock.gameTime);
     expect((back.view as HiderView).self).toEqual((last.view as HiderView).self);
     const left = await send(6, { type: "leaveHide" });
     expect((left.view as HiderView).incomplete).toBe("left");
     expect((left.view as HiderView).scoreSeconds).toBeNull();
+    const again = await send(7, { type: "newRound", mode: "hide", difficulty: "easy" });
+    expect((again.view as HiderView).roundId).not.toBe(view.roundId);
+    expect((again.view as HiderView).difficulty).toBe("easy");
   } finally {
     socket?.close();
     await stop();
