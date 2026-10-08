@@ -30,7 +30,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 ## Timetable freshness
 
 - [x] `pnpm data:build --date=YYYY-MM-DD` re-pins; `pnpm data:check` reports the pin's age and warns in CI within a week of it.
-- [ ] Re-pin before 2026-10-14 passes (the current pin), then monthly.
+- [x] Re-pinned to 2026-10-28 on 2026-10-08. The feed's calendar ends 2026-10-31, so the next re-pin waits for the MTA's next feed and has to land before 2026-10-28. Then monthly.
 
 ## Before the first share
 

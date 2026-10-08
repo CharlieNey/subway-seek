@@ -15,7 +15,7 @@ beforeAll(() => {
 
 describe("generated dataset", () => {
   it("is the pinned weekday without Staten Island Railway", () => {
-    expect(d.meta.serviceDate).toBe("2026-10-14");
+    expect(d.meta.serviceDate).toBe("2026-10-28");
     expect(d.meta.serviceIds).toEqual(["Weekday"]);
     expect(d.routes.map((r) => r.id)).not.toContain("SI");
     expect(d.stations.every((s) => ["M", "Bk", "Q", "Bx"].includes(s.borough))).toBe(true);
