@@ -21,6 +21,7 @@ describe("generated dataset", () => {
     expect(d.stations.every((s) => ["M", "Bk", "Q", "Bx"].includes(s.borough))).toBe(true);
   });
 
+  // 8,000 trips with several expects each: under load the default 5 s is not enough.
   it("has well-formed trips", () => {
     for (const t of d.trips) {
       expect(t.stops.length).toBeGreaterThan(1);
@@ -34,7 +35,7 @@ describe("generated dataset", () => {
         if (i > 0) expect(t.arr[i] as number).toBeGreaterThanOrEqual(t.dep[i - 1] as number);
       }
     }
-  });
+  }, 30_000);
 
   it("links every station to a complex that lists it, and every complex has an exit", () => {
     d.stations.forEach((s, i) => {
