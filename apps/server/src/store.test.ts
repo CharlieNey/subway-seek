@@ -3,6 +3,7 @@ import {
   applySoloIntent,
   buildIndex,
   createSoloRound,
+  type SoloRound,
   soloView,
   startClock,
 } from "@stand-clear/engine";
@@ -12,7 +13,7 @@ import { deserializeGame, restorable, type SavedGame, SessionDb, serializeGame }
 const idx = buildIndex(loadDataset());
 const hub = idx.ds.stations.findIndex((s) => s.id === "127");
 
-function game(): SavedGame {
+function game(): SavedGame & { round: SoloRound } {
   let round = createSoloRound(idx, { hub, hideStart: 36000, random: () => 0.42 });
   const asked = applySoloIntent(
     round,
@@ -35,6 +36,7 @@ describe("session store", () => {
   it("round-trips a game through JSON, -Infinity included", () => {
     const g = game();
     const back = deserializeGame(serializeGame(g));
+    if ("storage" in back.round) throw new Error("Expected a solo round");
     expect(back.round.lastCurseAt).toBe(Number.NEGATIVE_INFINITY);
     expect(back).toEqual(g);
     // The restored round plays on exactly as the saved one would.

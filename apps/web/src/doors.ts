@@ -41,7 +41,7 @@ export interface StoredSession {
   token: string;
   /** Its round was still going. */
   live: boolean;
-  mode: "daily" | "practice" | null;
+  mode: "daily" | "practice" | "hide" | null;
   /** The daily's number, for "Resume daily #23". */
   daily: number | null;
   /** When this page last had it (ms): the server keeps it for the grace period after. */

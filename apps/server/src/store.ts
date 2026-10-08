@@ -9,12 +9,15 @@
  * the match log itself is its JSONL file, reopened by id. `lastCurseAt` starts at
  * -Infinity, which JSON can't carry, so it rides as a string.
  */
+
 import { DatabaseSync } from "node:sqlite";
 import type { GameClock, SoloRound } from "@stand-clear/engine";
+import type { StoredHideRound } from "./hidePersistence.ts";
 
 /** What a session needs to come back. */
 export interface SavedGame {
-  round: SoloRound;
+  round: SoloRound | StoredHideRound;
+  seekerLastActionAt?: number;
   clock: GameClock;
   lastSeq: number;
   logId: string;

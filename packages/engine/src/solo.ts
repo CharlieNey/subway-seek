@@ -144,7 +144,7 @@ export type RoundResult =
   | { kind: "timeout"; at: number }
   | { kind: "gaveUp"; at: number };
 
-export type RoundMode = "daily" | "practice";
+export type RoundMode = "daily" | "practice" | "hide";
 
 export interface SoloRound {
   /** Present only when the hider is controlled by a person. */

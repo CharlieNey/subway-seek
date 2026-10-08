@@ -102,6 +102,7 @@ export function createHideRound(
   };
   return {
     ...round,
+    mode: "hide",
     hider: -1,
     hiderTrail: [{ t: round.hideStart, state: transit }],
     human: {
@@ -666,7 +667,7 @@ export interface HiderView extends Omit<SoloView, "seeker"> {
   exits: ReturnType<typeof hiderExits>;
   incomplete: HumanHider["incomplete"];
   heldBonusSeconds: number;
-  /** Null for an incomplete hide; elapsed hiding time never counts. */
+  /** Final score only; live score is derived from the shared clock. */
   scoreSeconds: number | null;
   hideStatus: HideStatus;
 }
@@ -694,9 +695,10 @@ export function hiderView(round: SoloRound, t: number, idx: TimetableIndex): Hid
     exits: hiderExits(round, idx),
     incomplete: h.incomplete,
     heldBonusSeconds: handBonusSeconds(round.hand),
-    scoreSeconds: h.incomplete
-      ? null
-      : Math.max(0, (round.result?.at ?? t) - round.seekStart) + view.bonusSeconds,
+    scoreSeconds:
+      h.incomplete || !round.result
+        ? null
+        : Math.max(0, round.result.at - round.seekStart) + view.bonusSeconds,
     hideStatus: hideStatus(round, t, idx),
     incoming: h.pending.map((p) => {
       const a = round.asked[p.index] as AskedQuestion;

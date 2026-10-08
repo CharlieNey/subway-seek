@@ -16,6 +16,7 @@ import { formatServiceTime } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import {
   advanceSolo,
+  applyHiderIntent,
   applySoloIntent,
   bonusSeconds,
   buildIndex,
@@ -24,13 +25,20 @@ import {
   CLOSE_TOO_MANY_ROUNDS,
   type ClockSync,
   clientMessageSchema,
+  createHideRound,
+  createSeekerDriver,
   createSoloRound,
   type Difficulty,
   dailyNumber,
   dailyRandom,
+  defaultHiderExit,
+  driveSeeker,
   type GameClock,
   gameTime,
+  type HiderView,
   type HidingSpot,
+  hiderIntentSchema,
+  hiderView,
   jumpClock,
   nextAnswerAt,
   nextEventTime,
@@ -41,17 +49,23 @@ import {
   RECONNECT_GRACE_MS,
   type RoundMode,
   realMsUntil,
+  rejectSeekerAction,
   resumeClock,
   SESSION_PARAM,
+  type SeekerDriver,
   type ServerMessage,
   SOLO_PAUSES_ON_DROP,
+  type SoloIntent,
   type SoloRound,
   type SoloView,
+  setHiderExit,
   skipSolo,
   soloView,
   startClock,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
+import { restoreHideRound, storeHideRound } from "./hidePersistence.ts";
+import { exitSpot, seekerStreetTarget, verifyHideSpot } from "./hideSpots.ts";
 import {
   clientAddress,
   MAX_SESSIONS,
@@ -62,8 +76,8 @@ import {
 import { MatchLog } from "./matchLog.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
-import { isStreetPoint, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
-import { restorable, SessionDb } from "./store.ts";
+import { isStreetPoint, officialSpot, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
+import { restorable, type SavedSession, SessionDb } from "./store.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -89,6 +103,8 @@ console.log(
 interface Game {
   clock: GameClock;
   round: SoloRound;
+  driver?: SeekerDriver;
+  exitRetryAt?: number;
   lastSeq: number;
   log: MatchLog;
   /** How many of the hider's card plays are already in the log. */
@@ -184,6 +200,10 @@ async function newRound(
     }
     round = setup.round;
     spot = setup.spotPano ? await spotFromPano(setup.spotPano) : null;
+  } else if (mode === "hide") {
+    const hub = stationIndex(pickHubId(Math.random));
+    round = createHideRound(idx, { hub, hideStart: HIDE_START, difficulty });
+    spot = null;
   } else {
     const hub = stationIndex(pickHubId(Math.random));
     round = createSoloRound(idx, { hub, hideStart: HIDE_START, difficulty });
@@ -210,7 +230,11 @@ async function newRound(
     reachable: round.reachable.length,
     seekStart: round.seekStart,
   });
-  return { round, clock: startClock(round.seekStart, SPEED, Date.now()), log };
+  return {
+    round,
+    clock: startClock(round.human ? round.hideStart : round.seekStart, SPEED, Date.now()),
+    log,
+  };
 }
 
 function sync(clock: GameClock, now: number): ClockSync {
@@ -253,6 +277,8 @@ async function newGame(mode: RoundMode, difficulty?: Difficulty) {
     cardsLogged: 0,
     stationLogged: false,
     shown: "",
+    driver: mode === "hide" ? createSeekerDriver() : undefined,
+    exitRetryAt: undefined,
   };
 }
 
@@ -287,7 +313,8 @@ function persist(session: Session<Game>, now: number) {
   db.save({
     token: session.token,
     game: {
-      round: game.round,
+      round: game.round.human ? storeHideRound(game.round, dataset) : game.round,
+      seekerLastActionAt: game.driver?.lastActionAt,
       clock: game.clock,
       lastSeq: game.lastSeq,
       logId: game.log.id,
@@ -299,29 +326,40 @@ function persist(session: Session<Game>, now: number) {
   });
 }
 
-// Bring back the sessions a restart interrupted, with whatever is left of their grace
-// period; the rest are forgotten. A solo clock ran on through the downtime, as it does
-// through any drop.
+// Failed metadata rehydrations keep their saved IDs for a reconnect retry. A single
+// unavailable panorama must neither crash startup nor silently replace someone's round.
+const pendingRestores = new Map<string, SavedSession>();
+async function restoreSession(s: SavedSession) {
+  const game: Game = {
+    round:
+      "storage" in s.game.round ? await restoreHideRound(s.game.round, officialSpot) : s.game.round,
+    driver: "storage" in s.game.round ? createSeekerDriver(s.game.seekerLastActionAt) : undefined,
+    clock: s.game.clock,
+    lastSeq: s.game.lastSeq,
+    log: new MatchLog(s.game.logId),
+    cardsLogged: s.game.cardsLogged,
+    stationLogged: s.game.stationLogged,
+    shown: "",
+    answerTimer: undefined,
+  };
+  const session = sessions.restore(game, s.token, s.droppedAt ?? s.updatedAt, Date.now());
+  pendingRestores.delete(s.token);
+  game.log.write("restored", { t: gameTime(game.clock, Date.now()) });
+  return session;
+}
 {
   const now = Date.now();
   const saved = db.all();
   const keep = restorable(saved, now, RECONNECT_GRACE_MS);
   for (const s of saved) if (!keep.includes(s)) db.delete(s.token);
   for (const s of keep) {
-    const game: Game = {
-      round: s.game.round,
-      clock: s.game.clock,
-      lastSeq: s.game.lastSeq,
-      log: new MatchLog(s.game.logId),
-      cardsLogged: s.game.cardsLogged,
-      stationLogged: s.game.stationLogged,
-      shown: "",
-      answerTimer: undefined,
-    };
-    sessions.restore(game, s.token, s.droppedAt ?? s.updatedAt, now);
-    game.log.write("restored", { t: gameTime(game.clock, now) });
+    try {
+      await restoreSession(s);
+    } catch {
+      pendingRestores.set(s.token, s);
+    }
   }
-  if (saved.length) console.log(`restored ${keep.length} of ${saved.length} saved session(s)`);
+  if (saved.length) console.log(`restored ${sessions.size} of ${saved.length} saved session(s)`);
 }
 
 // Rate limits (limits.ts): new rounds per address, street walks per session, sessions kept.
@@ -351,10 +389,13 @@ if (!PHOTO_SIGNING)
   console.warn("photo URLs unsigned — set GOOGLE_MAPS_BROWSER_KEY and STREETVIEW_SIGNING_SECRET");
 
 /** The seeker's view right now (the hider's marker shows only when they're close). */
-const viewNow = (game: Game, now: number) => soloView(game.round, gameTime(game.clock, now), idx);
+const viewNow = (game: Game, now: number) =>
+  game.round.human
+    ? hiderView(game.round, gameTime(game.clock, now), idx)
+    : soloView(game.round, gameTime(game.clock, now), idx);
 
 /** The view to send, noting what it shows and timing the push for the next answer. */
-function remember(session: Session<Game>, now: number): SoloView {
+function remember(session: Session<Game>, now: number): SoloView | HiderView {
   const { game } = session;
   const v = viewNow(game, now);
   game.shown = JSON.stringify(v);
@@ -362,7 +403,7 @@ function remember(session: Session<Game>, now: number): SoloView {
   const next = nextAnswerAt(game.round, gameTime(game.clock, now));
   const ms = next === null ? Number.POSITIVE_INFINITY : realMsUntil(game.clock, next, now);
   if (Number.isFinite(ms)) {
-    game.answerTimer = setTimeout(() => sendState(session, game.lastSeq, Date.now()), ms + 10);
+    game.answerTimer = setTimeout(() => queueTick(session), ms + 10);
   }
   return withPhotoUrls(v, PHOTO_SIGNING);
 }
@@ -384,19 +425,59 @@ function sendState(session: Session<Game>, seq: number, now: number) {
  * dropped session too: its clock runs on, and the hider still plays. The frame goes out
  * only if what the seeker may see has changed.
  */
-function tick(session: Session<Game>, now: number) {
+async function tick(session: Session<Game>, now: number) {
   const { game } = session;
   if (game.clock.pausedAt !== null || game.round.result) return;
-  const next = advanceSolo(game.round, gameTime(game.clock, now), idx);
-  const changed = next !== game.round;
-  game.round = next;
+  const before = game.round;
+  game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
+  if (game.round.human && game.round.human.station !== null && !game.round.result) {
+    const exit = defaultHiderExit(game.round, idx);
+    if (!game.round.human.exits[exit] && now >= (game.exitRetryAt ?? 0)) {
+      const spot = await exitSpot(dataset, game.round.hider, exit);
+      game.exitRetryAt = Date.now() + 10_000;
+      if (spot) game.round = setHiderExit(game.round, exit, spot);
+      now = Date.now();
+      game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
+    }
+    if (game.driver && !game.round.result) {
+      let t = gameTime(game.clock, now);
+      const view = soloView(game.round, t, idx);
+      const step = driveSeeker(view, game.driver, t, idx, game.clock.speed);
+      game.driver = step.driver;
+      let intent = step.intent;
+      if (intent?.type === "walkTo") {
+        const spot = await seekerStreetTarget(view, intent.lat, intent.lon, t, idx);
+        now = Date.now();
+        t = gameTime(game.clock, now);
+        if (spot) intent = { type: "walkTo", ...spot };
+        else {
+          game.driver = rejectSeekerAction(game.driver, view, intent, "No street panorama", t, idx);
+          intent = null;
+        }
+      }
+      if (intent) {
+        const out = applySoloIntent(game.round, intent, t, idx);
+        game.driver = { ...game.driver, lastActionAt: t, waitUntil: t + 3 * game.clock.speed };
+        game.log.write("intent", {
+          t,
+          side: "seeker",
+          type: intent.type,
+          ...(intent.type === "walkTo" ? { pano: intent.pano } : { intent }),
+          ok: out.ok,
+        });
+        if (out.ok) game.round = out.round;
+        else game.driver = rejectSeekerAction(game.driver, view, intent, out.error, t, idx);
+      }
+    }
+  }
+  const changed = game.round !== before;
   logCards(game);
   if (changed) logEnd(game);
   if (game.round.stationFoundAt !== null && !game.stationLogged) {
     game.stationLogged = true;
     game.log.write("station_found", { t: game.round.stationFoundAt });
   }
-  if (changed) persist(session, now);
+  if (changed || game.driver) persist(session, now);
   if (session.conn && JSON.stringify(viewNow(game, now)) !== game.shown) {
     sendState(session, game.lastSeq, now);
   }
@@ -475,9 +556,20 @@ const httpServer = createServer((req, res) => {
 const wss = new WebSocketServer({ server: httpServer });
 httpServer.listen(PORT);
 
+const tickPending = new WeakSet<Session<Game>>();
+function queueTick(session: Session<Game>) {
+  if (tickPending.has(session)) return;
+  tickPending.add(session);
+  const task = (queues.get(session) ?? Promise.resolve()).then(() => tick(session, Date.now()));
+  queues.set(
+    session,
+    task
+      .catch((err) => console.error("tick failed", err))
+      .finally(() => tickPending.delete(session)),
+  );
+}
 setInterval(() => {
-  const now = Date.now();
-  for (const session of sessions.all()) tick(session, now);
+  for (const session of sessions.all()) queueTick(session);
 }, 1000);
 
 // A connection that stops answering pings is dead (a laptop lid shut, a train tunnel):
@@ -501,6 +593,14 @@ wss.on("connection", async (socket, req) => {
   const token = params.get(SESSION_PARAM);
   const address = clientAddress(req.headers, req.socket.remoteAddress);
   let session = sessions.get(token);
+  if (!session && token && pendingRestores.has(token)) {
+    try {
+      session = await restoreSession(pendingRestores.get(token) as SavedSession);
+    } catch {
+      socket.close(1013, "That spot couldn't be checked. Try again.");
+      return;
+    }
+  }
   const resumed = session !== undefined;
   if (!session) {
     // A new session is a new round: turned away when the server is full or this address
@@ -514,7 +614,12 @@ wss.on("connection", async (socket, req) => {
       return;
     }
     // A new session starts the round its link asked for: the daily unless it says practice.
-    const mode: RoundMode = params.get("mode") === "practice" ? "practice" : "daily";
+    const mode: RoundMode =
+      params.get("mode") === "hide"
+        ? "hide"
+        : params.get("mode") === "practice"
+          ? "practice"
+          : "daily";
     const d = params.get("difficulty");
     const difficulty = d === "easy" || d === "normal" || d === "hard" ? d : undefined;
     const game: Game = {
@@ -596,7 +701,8 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     });
     return;
   }
-  const { seq, intent } = parsed.data;
+  const { seq } = parsed.data;
+  let { intent } = parsed.data;
   if (seq <= s.game.lastSeq) {
     // A retry of something already handled (a resend after a reconnect): restate the round.
     sendState(s, seq, Date.now());
@@ -648,14 +754,25 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
   // Street View lookup, so walks are limited per session (limits.ts).
   let offStreet = false;
   let tooManyWalks = false;
-  if (intent.type === "walkTo") {
+  if (intent.type === "walkTo" || intent.type === "hideHere") {
     tooManyWalks = !walks.allow(s.token, Date.now());
     if (!tooManyWalks) {
-      offStreet = (await isStreetPoint(intent.lat, intent.lon, intent.pano)) === false;
+      if (s.game.round.human) {
+        const verified = intent.pano
+          ? await verifyHideSpot(intent.lat, intent.lon, intent.pano)
+          : null;
+        offStreet = !verified;
+        if (verified) intent = { ...intent, ...verified };
+      } else offStreet = (await isStreetPoint(intent.lat, intent.lon, intent.pano)) === false;
       if (s.conn !== socket) return;
     }
   }
 
+  if (intent.type === "exit" && s.game.round.human && s.game.round.human.station !== null) {
+    const spot = await exitSpot(dataset, s.game.round.hider, intent.exit);
+    if (spot) s.game.round = setHiderExit(s.game.round, intent.exit, spot);
+    if (s.conn !== socket) return;
+  }
   const game = s.game;
   game.lastSeq = seq;
   const now = Date.now();
@@ -671,20 +788,37 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     });
   };
   if (tooManyWalks) return reject("That's a lot of walking at once. Give it a moment.");
-  if (offStreet) return reject("No street to walk to there. Click closer to a street.");
+  if (offStreet)
+    return reject(
+      game.round.human
+        ? "That spot couldn't be checked. Try again."
+        : "No street to walk to there. Click closer to a street.",
+    );
 
   // Clock controls. Score is game time, so skipping ahead never helps — it just saves
   // waiting. Pausing would give free thinking time, so it's practice-only.
   if (intent.type === "pause" || intent.type === "resume" || intent.type === "skip") {
     if (game.round.result) return reject("This round is over.");
     if (intent.type === "skip") {
-      const target = nextEventTime(game.round.seeker, t, idx, intent.to);
+      if (game.round.human && t >= game.round.seekStart)
+        return reject("Fast-forward is only available while hiding.");
+      const target = nextEventTime(
+        game.round.human?.transit ?? game.round.seeker,
+        t,
+        idx,
+        intent.to,
+      );
       if (target === null) return reject("Nothing to skip to.");
       // Stops early if the hider plays a card on the way.
-      const skipped = skipSolo(game.round, t, Math.min(target, game.round.seekEnd), idx);
+      const skipped = skipSolo(
+        game.round,
+        t,
+        Math.min(target, game.round.human ? game.round.seekStart : game.round.seekEnd),
+        idx,
+      );
       game.round = skipped.round;
       game.clock = jumpClock(game.clock, skipped.t, now);
-    } else if (game.round.mode !== "practice") {
+    } else if (game.round.mode !== "practice" && game.round.mode !== "hide") {
       return reject("Pausing is for practice rounds.");
     } else {
       game.clock = (intent.type === "pause" ? pauseClock : resumeClock)(game.clock, now);
@@ -697,9 +831,20 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     sendState(s, seq, now);
     return;
   }
-  if (game.clock.pausedAt !== null) return reject("Paused — resume first.");
+  if (game.clock.pausedAt !== null && intent.type !== "leaveHide")
+    return reject("Paused — resume first.");
 
-  const result = applySoloIntent(game.round, intent, t, idx);
+  const hiderIntent = hiderIntentSchema.safeParse(intent);
+  if (game.round.human && !hiderIntent.success) return reject("That didn't go through. Try again.");
+  if (
+    !game.round.human &&
+    ["hideHere", "answer", "keepCards", "playCard", "redraw", "leaveHide"].includes(intent.type)
+  )
+    return reject("That didn't go through. Try again.");
+  const result =
+    game.round.human && hiderIntent.success
+      ? applyHiderIntent(game.round, hiderIntent.data, t, idx)
+      : applySoloIntent(game.round, intent as SoloIntent, t, idx);
   if (result.ok) {
     const before = game.round.asked.length;
     game.round = result.round;
@@ -708,7 +853,11 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
       const q = asked.at(-1);
       game.log.write("question", { t, q: q?.q, answer: q?.answer, remaining: q?.remaining });
     } else {
-      game.log.write("intent", { t, type: intent.type });
+      game.log.write("intent", {
+        t,
+        side: game.round.human ? "hider" : "seeker",
+        type: intent.type,
+      });
     }
     logCards(game);
     logEnd(game);

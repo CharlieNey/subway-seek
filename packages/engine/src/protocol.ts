@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import type { Difficulty } from "./hardness.ts";
+import type { HiderIntent, HiderView } from "./hider.ts";
 import type { RoundMode, SoloIntent, SoloView } from "./solo.ts";
 import type { TransitIntent } from "./transit.ts";
 
@@ -51,10 +52,44 @@ export type ClockIntent =
   | { type: "pause" }
   | { type: "resume" }
   | { type: "skip"; to: "next" | "end" };
-export type ClientIntent = SoloIntent | NewRoundIntent | ClockIntent;
+export type ClientIntent = SoloIntent | HiderIntent | NewRoundIntent | ClockIntent;
+
+export const hiderIntentSchema = z.discriminatedUnion("type", [
+  ...transitIntentSchema.options,
+  z.object({
+    type: z.literal("hideHere"),
+    pano: z.string().min(1).max(200),
+    lat: z.number().min(40).max(41.5),
+    lon: z.number().min(-74.5).max(-73),
+  }),
+  z.object({
+    type: z.literal("answer"),
+    question: index,
+    decision: z.enum(["true", "veto", "randomize"]),
+  }),
+  z.object({
+    type: z.literal("keepCards"),
+    revision: index,
+    keep: z.array(index).max(6),
+    discard: z.array(index).max(6),
+  }),
+  z.object({
+    type: z.literal("playCard"),
+    revision: index,
+    card: index,
+    payment: z.array(index).max(6),
+  }),
+  z.object({
+    type: z.literal("redraw"),
+    revision: index,
+    card: index,
+    payment: z.array(index).max(6),
+  }),
+  z.object({ type: z.literal("leaveHide") }),
+]);
 
 export const clientIntentSchema = z.discriminatedUnion("type", [
-  ...transitIntentSchema.options,
+  ...hiderIntentSchema.options,
   z.object({ type: z.literal("ask"), question: questionSchema }),
   z.object({ type: z.literal("startThermometer") }),
   z.object({ type: z.literal("startFootThermometer") }),
@@ -62,7 +97,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("catch") }),
   z.object({
     type: z.literal("newRound"),
-    mode: z.enum(["daily", "practice"]),
+    mode: z.enum(["daily", "practice", "hide"]),
     difficulty: z.enum(["easy", "normal", "hard"]).optional(),
   }),
   z.object({ type: z.literal("pause") }),
@@ -72,6 +107,8 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
 
 // Keep the schemas and the engine's types in lockstep.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+const _hiderMatches: Same<z.infer<typeof hiderIntentSchema>, HiderIntent> = true;
+void _hiderMatches;
 const _transitMatches: Same<z.infer<typeof transitIntentSchema>, TransitIntent> = true;
 const _intentsMatch: Same<z.infer<typeof clientIntentSchema>, ClientIntent> = true;
 void _transitMatches;
@@ -123,7 +160,7 @@ export type ServerMessage =
       seq: number;
       serviceDate: string;
       clock: ClockSync;
-      view: SoloView;
+      view: SoloView | HiderView;
     }
   | { type: "state"; seq: number; clock: ClockSync; view: SoloView }
   | { type: "rejected"; seq: number; error: string; clock: ClockSync; view: SoloView };

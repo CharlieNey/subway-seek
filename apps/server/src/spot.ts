@@ -124,3 +124,16 @@ export async function pickExitPano(
   }
   return null;
 }
+
+/** A hider lock is never accepted on a failed lookup or contributor imagery. Retry errors once. */
+export async function officialSpot(pano: string): Promise<HidingSpot | null> {
+  if (!KEY) return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await metadata(`pano=${encodeURIComponent(pano)}`, true);
+    } catch (err) {
+      if (attempt === 1) console.warn(`hider panorama lookup failed: ${String(err)}`);
+    }
+  }
+  return null;
+}
