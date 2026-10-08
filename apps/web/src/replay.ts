@@ -13,6 +13,7 @@ import {
 } from "@stand-clear/engine";
 import { create } from "zustand";
 import type { World } from "./game.ts";
+import { isHider } from "./hide.ts";
 import { type LogEvent, replayLog } from "./replayLog.ts";
 
 export const REPLAY_REAL_SECONDS = 25;
@@ -32,6 +33,7 @@ interface ReplayStore {
   footStart: number | null;
   /** When the hider reached their spot, for the zone ring (null if they never did). */
   settled: number | null;
+  humanHider: boolean;
   /**
    * `street: false` for a round kept without its street positions (history.ts, keptView):
    * the on-foot answers' shares of the circle can't be worked out again.
@@ -54,6 +56,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
   seekStart: 0,
   footStart: null,
   settled: null,
+  humanHider: false,
   open: (world, view, { street = true } = {}) => {
     if (!view.replay || !view.result) return;
     const start = view.hideStart;
@@ -64,7 +67,15 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       const c = a ? world.ds.complexes[a.ctx.origin.complex] : undefined;
       if (!c) return null;
       const asked = view.asked.filter((x) => x.answerAt <= at);
-      const left = possibleSpots(world.ds, c, asked, view.candidates, view.footpath, at + 0.001);
+      const left = possibleSpots(
+        world.ds,
+        c,
+        asked,
+        view.candidates,
+        view.footpath,
+        at + 0.001,
+        isHider(view),
+      );
       return left.length / Math.max(1, searchGrid(c).length);
     };
     const log = replayLog(world.ds, world.idx, view, street ? spotsLeft : undefined);
@@ -80,7 +91,8 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       log,
       seekStart: view.seekStart,
       footStart: view.stationFoundAt,
-      settled: reached?.t ?? null,
+      settled: isHider(view) ? (view.lock?.at ?? null) : (reached?.t ?? null),
+      humanHider: isHider(view),
     });
   },
   close: () => set({ active: false, playing: false, hider: [], seeker: [], log: [] }),

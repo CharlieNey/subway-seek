@@ -184,6 +184,7 @@ function replaySceneAt(
   else replayEndedAt = 0;
   const tabletSet = reduced ? 1 : decel((now - replayEndedAt) / 900);
   return {
+    humanHider: replay.humanHider,
     hiderPath: pathUntil(replay.hider, t),
     seekerPath: pathUntil(replay.seeker, t),
     hiderFull: fullPath(replay.hider),
@@ -353,7 +354,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       let search: SearchScene | null = null;
       if (replay.active) {
         replayScene = replaySceneAt(world, replay, t, now);
-        const head = replayScene.seekerPath.at(-1);
+        const head = (replay.humanHider ? replayScene.hiderPath : replayScene.seekerPath).at(-1);
         me = head ? { position: head, label: "You" } : null;
       } else {
         const { view, follow: following } = useGame.getState();

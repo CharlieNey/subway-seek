@@ -10,7 +10,7 @@ export type Door =
   | { kind: "practice"; difficulty?: Difficulty }
   | { kind: "hide"; difficulty?: Difficulty }
   /** The last daily's replay, kept in this browser: no round, no server. */
-  | { kind: "replay" }
+  | { kind: "replay"; hideId?: string }
   /** No door: carry on with this browser's round, or start the daily. */
   | { kind: "resume" };
 
@@ -18,7 +18,10 @@ const DOOR_PARAMS = ["daily", "practice", "hide", "difficulty", "replay"];
 
 export function doorOf(search: string): Door {
   const p = new URLSearchParams(search);
-  if (p.has("replay")) return { kind: "replay" };
+  if (p.has("replay"))
+    return p.get("replay")
+      ? { kind: "replay", hideId: p.get("replay") as string }
+      : { kind: "replay" };
   if (p.has("practice") || p.has("hide")) {
     const kind = p.has("hide") ? "hide" : "practice";
     const d = p.get("difficulty");
@@ -44,6 +47,7 @@ export interface StoredSession {
   mode: "daily" | "practice" | "hide" | null;
   /** The daily's number, for "Resume daily #23". */
   daily: number | null;
+  difficulty?: Difficulty;
   /** When this page last had it (ms): the server keeps it for the grace period after. */
   at: number;
 }

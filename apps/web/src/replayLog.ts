@@ -18,6 +18,7 @@ import {
   type Transit,
 } from "@stand-clear/engine";
 import { answerWord, radarLabel } from "./ask.ts";
+import { isHider } from "./hide.ts";
 import { displayName } from "./names.ts";
 import { type Family, familyOf } from "./ui/family.ts";
 
@@ -181,10 +182,41 @@ export function replayLog(
 ): LogEvent[] {
   if (!view.replay || !view.result) return [];
   const end = view.result.at;
+  const hiding = isHider(view);
   const out: LogEvent[] = [
     ...movesOf(ds, view.replay.hider, "hider", end),
     ...movesOf(ds, view.replay.seeker, "you", end),
   ];
+  if (hiding) {
+    for (const e of out) {
+      if (e.mark.kind === "hider") {
+        e.mark = { kind: "you" };
+        e.text = e.text
+          .replace(/^Hider boards/, "You board")
+          .replace(/^Hider changes/, "You change")
+          .replace(/^Hider gets/, "You get")
+          .replace(/^Hider walks/, "You walk")
+          .replace(/^Hider comes/, "You come")
+          .replace(/^Hider goes/, "You go")
+          .replace(/^Hider reaches their/, "You reach your");
+      } else if (e.mark.kind === "you") {
+        e.mark = { kind: "hider" };
+        e.text = e.text
+          .replace(/^You board/, "Seeker boards")
+          .replace(/^You change/, "Seeker changes")
+          .replace(/^You get/, "Seeker gets")
+          .replace(/^You walk/, "Seeker walks")
+          .replace(/^You come/, "Seeker comes")
+          .replace(/^You go/, "Seeker goes");
+      }
+    }
+    if (view.lock)
+      out.push({
+        t: view.lock.at,
+        mark: { kind: "you" },
+        text: view.lock.cause === "hideHere" ? "Locked in" : "Frozen",
+      });
+  }
   for (const a of view.asked) {
     if (!isAnswered(a) || a.answerAt > end) continue;
     const vetoed = typeof a.answer === "object" && a.answer !== null && "vetoed" in a.answer;
@@ -206,13 +238,26 @@ export function replayLog(
   }
   for (const e of view.cardEvents) {
     if (CARDS[e.card].kind !== "curse" || e.t > end) continue;
-    out.push({ t: e.t, mark: { kind: "curse" }, text: `Hider plays ${CARDS[e.card].title}` });
+    out.push({
+      t: e.t,
+      mark: { kind: "curse" },
+      text: `${hiding ? "You play" : "Hider plays"} ${CARDS[e.card].title}`,
+    });
   }
   const r = view.result;
   out.push({
     t: r.at,
     mark: { kind: r.kind === "found" ? "found" : "end" },
-    text: r.kind === "found" ? "Found" : r.kind === "timeout" ? "Time's up" : "You gave up",
+    text:
+      hiding && view.incomplete
+        ? view.incomplete === "start"
+          ? "You didn't leave the start."
+          : "Incomplete"
+        : r.kind === "found"
+          ? "Found"
+          : r.kind === "timeout"
+            ? "Time's up"
+            : "You gave up",
   });
   // Stable: moves before the question asked at the same moment.
   return out

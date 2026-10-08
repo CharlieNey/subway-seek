@@ -8,6 +8,7 @@
  * drop, and a reconnect with the session token within the grace period picks it up again.
  */
 import "./env.ts";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname } from "node:path";
@@ -202,7 +203,7 @@ async function newRound(
     spot = setup.spotPano ? await spotFromPano(setup.spotPano) : null;
   } else if (mode === "hide") {
     const hub = stationIndex(pickHubId(Math.random));
-    round = createHideRound(idx, { hub, hideStart: HIDE_START, difficulty });
+    round = createHideRound(idx, { hub, hideStart: HIDE_START, difficulty, roundId: randomUUID() });
     spot = null;
   } else {
     const hub = stationIndex(pickHubId(Math.random));
@@ -253,14 +254,17 @@ function send(socket: WebSocket, msg: ServerMessage) {
 function logEnd(game: Game) {
   const { round } = game;
   if (!round.result) return;
-  const elapsed = round.result.at - round.seekStart;
+  const elapsed = Math.max(0, round.result.at - round.seekStart);
   game.log.write("round_end", {
-    result: round.result.kind,
+    result: round.human?.incomplete ? "incomplete" : round.result.kind,
+    incomplete: round.human?.incomplete ?? null,
     hider: dataset.complexes[round.hider]?.name,
     elapsedMin: Math.round(elapsed / 60),
     questions: round.asked.length,
     bonusMin: bonusSeconds(round) / 60,
-    hiderScoreMin: Math.round((elapsed + bonusSeconds(round)) / 60),
+    hiderScoreMin: round.human?.incomplete
+      ? null
+      : Math.round((elapsed + bonusSeconds(round)) / 60),
     hiderHand: round.hand,
     cardsPlayed: round.cardEvents.map((e) => e.card),
     stationFoundMin:

@@ -17,6 +17,9 @@ export const HIDE_SCENES = [
   "zone",
   "photo",
   "draw",
+  "found",
+  "timeout",
+  "incomplete",
 ] as const;
 export type HideScene = (typeof HIDE_SCENES)[number];
 export function hideFixture(idx: TimetableIndex, scene: HideScene) {
@@ -32,7 +35,9 @@ export function hideFixture(idx: TimetableIndex, scene: HideScene) {
   const spot = { lat: c.lat + 0.0005, lon: c.lon, pano: "fixture-only" };
   const platform = { kind: "platform" as const, station, since: 37200, arrivedDir: null };
   const street = { kind: "street" as const, complex, exit: 0, at: spot, since: 37320, up: 37320 };
-  const locked = ["locked", "question", "zone", "draw"].includes(scene);
+  const locked = ["locked", "question", "zone", "draw", "found", "timeout", "incomplete"].includes(
+    scene,
+  );
   round = {
     ...round,
     hider: complex,
@@ -86,6 +91,14 @@ export function hideFixture(idx: TimetableIndex, scene: HideScene) {
         draw: { cards: ["late5", "tourist", "work15"], keep: 1, until: t + 60, revision: 1 },
       },
     };
+  if (scene === "found" || scene === "timeout" || scene === "incomplete") {
+    t = scene === "timeout" ? round.seekEnd : 39900;
+    round = {
+      ...round,
+      result: { kind: scene === "incomplete" ? "gaveUp" : scene, at: t },
+      human: { ...(round.human as HumanHider), incomplete: scene === "incomplete" ? "left" : null },
+    };
+  }
   round = advanceSolo(round, t, idx);
   return { round, t, view: hiderView(round, t, idx) };
 }

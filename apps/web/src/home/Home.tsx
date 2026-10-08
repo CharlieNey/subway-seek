@@ -15,6 +15,7 @@ import { FAMILY_NAME } from "../ui/family.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import { Bullets, Caption, FamilySquare } from "../ui/vocab.tsx";
 import { type DailyFacts, useDailyFacts } from "./daily.ts";
+import { HideHistory } from "./HideHistory.tsx";
 import { HowItPlays } from "./HowItPlays.tsx";
 import { LiveMap } from "./LiveMap.tsx";
 import {
@@ -184,7 +185,7 @@ export function Home() {
 
           <section className="hp-s" id="record">
             <div className="hp-s-head">
-              <h2>Your record</h2>
+              <h2>Daily seeking record</h2>
               <p>Kept in this browser. Every day you play sets a tile.</p>
             </div>
             <div className="hp-record">
@@ -198,6 +199,7 @@ export function Home() {
               )}
             </div>
           </section>
+          <HideHistory />
         </div>
       </main>
 
@@ -212,7 +214,7 @@ export function Home() {
             </p>
             <nav aria-label="Footer">
               <a href="#how">How it plays</a>
-              <a href="#record">Your record</a>
+              <a href="#record">Daily seeking record</a>
               <a href="/play?practice">Practice</a>
               <a href="/terms.html">Terms, data and privacy</a>
             </nav>

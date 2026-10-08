@@ -143,6 +143,7 @@ export interface Train {
  * they settle; the hider's station tablet at the end.
  */
 export interface ReplayScene {
+  humanHider: boolean;
   hiderPath: LonLat[];
   seekerPath: LonLat[];
   hiderFull: LonLat[];
@@ -573,12 +574,14 @@ function replayLayers(replay: ReplayScene | null): Layer[] {
       extensions: [tesserae],
       updateTriggers: { getPath: path.length },
     });
+  const hiderColor = replay.humanHider ? INK : TERRA;
+  const seekerColor = replay.humanHider ? TERRA : INK;
   const fams = familyAtlas();
   const layers: Layer[] = [
-    trail("replay-hider-all", replay.hiderFull, TERRA, 64, 0.8),
-    trail("replay-seeker-all", replay.seekerFull, INK, 56, -0.8),
-    trail("replay-hider", replay.hiderPath, TERRA, 255, 0.8),
-    trail("replay-seeker", replay.seekerPath, INK, 255, -0.8),
+    trail("replay-hider-all", replay.hiderFull, hiderColor, 64, 0.8),
+    trail("replay-seeker-all", replay.seekerFull, seekerColor, 56, -0.8),
+    trail("replay-hider", replay.hiderPath, hiderColor, 255, 0.8),
+    trail("replay-seeker", replay.seekerPath, seekerColor, 255, -0.8),
   ];
   if (replay.zone) {
     layers.push(
@@ -642,7 +645,7 @@ function replayLayers(replay: ReplayScene | null): Layer[] {
       }),
     );
   }
-  const hiderHead = replay.hiderPath.at(-1);
+  const hiderHead = (replay.humanHider ? replay.seekerPath : replay.hiderPath).at(-1);
   if (hiderHead) layers.push(dot("replay-hider-head", hiderHead, TERRA));
   return layers;
 }

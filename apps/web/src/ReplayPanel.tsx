@@ -8,6 +8,7 @@
 import { useEffect, useRef } from "react";
 import { hhmm } from "./ask.ts";
 import { useGamePick, type World } from "./game.ts";
+import { isHider } from "./hide.ts";
 import { displayName } from "./names.ts";
 import { hm, Numbers, shareFor, useNewRound } from "./Result.tsx";
 import { REPLAY_REAL_SECONDS, useReplay } from "./replay.ts";
@@ -52,7 +53,9 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
 
   if (!view?.result) return null;
   const hider = view.hider === null ? undefined : world.ds.complexes[view.hider];
-  const elapsed = view.result.at - view.seekStart;
+  const hiding = isHider(view);
+  const incomplete = hiding && view.incomplete;
+  const elapsed = Math.max(0, view.result.at - view.seekStart);
   const bonusMin = Math.round(view.bonusSeconds / 60);
   const kind = view.result.kind;
   const { share } = shareFor(world, view, results, alreadyPlayed);
@@ -73,25 +76,29 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
         {hider && (
           <>
             <span className="font-display text-[10px] font-bold tracking-[0.14em] text-ink-2 uppercase">
-              The hider was at
+              {hiding ? "You hid at" : "The hider was at"}
             </span>
             <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={250} />
           </>
         )}
         <span className="text-[12.5px] text-ink-2">
-          {kind === "found"
-            ? `Found at ${hhmm(view.result.at)}`
-            : kind === "timeout"
-              ? `Time ran out at ${hhmm(view.result.at)}`
-              : `You gave up at ${hhmm(view.result.at)}`}
+          {incomplete
+            ? "Incomplete"
+            : kind === "found"
+              ? `${hiding ? "Caught" : "Found"} at ${hhmm(view.result.at)}`
+              : kind === "timeout"
+                ? `Time ran out at ${hhmm(view.result.at)}`
+                : `You gave up at ${hhmm(view.result.at)}`}
         </span>
-        <Numbers
-          items={[
-            [hm(elapsed), kind === "found" ? "found in" : "searched"],
-            [`+${bonusMin}`, "min to their score"],
-            [hm(elapsed + view.bonusSeconds), "hider score"],
-          ]}
-        />
+        {!incomplete && (
+          <Numbers
+            items={[
+              [hm(elapsed), kind === "found" ? "found in" : "searched"],
+              [`+${bonusMin}`, hiding ? "min to your score" : "min to their score"],
+              [hm(elapsed + view.bonusSeconds), hiding ? "Your score" : "hider score"],
+            ]}
+          />
+        )}
       </div>
       <div ref={box} className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         {log.map((e, i) => (
@@ -120,16 +127,19 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
           disabled={busy}
           onClick={() => {
             // From the homepage's replay there's no round to replace: open one.
-            if (replayOnly) location.assign("/play?practice");
+            if (replayOnly)
+              location.assign(
+                hiding ? `/play?hide&difficulty=${view.difficulty}` : "/play?practice",
+              );
             else {
               useReplay.getState().close();
-              newRound("practice", view.difficulty);
+              newRound(hiding ? "hide" : "practice", view.difficulty);
             }
           }}
         >
           {view.daily ? "Practice round" : "Play again"}
         </Button>
-        <Button onClick={share}>Share</Button>
+        {!incomplete && <Button onClick={share}>Share</Button>}
       </Wainscot>
     </>
   );

@@ -6,12 +6,15 @@ import type { Dataset, LatLon } from "@stand-clear/data";
 import {
   type Answer,
   categoryOf,
+  type Difficulty,
+  type HiderView,
   type OnStreet,
   type Place,
   type SoloView,
   type TrailEntry,
   type Transit,
 } from "@stand-clear/engine";
+import { isHider } from "./hide.ts";
 import { type Family, familyOf } from "./ui/family.ts";
 
 const KEY = "stand-clear:daily-results:v1";
@@ -63,6 +66,8 @@ export function loadReplay(): { date: string; view: SoloView } | null {
  * station, and photos keep their panorama ID (which may be stored) but not their URL.
  * The replay right after a round, from the server's view, has everything.
  */
+export function keptView(ds: Dataset, view: HiderView): HiderView;
+export function keptView(ds: Dataset, view: SoloView): SoloView;
 export function keptView(ds: Dataset, view: SoloView): SoloView {
   const exitOf = (s: OnStreet): LatLon => {
     const c = ds.complexes[s.complex];
@@ -91,7 +96,7 @@ export function keptView(ds: Dataset, view: SoloView): SoloView {
       return { ...s, fromPoint: exit, toPoint: exit, dest: atExit(s.dest) };
     }
     if (s.reason === "enter") return { ...s, fromPoint: up ?? s.toPoint };
-    return s.dest.kind === "street" ? { ...s, dest: atExit(s.dest) } : s;
+    return s.dest.kind === "street" ? { ...s, toPoint: exitOf(s.dest), dest: atExit(s.dest) } : s;
   };
   const atStation = (p: Place): Place => {
     const c = ds.complexes[p.complex];
@@ -99,6 +104,24 @@ export function keptView(ds: Dataset, view: SoloView): SoloView {
   };
   return {
     ...view,
+    ...(isHider(view)
+      ? {
+          self: keepState(view.self, null),
+          ownTrail: keepTrail(view.ownTrail),
+          seekerTrail: keepTrail(view.seekerTrail),
+          spot: null,
+          spotPhoto: view.spotPhoto
+            ? {
+                pano: view.spotPhoto.pano,
+                heading: view.spotPhoto.heading,
+                pitch: view.spotPhoto.pitch,
+                fov: view.spotPhoto.fov,
+              }
+            : null,
+          incoming: [],
+          draw: null,
+        }
+      : {}),
     seeker: keepState(view.seeker, null),
     asked: view.asked.map((a) => {
       const answer = a.answer as Answer | null;
@@ -172,4 +195,74 @@ export function dailyStats(results: Record<string, DailyResult>): DailyStats {
     streak++;
   }
   return { played: list.length, found: list.filter((r) => r.found).length, streak };
+}
+
+const HIDE_KEY = "stand-clear:hide-results:v1";
+const HIDE_REPLAY_KEY = "stand-clear:hide-replays:v1";
+export interface HideResult {
+  id: string;
+  mode: "hide";
+  at: number;
+  difficulty: Difficulty;
+  found: boolean;
+  scoreSeconds: number;
+  elapsedSeconds: number;
+  questions: number;
+  share: string;
+}
+export interface HideReplay {
+  at: number;
+  view: HiderView;
+}
+export function loadHideResults(): Record<string, HideResult> {
+  try {
+    return JSON.parse(localStorage.getItem(HIDE_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+export function loadHideReplays(): Record<string, HideReplay> {
+  try {
+    return JSON.parse(localStorage.getItem(HIDE_REPLAY_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+/** Completed scores and incomplete replays are separate. Repeated socket views are idempotent. */
+export function saveHideResult(ds: Dataset, view: HiderView, share: string): void {
+  if (!view.result) return;
+  const id = view.roundId;
+  const replays = loadHideReplays();
+  const at = replays[id]?.at ?? Date.now();
+  if (!replays[id]) {
+    replays[id] = { at, view: keptView(ds, view) };
+    // Keep the latest 20 replays; every completed score remains in history.
+    const recent = Object.entries(replays)
+      .sort((a, b) => b[1].at - a[1].at)
+      .slice(0, 20);
+    try {
+      localStorage.setItem(HIDE_REPLAY_KEY, JSON.stringify(Object.fromEntries(recent)));
+    } catch {
+      /* Storage unavailable. */
+    }
+  }
+  if (view.incomplete || view.scoreSeconds === null) return;
+  const results = loadHideResults();
+  if (results[id]) return;
+  results[id] = {
+    id,
+    mode: "hide",
+    at,
+    difficulty: view.difficulty,
+    found: view.result.kind === "found",
+    scoreSeconds: view.scoreSeconds,
+    elapsedSeconds: Math.max(0, view.result.at - view.seekStart),
+    questions: view.asked.length,
+    share,
+  };
+  try {
+    localStorage.setItem(HIDE_KEY, JSON.stringify(results));
+  } catch {
+    /* Storage unavailable. */
+  }
 }

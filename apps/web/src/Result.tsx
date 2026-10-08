@@ -45,10 +45,10 @@ const DIFFICULTY_HINT: Record<Difficulty, string> = {
 /** Start a round; confirms before leaving one in progress. */
 export function useNewRound() {
   const { view, send } = useGamePick("view", "send");
-  return (mode: "daily" | "practice", difficulty?: Difficulty) => {
+  return (mode: "daily" | "practice" | "hide", difficulty?: Difficulty) => {
     const inProgress = view && !view.result && view.asked.length > 0;
     if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
-    send(mode === "practice" ? { type: "newRound", mode, difficulty } : { type: "newRound", mode });
+    send(mode !== "daily" ? { type: "newRound", mode, difficulty } : { type: "newRound", mode });
   };
 }
 
@@ -107,7 +107,15 @@ function useTallyCount(total: number, play: boolean, delay: number): number {
 }
 
 /** The score as tiles, one per 5 game-min: where it came from, not just the number. */
-function Tally({ tiles, play, delay }: { tiles: TallyTile[]; play: boolean; delay: number }) {
+export function Tally({
+  tiles,
+  play,
+  delay,
+}: {
+  tiles: TallyTile[];
+  play: boolean;
+  delay: number;
+}) {
   return (
     <div
       className="mt-2.5 flex flex-wrap gap-px bg-grout p-px"

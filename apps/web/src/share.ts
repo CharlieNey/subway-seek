@@ -1,4 +1,5 @@
 import type { Question, SoloView } from "@stand-clear/engine";
+import { isHider } from "./hide.ts";
 
 const EMOJI: Record<Question["kind"], string> = {
   radar: "📡",
@@ -42,9 +43,22 @@ export function shareLink(view: SoloView, origin: string): string | null {
  * origin, a daily's ends with its link (shareLink).
  */
 export function shareText(view: SoloView, startName?: string, origin?: string): string {
-  if (!view.result) return "";
+  if (!view.result || (isHider(view) && view.incomplete)) return "";
   const elapsed = view.result.at - view.seekStart;
   const n = view.asked.length;
+  if (isHider(view)) {
+    const qs = `${n} ${n === 1 ? "question" : "questions"}`;
+    return [
+      `Stand Clear (you hide · ${view.difficulty})${startName ? ` · from ${startName}` : ""}`,
+      view.result.kind === "found"
+        ? `Found in ${formatMinutes(elapsed)} · ${qs}`
+        : `Not found · ${formatMinutes(elapsed)} · ${qs}`,
+      view.asked.map((a) => EMOJI[a.q.kind]).join(""),
+      `My score: ${formatMinutes(view.scoreSeconds ?? elapsed + view.bonusSeconds)}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
   const practice = view.difficulty === "normal" ? "practice" : `practice · ${view.difficulty}`;
   const title = `${view.daily ? `Stand Clear #${view.daily.number}` : `Stand Clear (${practice})`}${startName ? ` · from ${startName}` : ""}`;
   const qs = `${n} ${n === 1 ? "question" : "questions"}`;

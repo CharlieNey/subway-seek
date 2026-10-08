@@ -68,6 +68,8 @@ export interface PendingAnswer {
   decision: "true" | "veto" | "randomize" | null;
 }
 export interface HumanHider {
+  /** Opaque server-generated identity; never a deck seed. */
+  roundId: string;
   transit: Transit;
   /** Actual platform at the hide deadline. */
   station: number | null;
@@ -92,7 +94,7 @@ export type HiderIntent =
 
 export function createHideRound(
   idx: TimetableIndex,
-  opts: Parameters<typeof createSoloRound>[1],
+  opts: Parameters<typeof createSoloRound>[1] & { roundId?: string },
 ): SoloRound {
   const round = createSoloRound(idx, opts);
   const transit: OnPlatform = {
@@ -107,6 +109,7 @@ export function createHideRound(
     hider: -1,
     hiderTrail: [{ t: round.hideStart, state: transit }],
     human: {
+      roundId: opts.roundId ?? "fixture",
       transit,
       station: null,
       lock: null,
@@ -666,6 +669,7 @@ export function hideStatus(round: SoloRound, t: number, idx: TimetableIndex): Hi
 }
 export interface HiderView extends Omit<SoloView, "seeker"> {
   role: "hider";
+  roundId: string;
   seeker: Transit;
   self: Transit;
   ownTrail: TrailEntry[];
@@ -703,6 +707,7 @@ export function hiderView(round: SoloRound, t: number, idx: TimetableIndex): Hid
   return {
     ...view,
     role: "hider",
+    roundId: h.roundId,
     seeker: visibleTransit(round.seeker, t, idx),
     self: h.transit,
     ownTrail: round.hiderTrail,

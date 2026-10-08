@@ -117,12 +117,18 @@ function CurseChip({ c, line }: { c: ActiveCurse; line: ReturnType<typeof curseL
 }
 
 /** At the end: what the hider was holding, and what the time bonuses added. */
-export function HandReveal({ hand }: { hand: CardId[] }) {
-  if (hand.length === 0) return <p className="text-[12px] text-ink-2">The hider held no cards.</p>;
+export function HandReveal({ hand, own = false }: { hand: CardId[]; own?: boolean }) {
+  if (hand.length === 0)
+    return (
+      <p className="text-[12px] text-ink-2">
+        {own ? "Cards held · 0" : "The hider held no cards."}
+      </p>
+    );
   const bonus = handBonusSeconds(hand) / 60;
   return (
     <p className="text-[12px] text-ink-2">
-      The hider held {hand.map((c) => CARDS[c].title).join(", ")}
+      {own ? "Cards held · " : "The hider held "}
+      {hand.map((c) => CARDS[c].title).join(", ")}
       {bonus > 0 ? ` · time bonuses +${bonus} min` : ""}
     </p>
   );

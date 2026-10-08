@@ -30,7 +30,15 @@ import { useShallow } from "zustand/react/shallow";
 import { keepArmed } from "./ask.ts";
 import { ATTEMPT_TIMEOUT_MS, attemptFailed, type Link, startAttempt } from "./connection.ts";
 import { doorOf, type StoredSession, tokenFor, withoutDoor } from "./doors.ts";
-import { type DailyResult, loadReplay, loadResults, saveResult } from "./history.ts";
+import { isHider } from "./hide.ts";
+import {
+  type DailyResult,
+  loadHideReplays,
+  loadReplay,
+  loadResults,
+  saveHideResult,
+  saveResult,
+} from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
 
@@ -217,6 +225,7 @@ export function loadSession(): StoredSession | null {
       token: s.token,
       live: !!s.live,
       mode: s.mode === "daily" || s.mode === "practice" || s.mode === "hide" ? s.mode : null,
+      difficulty: s.difficulty === "easy" || s.difficulty === "hard" ? s.difficulty : "normal",
       daily: typeof s.daily === "number" ? s.daily : null,
       at: typeof s.at === "number" ? s.at : 0,
     };
@@ -241,6 +250,7 @@ function rememberSession() {
     token: sessionToken,
     live: !view.result,
     mode: view.mode,
+    difficulty: view.difficulty,
     daily: view.daily?.number ?? null,
   });
 }
@@ -266,6 +276,7 @@ function onView(view: SoloView): Partial<GameStore> {
       token: sessionToken,
       live: !view.result,
       mode: view.mode,
+      difficulty: view.difficulty,
       daily: view.daily?.number ?? null,
     });
   }
@@ -273,6 +284,7 @@ function onView(view: SoloView): Partial<GameStore> {
     return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
   const { alreadyPlayed, world } = useGame.getState();
+  if (isHider(view) && world) saveHideResult(world.ds, view, shareText(view, hubName(world, view)));
   if (view.daily && !alreadyPlayed && world) {
     saveResult(world.ds, view, shareText(view, hubName(world, view), location.origin));
   }
@@ -405,10 +417,14 @@ function connect() {
   const url = new URL(SERVER_URL);
   const token = sessionToken ?? tokenFor(door, loadSession());
   if (token) url.searchParams.set(SESSION_PARAM, token);
-  else if (door.kind === "practice" || door.kind === "hide") {
-    // A new session starts the round the door asked for.
-    url.searchParams.set("mode", door.kind);
-    if (door.difficulty) url.searchParams.set("difficulty", door.difficulty);
+  const stored = loadSession();
+  const opening =
+    door.kind === "resume" && stored?.mode
+      ? { kind: stored.mode, difficulty: stored.difficulty }
+      : door;
+  if (opening.kind === "practice" || opening.kind === "hide") {
+    url.searchParams.set("mode", opening.kind);
+    if (opening.difficulty) url.searchParams.set("difficulty", opening.difficulty);
   }
   const ws = new WebSocket(url);
   socket = ws;
@@ -560,7 +576,8 @@ export async function startGame() {
  * replay. The round is over, so its view holds everything the replay shows.
  */
 function showStoredReplay() {
-  const kept = loadReplay();
+  const kept =
+    door.kind === "replay" && door.hideId ? loadHideReplays()[door.hideId] : loadReplay();
   const { world } = useGame.getState();
   if (!kept?.view.result || !world) {
     location.replace("/");

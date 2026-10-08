@@ -31,6 +31,7 @@ import { cn } from "./cn.ts";
 import { openingRound, useGame, useGamePick, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
 import { HiderPanel } from "./HiderPanel.tsx";
+import { HiderResult } from "./HiderResult.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
@@ -554,7 +555,11 @@ export function Panel() {
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
           {over ? (
             <>
-              <ResultCard world={world} />
+              {isHider(view) ? (
+                <HiderResult world={world} view={view} />
+              ) : (
+                <ResultCard world={world} />
+              )}
               <QuestionLog world={world} />
             </>
           ) : (
