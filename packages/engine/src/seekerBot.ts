@@ -33,7 +33,7 @@ import {
   ZONE_RADIUS_M,
 } from "./questions.ts";
 import { earliestJourney, type Leg } from "./reach.ts";
-import { SEARCH_GRID_M, searchGrid } from "./search.ts";
+import { possibleSpots, SEARCH_GRID_M, searchGrid } from "./search.ts";
 import {
   type ActiveCurse,
   advanceSolo,
@@ -475,6 +475,24 @@ function footAnswer(
  * counts as far as it has got, like the engine's walkedBy), new on-foot answers.
  */
 export function syncBelief(b: SearchBelief, ds: Dataset, view: SoloView, t: number): void {
+  if (view.mobileHider) {
+    const possible = new Set(
+      possibleSpots(
+        ds,
+        b.centre,
+        view.asked,
+        view.candidates,
+        view.footpath,
+        t,
+        true,
+        STREET_RADIUS_M,
+      ),
+    );
+    b.points.forEach((p, i) => {
+      b.alive[i] = possible.has(p) ? 1 : 0;
+    });
+    return;
+  }
   const key = view.candidates.join(",");
   if (key !== b.candidatesKey) {
     b.candidatesKey = key;

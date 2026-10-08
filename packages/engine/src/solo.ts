@@ -20,6 +20,14 @@ import {
 import { type DailyInfo, hashString, seededRandom } from "./daily.ts";
 import { distanceMeters, localMeters } from "./geo.ts";
 import { type Difficulty, pickHidingStation } from "./hardness.ts";
+import {
+  advanceHider,
+  finishHider,
+  type HumanHider,
+  hideStatus,
+  humanAnswer,
+  queueHumanQuestion,
+} from "./hider.ts";
 import { type BotPlay, botCurse, botPowerup, botRedraw, nextStopIndex } from "./hiderBot.ts";
 import {
   type Answer,
@@ -139,6 +147,8 @@ export type RoundResult =
 export type RoundMode = "daily" | "practice";
 
 export interface SoloRound {
+  /** Present only when the hider is controlled by a person. */
+  human?: HumanHider;
   mode: RoundMode;
   /** Which band of stations the bot hid in, and how hard it plays its cards (DESIGN.md, S5). */
   difficulty: Difficulty;
@@ -328,16 +338,20 @@ function standingAt(round: SoloRound, t: number, idx: TimetableIndex) {
  */
 export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): SoloRound {
   if (round.result) return round;
+  if (round.human) round = advanceHider(round, t, idx);
+  if (round.result) return round;
   round = spotOnTheWay(round, t);
   round = settleCurses(round, t, idx);
-  round = hiderCurses(round, t, idx);
+  if (!round.human) round = hiderCurses(round, t, idx);
   const here = standingAt(round, t, idx);
   if (here && here.complex === round.hider && round.stationFoundAt === null) {
     const at = Math.min(here.since, round.seekEnd);
-    if (!round.spot) return { ...round, stationFoundAt: at, result: { kind: "found", at } };
+    if (!round.spot && !round.human)
+      return { ...round, stationFoundAt: at, result: { kind: "found", at } };
     round = { ...round, stationFoundAt: at };
   }
-  if (t >= round.seekEnd) return { ...round, result: { kind: "timeout", at: round.seekEnd } };
+  if (t >= round.seekEnd)
+    return finishHider({ ...round, result: { kind: "timeout", at: round.seekEnd } });
   return round;
 }
 
@@ -549,16 +563,33 @@ export function firstWithin(a: LatLon, b: LatLon, p: { lat: number; lon: number 
  * walked is searched (see SoloView.footpath).
  */
 function spotOnTheWay(round: SoloRound, t: number): SoloRound {
-  const s = round.seeker;
+  let s = round.seeker;
   if (!round.spot || s.kind !== "walking" || s.reason !== "street") return round;
+  // A human spot did not exist before its lock. Do not replay an earlier sighting.
+  const lockedAt = round.human?.lock?.at;
+  let appearedDuringWalk = false;
+  if (lockedAt !== undefined && s.start < lockedAt) {
+    if (s.end <= lockedAt) return round;
+    const f = (lockedAt - s.start) / (s.end - s.start);
+    s = {
+      ...s,
+      start: lockedAt,
+      fromPoint: [
+        s.fromPoint[0] + f * (s.toPoint[0] - s.fromPoint[0]),
+        s.fromPoint[1] + f * (s.toPoint[1] - s.fromPoint[1]),
+      ],
+    };
+    appearedDuringWalk = true;
+  }
   // Already in sight where the walk began (usually because the last walk stopped when
   // they came into view): walking on, toward them or away, doesn't stop you again.
   // Checked at the reveal distance, not the stopping one, since the last stop can land a
   // rounding error outside 39.5 m and every walk toward them would stop on the spot.
   const from = { lat: s.fromPoint[0], lon: s.fromPoint[1] };
-  if (distanceMeters(from, round.spot) <= SPOT_REVEAL_METERS) return round;
+  const inSight = distanceMeters(from, round.spot) <= SPOT_REVEAL_METERS;
+  if (inSight && !appearedDuringWalk) return round;
   // A hair inside the reveal distance, so the marker shows where you stop.
-  const f = firstWithin(s.fromPoint, s.toPoint, round.spot, SPOT_REVEAL_METERS - 0.5);
+  const f = inSight ? 0 : firstWithin(s.fromPoint, s.toPoint, round.spot, SPOT_REVEAL_METERS - 0.5);
   if (f === null) return round;
   const at = s.start + f * (s.end - s.start);
   if (at > t || s.dest.kind !== "street") return round;
@@ -690,6 +721,7 @@ export function applySoloIntent(
   const round = advanceSolo(current, t, idx);
   if (round.result) return { ok: false, error: "This round is over." };
 
+  if (round.human && t < round.seekStart) return { ok: false, error: "Trains open at 10:20." };
   switch (intent.type) {
     case "ask": {
       const ready = askReadyAt(round.asked, categoryOf(intent.question));
@@ -712,25 +744,31 @@ export function applySoloIntent(
       };
       let answer: Answer;
       if (isSpotQuestion(q)) {
-        if (!round.spot) return { ok: false, error: "There's no hiding spot this round." };
+        if (!round.spot && !round.human)
+          return { ok: false, error: "There's no hiding spot this round." };
         if (resolve(round.seeker, t, idx).kind !== "street") {
           return { ok: false, error: "Ask on-foot questions standing on the street." };
         }
         const error = questionError(idx.ds, q, ctx);
         if (error) return { ok: false, error };
-        answer = evaluateSpot(q, round.spot, ctx);
+        answer = round.human
+          ? humanAnswer(round, { q, ctx, answer: false }, t, idx)
+          : evaluateSpot(q, round.spot as HidingSpot, ctx);
       } else if (q.kind === "photo") {
         const pano = q.from === "exit" ? round.photoExit : round.spot?.pano;
-        if (!pano) return { ok: false, error: "No photo available for this round." };
+        if (!pano && !round.human)
+          return { ok: false, error: "No photo available for this round." };
         if (q.from === "spot" && t < round.seekStart + SPOT_PHOTOS_OPEN_SECONDS) {
           return { ok: false, error: "Photos from the hiding spot open 15 min into the round." };
         }
-        answer = { photo: photoCamera(pano, q.look) };
+        answer = { photo: photoCamera(pano ?? "", q.look) };
       } else {
         const error = questionError(idx.ds, q, ctx);
         if (error) return { ok: false, error };
         answer = evaluate(idx.ds, q, round.hider, ctx);
       }
+      if (round.human)
+        return { ok: true, round: queueHumanQuestion(round, { q, ctx, answer }, t, idx) };
       // The hider may answer a station question with Veto or Randomize.
       const play = botPowerup(
         idx.ds,
@@ -750,7 +788,10 @@ export function applySoloIntent(
       if (d === null) return { ok: false, error: "There's no one to catch here." };
       if (d > CATCH_METERS) return { ok: false, error: "Not close enough — get within 25 m." };
       const stationFoundAt = huntEndedAt(round, t, idx);
-      return { ok: true, round: { ...round, stationFoundAt, result: { kind: "found", at: t } } };
+      return {
+        ok: true,
+        round: finishHider({ ...round, stationFoundAt, result: { kind: "found", at: t } }),
+      };
     }
     case "startThermometer":
       return { ok: true, round: { ...round, thermometer: questionOrigin(round.seeker, t, idx) } };
@@ -830,6 +871,9 @@ export function isAnswered(a: SeenQuestion): a is AskedQuestion {
 
 /** What the seeker may see: everything except the hider, until the round ends. */
 export interface SoloView {
+  /** Public mode capability, never a signal of the actual hider lock. */
+  mobileHider?: boolean;
+  hideStatus?: "riding" | "changing" | "walking";
   mode: RoundMode;
   difficulty: Difficulty;
   daily: DailyInfo | null;
@@ -927,6 +971,7 @@ export function revealsHider(round: Pick<SoloRound, "mode" | "result">): boolean
  * SPOT_REVEAL_METERS.
  */
 export function soloView(round: SoloRound, t: number, idx: TimetableIndex): SoloView {
+  if (round.human) round = advanceSolo(round, t, idx);
   const over = round.result !== null;
   const revealed = revealsHider(round);
   const near =
@@ -962,7 +1007,13 @@ export function soloView(round: SoloRound, t: number, idx: TimetableIndex): Solo
     result: round.result,
     hider: revealed ? round.hider : null,
     replay: over ? { hider: revealed ? round.hiderTrail : [], seeker: round.seekerTrail } : null,
-    hasSpot: round.spot !== null,
+    hasSpot: round.human ? true : round.spot !== null,
+    ...(round.human
+      ? {
+          mobileHider: true,
+          ...(t < round.seekStart ? { hideStatus: hideStatus(round, t, idx) } : {}),
+        }
+      : {}),
     // Not shown mid-round: confirming "right station" would give the zone away.
     stationFoundAt: revealed ? round.stationFoundAt : null,
     spotNearby: near && round.spot ? { lat: round.spot.lat, lon: round.spot.lon } : null,
