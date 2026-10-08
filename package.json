@@ -18,7 +18,8 @@
     "sim": "pnpm --filter @stand-clear/engine sim",
     "sim:endgame": "pnpm --filter @stand-clear/engine sim:endgame",
     "sim:match": "pnpm --filter @stand-clear/engine sim:match",
-    "sim:hide": "pnpm --filter @stand-clear/engine sim:hide"
+    "sim:hide": "pnpm --filter @stand-clear/engine sim:hide",
+    "metrics": "pnpm --filter @stand-clear/server metrics"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

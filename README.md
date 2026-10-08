@@ -37,6 +37,7 @@ Human-hide server snapshots store panorama IDs and rehydrate coordinates when re
 | `pnpm test` | Vitest across all packages |
 | `pnpm sim` | Balance check: questions to find the hider's station, and which kinds a strong seeker uses (`--pace 8`, `SIM_RULES=…`; see `docs/question-balance.md`) |
 | `pnpm sim:endgame` | Balance check: how long the street search takes, with and without on-foot questions (see `docs/endgame-balance.md`) |
+| `pnpm metrics` | Playtest metrics from the match logs, in the shape `sim:match` prints so human rounds read against the bot's: found and give-up rates, station and endgame time, questions by category, cards, real seconds between decisions (`--dir=`, `--since=`, `--mode=`) |
 | `pnpm sim:match` | Balance check: a bot seeker plays whole rounds against the bot hider with real travel time — station time, endgame share, hider score, cards and curse costs per difficulty (`--rounds`, `--hub`, `--difficulty`, `--seed`, `SIM_RULES`, `SIM_DECK`, `SIM_COST`; see `docs/match-balance.md`) |
 | `pnpm sim:hide` | Paced human-hide scenarios: ten per seeker level, identical seeds, platform waiting and never-lock cases; virtual clock and synthetic panoramas (`--rounds`, `--difficulty`, `--seed`, `--endgame-at`, `--json`; see `docs/match-balance.md`) |
 | `pnpm typecheck` | `tsc --noEmit` in every package |

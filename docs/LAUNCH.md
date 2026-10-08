@@ -63,4 +63,4 @@ The ten fixes before anyone plays, from the review of the built game. Details in
 
 - [ ] A status page, so the error screen's link can return.
 - [ ] Server-side daily results, streak repair, a playable archive.
-- [ ] The launch post: where (r/JetLagTheGame and the fan Discords), and what the first week measures: station-finding time, endgame share of seeking, questions per round, give-up rate.
+- [ ] The launch post: where (r/JetLagTheGame and the fan Discords), and what the first week measures: station-finding time, endgame share of seeking, questions per round, give-up rate, real seconds between decisions. `pnpm metrics` over the instance's logs prints them against the bot's line (2026-10-08).
