@@ -43,6 +43,7 @@ export function Button({
   keys,
   onClick,
   title,
+  label,
   className,
 }: {
   children: ReactNode;
@@ -54,6 +55,8 @@ export function Button({
   keys?: string;
   onClick?: () => void;
   title?: string;
+  /** What a screen reader hears, when the visible text repeats down a list ("Get off"). */
+  label?: string;
   className?: string;
 }) {
   const button = (
@@ -62,6 +65,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       title={title}
+      aria-label={label}
       data-key={keys === "⏎" ? undefined : keys}
       className={cn("sc-btn", kind !== "white" && kind, small && "sm", className)}
     >

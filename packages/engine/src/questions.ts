@@ -302,7 +302,7 @@ export function questionError(ds: Dataset, q: Question, ctx: AskContext): string
         ? null
         : "Pick a distance.";
     case "spotThermometer":
-      if (!ctx.baseline) return "Start the walking thermometer first, then walk.";
+      if (!ctx.baseline) return "Start Hotter or colder here first, then walk.";
       if (distanceMeters(ctx.baseline, ctx.origin) < FOOT_THERMOMETER_MIN_METERS) {
         return `Walk at least ${FOOT_THERMOMETER_MIN_METERS} m before reading it.`;
       }
@@ -507,7 +507,7 @@ export function describeQuestion(q: Question, ds?: Dataset, ctx?: AskContext): s
     case "spotRadar":
       return `Is your spot within ${q.meters} m of me?`;
     case "spotThermometer":
-      return "Am I closer to your spot than where I started walking?";
+      return "Hotter or colder than where I started walking?";
     case "photo": {
       const where = q.from === "exit" ? "your station's exit" : "where you're hiding";
       const dir = { N: "north", E: "east", S: "south", W: "west", up: "up" }[q.look];

@@ -6,10 +6,10 @@
  */
 import { dailyNumber, nyDate, RECONNECT_GRACE_MS, SEEKER_LEVELS } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
+import { hm } from "../ask.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
 import { displayName, formatDay } from "../names.ts";
-import { hm } from "../Result.tsx";
 import { routesFor } from "../routes.ts";
 import { FAMILY_NAME } from "../ui/family.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
@@ -88,7 +88,7 @@ export function Home() {
           </a>
           <nav aria-label="Main">
             <a href="#how">How it plays</a>
-            <a href="#record">Your record</a>
+            <a href="#record">Daily seeking record</a>
             <a className="keep" href="#modes">
               <Caption tone="light">
                 Daily <span className="n">#{today.number}</span>
@@ -107,7 +107,7 @@ export function Home() {
             </div>
             <div className="hp-hero-grid">
               <div>
-                <h1>Hide and seek on the real New York subway.</h1>
+                <h1>Hide and seek on the real New York subway.</h1>
                 <p className="hp-lede">
                   A hider went underground at 10:00 and got off somewhere. Ride the real timetable,
                   ask questions that rule stations out, then come up and find them on the street.
@@ -208,9 +208,9 @@ export function Home() {
         <div className="sc-wains-field">
           <div className="hp-wrap inner">
             <p className="fine">
-              Timetable and station data from the MTA. Map and Street View imagery from Google. Map
-              data © OpenStreetMap contributors in the free fallback map. Stand Clear is a fan-made
-              game and isn't affiliated with the MTA.
+              Timetable and station data from the MTA. Map and Street View imagery from Google. The
+              places the questions ask about © OpenStreetMap contributors and NYC Parks. Stand Clear
+              is a fan-made game and isn't affiliated with the MTA.
             </p>
             <nav aria-label="Footer">
               <a href="#how">How it plays</a>
@@ -259,7 +259,7 @@ function Departures({
       {done ? (
         watch ? (
           <a className="sc-btn go" href={watch}>
-            Replay
+            Watch replay
           </a>
         ) : (
           <span />
@@ -376,7 +376,7 @@ function Record({ results, today }: { results: Record<string, DailyResult>; toda
       <div className="hp-stats">
         <div>
           <b>{stats.played}</b>
-          <span>dailies played</span>
+          <span>{stats.played === 1 ? "daily" : "dailies"} played</span>
         </div>
         <div>
           <b>{stats.found}</b>
@@ -387,7 +387,7 @@ function Record({ results, today }: { results: Record<string, DailyResult>; toda
           <span>day streak</span>
         </div>
         <div>
-          <b>{stats.fastest === null ? "–" : hm(stats.fastest)}</b>
+          <b>{stats.fastest === null ? "–" : `${Math.round(stats.fastest / 60)} min`}</b>
           <span>fastest find</span>
         </div>
       </div>

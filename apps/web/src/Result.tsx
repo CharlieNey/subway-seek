@@ -11,7 +11,7 @@ import {
   type SoloView,
 } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
-import { type TallyTile, tallyTiles } from "./ask.ts";
+import { hm, type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
 import { hubName, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
@@ -24,12 +24,6 @@ import { FAMILY_COLORS } from "./ui/family.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Bullets, Button, Line } from "./ui/vocab.tsx";
 import { LINES, lineFor, roundKey } from "./voice.ts";
-
-/** "1:32": hours and minutes, as the result's numbers read. */
-export const hm = (seconds: number) => {
-  const m = Math.round(seconds / 60);
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
-};
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: "Easy",
@@ -185,7 +179,7 @@ export function ResultCard({ world }: { world: World }) {
   const kind = view.result.kind;
   const stats = dailyStats(results);
   const questionMin = questionBonusSeconds(view.asked) / 60;
-  const { share, counted } = shareFor(world, view, results, alreadyPlayed);
+  const { share } = shareFor(world, view, results, alreadyPlayed);
   return (
     <div className="flex flex-col items-center gap-2 border-b border-grout px-4 pt-3.5 pb-3">
       <NameTablet
@@ -243,7 +237,7 @@ export function ResultCard({ world }: { world: World }) {
             Watch replay
           </Button>
         )}
-        <Button onClick={share}>{counted ? "Share today's result" : "Share result"}</Button>
+        <Button onClick={share}>Share result</Button>
         <Button disabled={busy} onClick={() => newRound("practice", difficulty)}>
           {view.daily ? "Practice round" : "Play again"}
         </Button>

@@ -10,7 +10,10 @@ import {
   ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import type { World } from "./game.ts";
-import { circle, type SearchScene } from "./map/layers.ts";
+// Only the type from the layers module: importing its code would pull deck.gl into the
+// homepage, which shares this module through the live map.
+import type { SearchScene } from "./map/layers.ts";
+import { ring } from "./map/shapes.ts";
 
 /** The station you're on foot around (standing, walking, or coming up), if any. */
 function searchComplex(world: World, view: SoloView, t: number): number | null {
@@ -40,7 +43,7 @@ export function searchScene(world: World, view: SoloView, t: number): SearchScen
   }
   const scene: SearchScene = {
     complex,
-    ring: circle(c.lat, c.lon, ZONE_RADIUS_M),
+    ring: ring({ lat: c.lat, lon: c.lon }, ZONE_RADIUS_M),
     possible: possible.map((p) => [p.lon, p.lat] as LonLat),
   };
   cache = { view, complex, tick, scene };

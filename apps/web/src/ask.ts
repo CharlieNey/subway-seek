@@ -18,6 +18,7 @@ import {
   landmarksWithin,
   milesText,
   nearestLandmark,
+  QUESTION_GAP_SECONDS,
   QUESTION_RULES,
   type Question,
   type QuestionCategory,
@@ -39,6 +40,12 @@ export const ringText = (m: number) => `${m === 0.25 ? "¼" : m === 0.5 ? "½" :
 export const LOOK_WORD = { N: "north", E: "east", S: "south", W: "west", up: "up" } as const;
 
 /** "10:47" from game seconds. */
+/** "1:32": hours and minutes, as the result's numbers read. */
+export const hm = (seconds: number) => {
+  const m = Math.round(seconds / 60);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+};
+
 export const hhmm = (t: number) => {
   const s = Math.floor(t);
   return `${String(Math.floor(s / 3600) % 24).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
@@ -161,7 +168,7 @@ export function askLabel(q: Question): string {
     case "express":
       return "Ask · Same kind of stop?";
     case "moreRoutes":
-      return "Ask · More lines?";
+      return "Ask · More lines than mine?";
     case "matching":
     case "measuring":
     case "tentacles":
@@ -182,9 +189,23 @@ export function priceText(q: Question): string {
 
 const capitalize = (s: string) => (s[0]?.toUpperCase() ?? "") + s.slice(1);
 
-/** "220 m" or "1.4 km", for hints. */
+/** "800 ft" or "1.3 mi", for hints: the questions are asked in miles, so the hints are too. */
 export function distanceText(meters: number): string {
-  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
+  const mi = meters / 1609.344;
+  return mi < 0.2 ? `${Math.round((meters * 3.28084) / 50) * 50} ft` : `${mi.toFixed(1)} mi`;
+}
+
+/** "220 m", for the on-foot rules, which are in metres (40 m, 25 m, 400 m). */
+export function metersText(meters: number): string {
+  return `${Math.round(meters / 10) * 10} m`;
+}
+
+/** When the 5-min gap after the last station question ends (every category shares it). */
+export function gapEndsAt(view: Pick<SoloView, "asked">): number {
+  const last = view.asked
+    .filter((a) => categoryOf(a.q) !== "onFoot")
+    .reduce((m, a) => Math.max(m, a.at), Number.NEGATIVE_INFINITY);
+  return last + QUESTION_GAP_SECONDS;
 }
 
 export interface Hint {
@@ -248,7 +269,7 @@ export function questionHint(
       const n = ds.complexes[ctx.origin.complex]?.routes.length ?? 0;
       return {
         lead: `${here} has ${n} ${n === 1 ? "line" : "lines"}.`,
-        rest: "Closer keeps the stations with more, No the ones with as many or fewer.",
+        rest: "More keeps the stations with more, No the ones with as many or fewer.",
       };
     }
     case "matching": {
@@ -323,7 +344,7 @@ export const HINTS: Record<HintId, string> = {
   ride: "Ride toward what's left. Get off anywhere.",
   three: "Three left. Go up and look.",
   counts:
-    "If this is their station, the hider is inside your circle.\nYou see them once you pass within 40 m.\nYou catch them within 25 m, standing still.",
+    "If this is their station, the hider is inside your circle.\nYou see them once you pass within 40 m.\nYou catch them within 25 m, standing still.",
 };
 
 /**
@@ -399,7 +420,7 @@ export function shortQuestion(q: Question): string {
     case "spotRadar":
       return `Within ${q.meters} m of me?`;
     case "spotThermometer":
-      return "Am I closer? (on foot)";
+      return "Hotter or colder?";
   }
 }
 

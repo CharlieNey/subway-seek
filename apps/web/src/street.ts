@@ -73,7 +73,7 @@ export async function walkToward(lat: number, lon: number): Promise<void> {
   if (!onStreet(view, nowGameTime(), world)) return;
   const p = await nearestPano(lat, lon, 40);
   if (!p) {
-    useGame.setState({ notice: "No street to walk to there — click closer to a street." });
+    useGame.setState({ notice: "No street to walk to there. Click closer to a street." });
     return;
   }
   send({ type: "walkTo", lat: p.lat, lon: p.lon, pano: p.pano });

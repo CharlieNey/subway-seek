@@ -6,11 +6,11 @@
  * dot, questions their family square.
  */
 import { useEffect, useRef } from "react";
-import { hhmm } from "./ask.ts";
+import { hhmm, hm } from "./ask.ts";
 import { useGamePick, type World } from "./game.ts";
 import { isHider } from "./hide.ts";
 import { displayName } from "./names.ts";
-import { hm, Numbers, shareFor, useNewRound } from "./Result.tsx";
+import { Numbers, shareFor, useNewRound } from "./Result.tsx";
 import { REPLAY_REAL_SECONDS, useReplay } from "./replay.ts";
 import { currentEvent, type LogEvent } from "./replayLog.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
@@ -139,7 +139,7 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
         >
           {view.daily ? "Practice round" : "Play again"}
         </Button>
-        {!incomplete && <Button onClick={share}>Share</Button>}
+        {!incomplete && <Button onClick={share}>Share result</Button>}
       </Wainscot>
     </>
   );

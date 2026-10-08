@@ -780,7 +780,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     return;
   }
   if (game.clock.pausedAt !== null && intent.type !== "leaveHide")
-    return reject("Paused — resume first.");
+    return reject("Paused. Resume first.");
 
   const hiderIntent = hiderIntentSchema.safeParse(intent);
   if (game.round.human && !hiderIntent.success) return reject("That didn't go through. Try again.");

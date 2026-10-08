@@ -143,7 +143,7 @@ export function HowItPlays() {
         <h3>The hider rides and gets off</h3>
         <p>
           Wherever their train stops when the time runs out, that station is the middle of their
-          hiding zone: 400 m all round.
+          hiding zone: 400 m all round.
         </p>
         <div className="hp-art">
           <canvas ref={hide} />
@@ -175,7 +175,7 @@ export function HowItPlays() {
         <h3>Come up and find them</h3>
         <p>
           Get off where you think they are, climb to the street and search in Street View. They
-          appear once you pass within 40 m; get within 25 m to catch them.
+          appear once you pass within 40 m; get within 25 m to catch them.
         </p>
         {/* Street View itself only shows in the game, beside the Google map. */}
         <div

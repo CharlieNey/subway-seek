@@ -15,7 +15,6 @@ import {
   landmarksWithin,
   milesText,
   ON_FOOT_RANGE_M,
-  QUESTION_GAP_SECONDS,
   QUESTION_RULES,
   type Question,
   type QuestionCategory,
@@ -36,7 +35,9 @@ import {
   chipState,
   closedKeys,
   distanceText,
+  gapEndsAt,
   hhmm,
+  metersText,
   questionHint,
   radarLabel,
   readyAt,
@@ -227,8 +228,8 @@ function CategoryHint({
       </span>
       <span>
         <b className="font-semibold">{hint.lead}</b> {hint.rest}
-        {cooling &&
-          ` ${FAMILY_NAME[family]} is cooling down, so this is a preview. Ready at ${hhmm(ready)}.`}
+        {/* No family name: the hint sits under its own band, and On foot's square is radar's. */}
+        {cooling && ` Cooling down, so this is a preview. Ready at ${hhmm(ready)}.`}
       </span>
     </div>
   );
@@ -261,6 +262,9 @@ function Category({
 }) {
   const ready = readyAt(view, category);
   const cooling = t < ready;
+  // The header counts down the 5-min gap every category shares; a row shows its own time
+  // only when its cooldown runs past that.
+  const ownCooldown = ready > gapEndsAt(view);
   const price = `+${QUESTION_RULES[category].bonusSeconds / 60} min`;
   const squareFamily: Family = family === "ink" ? "radar" : family;
   if (cooling && !open) {
@@ -269,7 +273,7 @@ function Category({
         <CoolRow
           family={squareFamily}
           label={title.split(" · ")[0]}
-          next={`next ${hhmm(ready)}`}
+          next={ownCooldown ? `next ${hhmm(ready)}` : "after the gap"}
           open={false}
           onToggle={onToggle}
         />
@@ -294,7 +298,7 @@ function Category({
           <LocalBand
             family={family}
             title={title}
-            price={cooling ? `${price} · next ${hhmm(ready)}` : price}
+            price={cooling && ownCooldown ? `${price} · next ${hhmm(ready)}` : price}
           />
         )}
       </button>
@@ -347,11 +351,7 @@ function AskingFrom({
 }) {
   const origin = questionOrigin(view.seeker, t, world.idx);
   const name = displayName(world.ds.complexes[origin.complex]?.name ?? "?");
-  const lastStation = view.asked
-    .filter((a) => categoryOf(a.q) !== "onFoot")
-    .reduce((m, a) => Math.max(m, a.at), Number.NEGATIVE_INFINITY);
-  const gapEnds = lastStation + QUESTION_GAP_SECONDS;
-  const gapLeft = Math.max(0, gapEnds - t);
+  const gapLeft = Math.max(0, gapEndsAt(view) - t);
   return (
     <div className="flex items-end justify-between gap-2.5 px-4 pt-3 pb-1">
       <div className="min-w-0">
@@ -411,14 +411,10 @@ function OnFootBlock({
     >
       {(cooling) => (
         <>
-          {leftPct !== null && (
-            <div className="flex items-center justify-between gap-2.5 text-[13px] font-semibold">
-              <span>
-                {leftPct === 0
-                  ? "Nowhere in your circle fits: they're not near this station."
-                  : `${leftPct}% of your circle is left`}
-              </span>
-              <TileTimer total={20} left={(leftPct / 100) * 20} size={8} />
+          {/* The share left is the hero number above and the map's legend; only the end state is news here. */}
+          {leftPct === 0 && (
+            <div className="text-[13px] font-semibold">
+              Nowhere in your circle fits: they're not near this station.
             </div>
           )}
           <Prompt>Is your spot within … of me?</Prompt>
@@ -443,12 +439,12 @@ function OnFootBlock({
               {view.footThermometer ? "Restart here · free" : "Start here · free"}
             </FreeChip>
             <QChip q={{ kind: "spotThermometer" }} cooling={cooling} view={view}>
-              Am I closer?
+              Hotter or colder?
             </QChip>
           </div>
           <p className="text-[11.5px] leading-[1.4] text-ink-2">
-            Only near them. "Not near you" means more than {ON_FOOT_RANGE_M} m: it clears the
-            {ON_FOOT_RANGE_M - ZONE_RADIUS_M} m around you, so a big station's tile can stay.
+            "Not near you" means they're more than {ON_FOOT_RANGE_M} m away. It clears only the{" "}
+            {ON_FOOT_RANGE_M - ZONE_RADIUS_M} m around you.
           </p>
         </>
       )}
@@ -532,7 +528,6 @@ function StationCategories({
   const { ds } = world;
   const { send, busy } = useGamePick("send", "busy");
   const origin = questionOrigin(view.seeker, t, world.idx);
-  const here = ds.complexes[origin.complex];
   const thermoFrom = view.thermometer;
   const moved = thermoFrom
     ? Math.hypot(
@@ -579,7 +574,7 @@ function StationCategories({
                         Same borough?
                       </QChip>
                       <QChip q={{ kind: "express" }} cooling={cooling} view={view}>
-                        {here?.express ? "Express stop too?" : "Local-only too?"}
+                        Same kind of stop?
                       </QChip>
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
@@ -647,7 +642,7 @@ function StationCategories({
                       {!thermoFrom
                         ? "Start it here, ride somewhere else, then ask if you got closer."
                         : thermoFrom.complex === origin.complex || moved < 400
-                          ? `Move 400 m to another station first · ${distanceText(moved)} so far`
+                          ? `Move 400 m to another station first · ${metersText(moved)} so far`
                           : `${distanceText(moved)} from ${displayName(ds.complexes[thermoFrom.complex]?.name ?? "?")}`}
                     </Prompt>
                     <div className="sc-chips">
@@ -767,7 +762,11 @@ function FoldedStation({
                 <FamilySquare family={familyOfCategory(c)} />
                 <span className="flex-1">{FAMILY_NAME[familyOfCategory(c)]}</span>
                 <span className="text-[12px] text-ink-2 tabular-nums">
-                  {t < ready ? `next ${hhmm(ready)}` : "ready"}
+                  {t >= ready
+                    ? "ready"
+                    : ready > gapEndsAt(view)
+                      ? `next ${hhmm(ready)}`
+                      : "after the gap"}
                 </span>
               </li>
             );
@@ -872,6 +871,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
   const photos = arrivedPhotos(view);
   const photoIndex = photos.findIndex((p) => p.at === a.at);
   const photo: ArrivedPhoto | undefined = photos[photoIndex];
+  const was = before(view, a);
   const label =
     answer === null
       ? `${FAMILY_NAME[family]} · asked ${hhmm(a.at)} · from ${origin}`
@@ -906,9 +906,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
             <span className="sc-band-answer sc-anim-set flex items-center gap-2">
               <FamilySquare family={family} vetoed /> Vetoed
             </span>
-            <span className="text-[12px] opacity-90">
-              Closed for the round. It still cost you the question.
-            </span>
+            <span className="text-[12px] opacity-90">Closed for the round.</span>
           </>
         ) : photo ? (
           <>
@@ -929,7 +927,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
             </span>
             {a.remaining !== null && categoryOf(a.q) !== "onFoot" && (
               <span className="text-[12px] tabular-nums opacity-90">
-                {before(view, a)} stations → {a.remaining}
+                {was} {was === 1 ? "station" : "stations"} → {a.remaining}
               </span>
             )}
           </>

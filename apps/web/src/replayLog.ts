@@ -166,7 +166,7 @@ export function questionName(q: Question): string {
     case "spotRadar":
       return `Spot within ${q.meters} m`;
     case "spotThermometer":
-      return "Walking hotter or colder";
+      return "Hotter or colder";
   }
 }
 

@@ -270,7 +270,7 @@ export function applyIntent(
       if (!complex) return fail("No such station.");
       const target: StreetPoint = { lat: intent.lat, lon: intent.lon, pano: intent.pano };
       if (!options.pastRadius && distanceMeters(complex, target) > STREET_RADIUS_M) {
-        return fail("That's too far to walk — take the subway.");
+        return fail("That's too far to walk. Take the subway.");
       }
       const here = streetPoint(state, idx);
       const end = t + walkSeconds(here, target);

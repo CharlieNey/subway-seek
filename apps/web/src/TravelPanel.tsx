@@ -20,6 +20,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
+import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
 import { displayName } from "./names.ts";
@@ -165,19 +166,32 @@ function PlatformView({
           {transfers.map((x) => {
             const to = world.ds.stations[x.to];
             if (!to) return null;
+            // Lead with the lines: most platforms in a complex share the station's name.
+            const sameName = displayName(to.name) === displayName(st?.name ?? "");
+            const letters = to.routes.join(" ");
             return (
               <div
                 key={x.to}
                 className="flex items-center gap-2.5 border-b border-dashed border-grout py-1.5 text-[13.5px]"
               >
-                <span className="min-w-0 flex-1 font-semibold">{displayName(to.name)}</span>
                 <Bullets routes={routesFor(world, to.routes)} size={18} />
+                <span className={cn("min-w-0 flex-1", sameName ? "text-ink-2" : "font-semibold")}>
+                  {sameName ? "platform" : displayName(to.name)}
+                </span>
                 <span className="text-[12px] text-ink-2 tabular-nums">
                   {minutes(x.seconds)} min
                 </span>
-                <Button small disabled={busy || (isHider(view) && t + x.seconds > view.seekStart)}
-                  reason={isHider(view) && t + x.seconds > view.seekStart ? "That transfer arrives after 10:20." : undefined}
-                  onClick={() => send({ type: "transfer", to: x.to })}>
+                <Button
+                  small
+                  disabled={busy || (isHider(view) && t + x.seconds > view.seekStart)}
+                  reason={
+                    isHider(view) && t + x.seconds > view.seekStart
+                      ? "That transfer arrives after 10:20."
+                      : undefined
+                  }
+                  label={`Walk to the ${letters} platform${sameName ? "" : ` at ${displayName(to.name)}`}`}
+                  onClick={() => send({ type: "transfer", to: x.to })}
+                >
                   Walk
                 </Button>
               </div>
@@ -363,7 +377,12 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
               <span className="flex-1 [&_.sc-rbs]:flex-nowrap">
                 {st && <Bullets routes={routesFor(world, st.routes)} size={18} />}
               </span>
-              <Button small disabled={busy} onClick={() => send({ type: "alightAt", stop: k })}>
+              <Button
+                small
+                disabled={busy}
+                label={`Get off at ${nameOf(k)}`}
+                onClick={() => send({ type: "alightAt", stop: k })}
+              >
                 Get off
               </Button>
             </div>
@@ -494,12 +513,13 @@ function StreetPanel({ world, state, view }: { world: World; state: OnStreet; vi
       <Where world={world} complex={state.complex} sub={`On the street · Exit ${state.exit + 1}`} />
       <p className="px-4 pt-3 text-[13px] leading-[1.45] text-ink-2">
         {view.hasSpot
-          ? "Pick a direction on Street View, or click the map, to walk. Every step is timed at walking speed. The hider appears once you pass within 40 m, and you catch them within 25 m."
+          ? "Pick a direction on Street View, or click the map, to walk. Every step is timed at walking speed. The hider appears once you pass within 40 m, and you catch them within 25 m."
           : "Look around in Street View. Walk with the direction tiles or by clicking the map."}
       </p>
       {others.length > 0 && (
         <section className="px-4 pt-4">
-          <Rule>Back down to</Rule>
+          {/* One time for all: going down is the walk to the nearest entrance plus the stairs, whichever platform. */}
+          <Rule>Back down to · {backDownMinutes(world, state)} min</Rule>
           {others.map((s) => {
             const st = world.ds.stations[s];
             if (!st) return null;
@@ -511,10 +531,12 @@ function StreetPanel({ world, state, view }: { world: World; state: OnStreet; vi
                 <span className="flex-1">
                   <Bullets routes={routesFor(world, st.routes)} size={18} />
                 </span>
-                <span className="text-[12px] text-ink-2 tabular-nums">
-                  {backDownMinutes(world, state)} min
-                </span>
-                <Button small disabled={busy} onClick={() => send({ type: "enter", station: s })}>
+                <Button
+                  small
+                  disabled={busy}
+                  label={`Back down to the ${st.routes.join(" ")} platform`}
+                  onClick={() => send({ type: "enter", station: s })}
+                >
                   Enter
                 </Button>
               </div>
@@ -601,16 +623,16 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
       );
     }
     case "walking":
+      // The panel and the pane count the seconds; the wainscot only names the walk.
       return (
         <WainscotText>
           {s.reason === "exit"
-            ? "Going up"
+            ? "Up to the street"
             : s.reason === "enter"
-              ? "Going down"
+              ? "Back down"
               : s.reason === "street"
                 ? "Walking"
-                : "Changing on foot"}{" "}
-          · {Math.max(0, Math.ceil((s.end - t) / (useGame.getState().sync?.speed ?? 6)))} s
+                : "Changing on foot"}
         </WainscotText>
       );
     case "street": {

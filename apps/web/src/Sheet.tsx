@@ -183,7 +183,7 @@ export function Sheet() {
               <Chip pict="hospital" state="armed" count="· 8 within 2 mi">
                 Hospitals
               </Chip>
-              <Chip family="thermo">Am I closer?</Chip>
+              <Chip family="thermo">Hotter or colder?</Chip>
               <Chip family="match" state="closed">
                 Same borough?
               </Chip>

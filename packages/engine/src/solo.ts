@@ -798,7 +798,7 @@ export function applySoloIntent(
     case "catch": {
       const d = metersToSpot(round, t, idx);
       if (d === null) return { ok: false, error: "There's no one to catch here." };
-      if (d > CATCH_METERS) return { ok: false, error: "Not close enough — get within 25 m." };
+      if (d > CATCH_METERS) return { ok: false, error: "Not close enough. Get within 25 m." };
       const stationFoundAt = huntEndedAt(round, t, idx);
       return {
         ok: true,

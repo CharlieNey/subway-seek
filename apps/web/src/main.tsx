@@ -2,21 +2,24 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.tsx";
 import { ErrorBoundary, PageBroke } from "./ErrorBoundary.tsx";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root missing");
 
-// The homepage at /, the game at /play (DESIGN.md, Homepage: its doors are links there).
+// The homepage at /, the game at /play (DESIGN.md, Homepage: its doors are links there),
+// and "Not in service" anywhere else. Every page is its own chunk, so the homepage never
+// downloads the game's map stack (deck.gl, the Google loader, MapLibre).
 // Dev only: the component sheet at /sheet, compared by screenshot with the Deck page.
 const path = location.pathname.replace(/\/+$/, "") || "/";
 const page =
   import.meta.env.DEV && path === "/sheet"
     ? import("./Sheet.tsx").then(({ Sheet }) => <Sheet />)
     : path === "/play"
-      ? Promise.resolve(<App />)
-      : import("./home/Home.tsx").then(({ Home }) => <Home />);
+      ? import("./App.tsx").then(({ App }) => <App />)
+      : path === "/" || path === "/index.html"
+        ? import("./home/Home.tsx").then(({ Home }) => <Home />)
+        : import("./home/NotFound.tsx").then(({ NotFound }) => <NotFound />);
 
 // What a broken page can promise: the game's round lives on the server, the homepage's
 // results in this browser.
