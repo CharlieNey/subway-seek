@@ -3,6 +3,7 @@ import {
   CARD_VALUE,
   CARDS,
   type CardId,
+  type CurseId,
   DRAWS,
   HAND_LIMIT,
   handBonusSeconds,
@@ -10,7 +11,6 @@ import {
 } from "./cards.ts";
 import { hashString, seededRandom } from "./daily.ts";
 import { distanceMeters } from "./geo.ts";
-import { nextStopIndex } from "./hiderBot.ts";
 import {
   type Answer,
   type Asked,
@@ -30,9 +30,9 @@ import {
   ZONE_RADIUS_M,
 } from "./questions.ts";
 import {
-  type ActiveCurse,
   ANSWER_WINDOW_SECONDS,
   type AskedQuestion,
+  activateCurse,
   advanceSolo,
   CURSE_GAP_SECONDS,
   createSoloRound,
@@ -194,7 +194,11 @@ export function hiderPoint(round: SoloRound, t: number, idx: TimetableIndex): Hi
 
 export function hiderUnderground(round: SoloRound, t: number, idx: TimetableIndex): boolean {
   const s = round.human && resolve(round.human.transit, t, idx);
-  return !!s && s.kind !== "street" && !(s.kind === "walking" && s.reason === "street");
+  return (
+    !!s &&
+    s.kind !== "street" &&
+    !(s.kind === "walking" && (s.reason === "street" || s.reason === "exit"))
+  );
 }
 
 function lockHider(round: SoloRound, cause: LockCause, t: number, idx: TimetableIndex): SoloRound {
@@ -385,6 +389,18 @@ export function advanceHider(round: SoloRound, t: number, idx: TimetableIndex): 
   const latest = round.seekStart + SPOT_PHOTOS_OPEN_SECONDS;
   const moments = new Set<number>();
   if (entry) moments.add(Math.max(entry.at, round.seekStart));
+  // Entry on the stairs freezes at the chosen exit, after the remaining travel time.
+  const stairs = h.transit;
+  const enteredAt = h.entered?.at ?? entry?.at;
+  const exitFreezeAt =
+    !h.lock &&
+    stairs.kind === "walking" &&
+    stairs.reason === "exit" &&
+    enteredAt !== undefined &&
+    enteredAt <= stairs.end
+      ? stairs.end
+      : null;
+  if (exitFreezeAt !== null && exitFreezeAt <= t) moments.add(exitFreezeAt);
   if (!h.lock && latest <= t && hiderUnderground(round, latest, idx)) moments.add(latest);
   for (const p of h.pending) {
     const at = round.asked[p.index]?.answerAt;
@@ -399,6 +415,7 @@ export function advanceHider(round: SoloRound, t: number, idx: TimetableIndex): 
         return finishHider({ ...round, result: { kind: "found", at }, stationFoundAt: at });
       round = lockHider(round, "zone", at, idx);
     }
+    if (at === exitFreezeAt) round = lockHider(round, "zone", at, idx);
     if (at === latest && !round.human?.lock && hiderUnderground(round, at, idx)) {
       const exit = defaultHiderExit(round, idx);
       const spot = round.human?.exits[exit];
@@ -551,23 +568,12 @@ export function applyHiderIntent(
       (intent.type === "redraw" ? card !== "redraw" : def.kind !== "curse")
     )
       return fail("Choose the cards to pay for this play.");
-    let curse: ActiveCurse | null = null;
     if (intent.type === "playCard") {
       if (t < round.seekStart || round.curses.length || t < round.lastCurseAt + CURSE_GAP_SECONDS)
         return fail("Wait until another curse is ready.");
-      const s = resolve(round.seeker, t, idx);
-      if (card === "tourist" || card === "wrongWay") {
-        const k = s.kind === "train" ? nextStopIndex(s, t, idx) : null;
-        const trip = s.kind === "train" ? idx.ds.trips[s.trip] : null;
-        if (s.kind !== "train" || k === null || !trip)
-          return fail("Play this while the seeker is riding.");
-        if (card === "tourist") {
-          const state = { ...s, to: Math.min(s.to, k) };
-          round = { ...round, seeker: state, seekerTrail: [...round.seekerTrail, { t, state }] };
-          curse = { card, at: t, station: trip.stops[k] as number };
-        } else curse = { card, at: t, dir: trip.dir === 0 ? 1 : 0, until: t + 30 * 60 };
-      } else if (card === "fog" || card === "signalLoss" || card === "shed")
-        curse = { card, at: t, until: t + (def.durationSeconds ?? 0) };
+      const activated = activateCurse(round, card as CurseId, t, idx);
+      if (!activated) return fail("Play this while the seeker is riding.");
+      round = activated;
     }
     const remove = new Set([intent.card, ...intent.payment]);
     round = {
@@ -576,7 +582,6 @@ export function applyHiderIntent(
       cardEvents: [...round.cardEvents, { t, card }],
       human: { ...h, handRevision: h.handRevision + 1 },
     };
-    if (curse) round = { ...round, curses: [curse], lastCurseAt: t };
     return ok(intent.type === "redraw" ? drawCards(round, 3, 3, t) : round);
   }
   if (intent.type === "hideHere") {

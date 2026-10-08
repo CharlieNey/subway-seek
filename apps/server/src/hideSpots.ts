@@ -3,14 +3,43 @@ import type { Dataset } from "@stand-clear/data";
 import {
   distanceMeters,
   type HidingSpot,
+  hiderExits,
   offsetMeters,
   resolve,
+  type SoloRound,
   type SoloView,
+  setHiderExit,
   streetPoint,
   type TimetableIndex,
   ZONE_RADIUS_M,
 } from "@stand-clear/engine";
 import { nearestPano, officialSpot } from "./spot.ts";
+
+/** Reuse only this active round's verified exit; invalid intents do no external work. */
+export async function prepareHiderExit(
+  round: SoloRound,
+  exit: number,
+  t: number,
+  idx: TimetableIndex,
+  allowLookup: () => boolean,
+  lookup = exitSpot,
+): Promise<{ round: SoloRound; limited: boolean }> {
+  const h = round.human;
+  if (
+    !h ||
+    h.station === null ||
+    h.lock ||
+    round.result ||
+    t < round.seekStart ||
+    resolve(h.transit, t, idx).kind !== "platform" ||
+    !hiderExits(round, idx).some((e) => e.exit === exit && e.allowed) ||
+    h.exits[exit]
+  )
+    return { round, limited: false };
+  if (!allowLookup()) return { round, limited: true };
+  const spot = await lookup(idx.ds, round.hider, exit);
+  return { round: spot ? setHiderExit(round, exit, spot) : round, limited: false };
+}
 
 export async function verifyHideSpot(
   lat: number,

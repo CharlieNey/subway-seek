@@ -11,7 +11,7 @@ export function HiderMapBand() {
   return (
     <>
       <div className="absolute top-3 left-3 z-10">
-        <Caption tone={view.zone && !view.lock ? "terra" : "light"}>
+        <Caption tone="light">
           {!view.zone
             ? "Your trail · only you see it"
             : !view.lock

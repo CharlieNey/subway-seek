@@ -1,5 +1,6 @@
 import type { Dataset } from "@stand-clear/data";
-import { offsetMeters } from "@stand-clear/engine";
+import { loadDataset } from "@stand-clear/data/node";
+import { buildIndex, createHideRound, offsetMeters, setHiderExit } from "@stand-clear/engine";
 import { afterEach, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -52,4 +53,65 @@ it("keeps an exit's verified panorama inside the zone, with only the all-exits-o
   if (!station) throw new Error("station");
   station.exits[0] = [outside.lat, outside.lon];
   expect(await exitSpot(ds, 0, 0)).toEqual({ ...outside, pano: "edge" });
+});
+
+it("reuses active-round exit metadata and rate-limits only uncached legal exit lookups", async () => {
+  const { prepareHiderExit } = await load();
+  const ds = loadDataset();
+  const idx = buildIndex(ds);
+  const station = ds.stations.findIndex((s) => s.id === "132");
+  const complex = ds.stations[station]?.complex;
+  if (complex === undefined) throw new Error("station");
+  const initial = createHideRound(idx, { hub: station, hideStart: 36000 });
+  if (!initial.human) throw new Error("human");
+  const round = {
+    ...initial,
+    hider: complex,
+    human: { ...initial.human, station },
+  };
+  const point = { lat: 40.7, lon: -74, pano: "verified-exit" };
+  const lookup = vi.fn().mockResolvedValue(point);
+  const allow = vi.fn().mockReturnValue(true);
+  const first = await prepareHiderExit(round, 0, round.seekStart, idx, allow, lookup);
+  expect(first.round.human?.exits[0]).toEqual(point);
+  expect(lookup).toHaveBeenCalledExactlyOnceWith(ds, complex, 0);
+  expect(allow).toHaveBeenCalledTimes(1);
+  expect(await prepareHiderExit(first.round, 0, round.seekStart, idx, allow, lookup)).toEqual(
+    first,
+  );
+  expect(lookup).toHaveBeenCalledTimes(1);
+  expect(allow).toHaveBeenCalledTimes(1);
+  allow.mockReturnValue(false);
+  expect(await prepareHiderExit(round, 0, round.seekStart, idx, allow, lookup)).toEqual({
+    round,
+    limited: true,
+  });
+  expect(lookup).toHaveBeenCalledTimes(1);
+  // Early, nonexistent and off-platform exits never spend a metadata request.
+  for (const [r, exit, t] of [
+    [round, 0, round.seekStart - 1],
+    [round, 999, round.seekStart],
+    [
+      {
+        ...round,
+        human: { ...round.human, lock: { at: round.seekStart, cause: "hideHere" as const } },
+      },
+      0,
+      round.seekStart,
+    ],
+  ] as const) {
+    await prepareHiderExit(r, exit, t, idx, allow, lookup);
+  }
+  const place = ds.complexes[complex];
+  if (!place) throw new Error("complex");
+  const outside = offsetMeters(place, 500, 0);
+  place.exits.push([outside.lat, outside.lon]);
+  await prepareHiderExit(round, place.exits.length - 1, round.seekStart, idx, allow, lookup);
+  expect(allow).toHaveBeenCalledTimes(2);
+  expect(lookup).toHaveBeenCalledTimes(1);
+  // A cached exit remains usable when the lookup budget is spent.
+  expect(
+    (await prepareHiderExit(setHiderExit(round, 0, point), 0, round.seekStart, idx, allow, lookup))
+      .limited,
+  ).toBe(false);
 });

@@ -9,6 +9,7 @@ import type { Direction, LatLon } from "@stand-clear/data";
 import {
   CARDS,
   type CardId,
+  type CurseId,
   DRAWS,
   drawAndKeep,
   handBonusSeconds,
@@ -460,14 +461,31 @@ function hiderCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRoun
     difficulty: round.difficulty,
   });
   if (!card) return round;
+  const next = activateCurse(round, card, t, idx);
+  if (!next) return round;
+  return {
+    ...next,
+    hand: playCard(round.hand, round.hand.indexOf(card), CARDS[card].cost ?? 0),
+    cardEvents: [...round.cardEvents, { t, card }],
+  };
+}
+
+/** Shared effect only: human and bot controllers choose and pay for their own cards. */
+export function activateCurse(
+  round: SoloRound,
+  card: CurseId,
+  t: number,
+  idx: TimetableIndex,
+): SoloRound | null {
+  const seeker = resolve(round.seeker, t, idx);
   let curse: ActiveCurse;
   let next = round;
   const duration = CARDS[card].durationSeconds ?? 0;
   if (card === "wrongWay" || card === "tourist") {
-    if (seeker.kind !== "train") return round;
+    if (seeker.kind !== "train") return null;
     const trip = idx.ds.trips[seeker.trip];
     const k = nextStopIndex(seeker, t, idx);
-    if (!trip || k === null) return round;
+    if (!trip || k === null) return null;
     if (card === "wrongWay") {
       curse = {
         card,
@@ -484,13 +502,7 @@ function hiderCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRoun
   } else {
     curse = { card, at: t, until: t + duration };
   }
-  return {
-    ...next,
-    hand: playCard(round.hand, round.hand.indexOf(card), CARDS[card].cost ?? 0),
-    curses: [...round.curses, curse],
-    cardEvents: [...round.cardEvents, { t, card }],
-    lastCurseAt: t,
-  };
+  return { ...next, curses: [...round.curses, curse], lastCurseAt: t };
 }
 
 /** Why a curse stops this move, or null. */

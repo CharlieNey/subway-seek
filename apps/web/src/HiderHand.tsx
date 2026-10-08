@@ -107,6 +107,7 @@ function KeepChoice({ view, t }: { view: HiderView; t: number }) {
       <div className="mt-2">
         <Button
           kind="ink"
+          keys="K"
           disabled={busy || keep.length !== d.keep || discard.length !== overflow}
           onClick={() => send({ type: "keepCards", revision: d.revision, keep, discard })}
         >

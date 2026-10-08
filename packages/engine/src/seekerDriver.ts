@@ -23,7 +23,7 @@ export interface SeekerDriver {
   lastActionAt: number;
   waitUntil: number;
   /** Only the remainder of an issued plan; never serialized or sent to the hider. */
-  pending: { intents: SoloIntent[]; trip: number | null; knowledge: string } | null;
+  pending: { intents: SoloIntent[]; trip: number | null } | null;
   knowledge: string;
 }
 export type DrivenSeeker = { driver: SeekerDriver; intent: SoloIntent | null; waitUntil: number };
@@ -97,7 +97,6 @@ export function driveSeeker(
         ? {
             intents: step.intents.slice(1),
             trip: intent.type === "board" ? intent.trip : null,
-            knowledge,
           }
         : null;
   }

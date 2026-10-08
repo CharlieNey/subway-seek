@@ -35,6 +35,7 @@ export function keyAction(
   if (key === "Enter") return armed && canAsk && !onControl ? { kind: "ask" } : null;
   if (/^[1-5]$/.test(key)) return { kind: "press", key, tab: "ask" };
   if (key === "b" || key === "B") return { kind: "press", key: "B", tab: "travel" };
+  if (/^[hukvr]$/i.test(key)) return { kind: "press", key: key.toUpperCase() };
   if (key === " ") {
     if (onControl) return null;
     return { kind: "press", key: e.shiftKey ? "Shift+Space" : "Space" };

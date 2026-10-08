@@ -1,6 +1,7 @@
 import type { Dataset } from "@stand-clear/data";
 import { loadDataset } from "@stand-clear/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
+import { WRONG_WAY_MAX_SECONDS } from "./cards.ts";
 import { seededRandom } from "./daily.ts";
 import { distanceMeters, offsetMeters } from "./geo.ts";
 import {
@@ -142,6 +143,38 @@ describe("played hide", () => {
       applyHiderIntent(r, { type: "transfer", to: link.to }, r.seekStart - 1, idx),
     ).toMatchObject({ ok: false, error: "That transfer arrives after 10:20." });
   });
+  it("refuses exits until exactly 10:20, even with verified exit metadata", () => {
+    const r = underground();
+    const exit = defaultHiderExit(r, idx);
+    expect(applyHiderIntent(r, { type: "exit", exit }, r.seekStart - 1, idx)).toEqual({
+      ok: false,
+      error: "Exits open at 10:20.",
+    });
+    expect(applyHiderIntent(r, { type: "exit", exit }, r.seekStart, idx).ok).toBe(true);
+  });
+  it("refuses all seeker intents before 10:20 without changing the round", () => {
+    const r = fresh();
+    const before = structuredClone(r);
+    const intents: SoloIntent[] = [
+      radar,
+      { type: "startThermometer" },
+      { type: "startFootThermometer" },
+      { type: "board", trip: 0, stop: 0 },
+      { type: "cancelBoard" },
+      { type: "alightAt", stop: 1 },
+      { type: "transfer", to: station },
+      { type: "exit", exit: 0 },
+      { type: "enter", station },
+      { type: "walkTo", lat: 40.7, lon: -74, pano: "next" },
+      { type: "giveUp" },
+    ];
+    for (const intent of intents)
+      expect(applySoloIntent(r, intent, r.seekStart - 1, idx)).toEqual({
+        ok: false,
+        error: "Trains open at 10:20.",
+      });
+    expect(r).toEqual(before);
+  });
   it("reaching the station underground does not catch a street hider before a lock", () => {
     const r = street();
     const now = r.seekStart + 180;
@@ -180,6 +213,49 @@ describe("played hide", () => {
     expect(r.spot).toEqual(p);
     expect(r.human?.lock).toEqual({ at: t, cause: "hideHere" });
     expect(applyHiderIntent(r, { type: "walkTo", ...p }, t + 1, idx).ok).toBe(false);
+  });
+  it("keeps an exit walk crossing 10:35 on its chosen stairs without relocation", () => {
+    let r = underground();
+    const latest = r.seekStart + 900;
+    const nearest = defaultHiderExit(r, idx);
+    const exit = hiderExits(r, idx).find((e) => e.allowed && e.exit !== nearest)?.exit ?? nearest;
+    r = h(r, { type: "exit", exit }, latest - 30);
+    const stairs = r.human?.transit;
+    if (stairs?.kind !== "walking") throw new Error("stairs");
+    const during = advanceSolo(r, latest + 1, idx);
+    expect(during.human?.transit).toEqual(stairs);
+    expect(during.human?.lock).toBeNull();
+    expect(during.result).toBeNull();
+    const arrived = advanceSolo(during, stairs.end + 1, idx);
+    expect(hiderView(arrived, stairs.end + 1, idx).spot).toEqual(r.human?.exits[exit]);
+    expect(arrived.human?.lock).toBeNull();
+  });
+  it("defers a zone-entry freeze on the stairs until the chosen exit arrival", () => {
+    let r = underground();
+    const exit = defaultHiderExit(r, idx);
+    const start = r.seekStart + 300;
+    r = h(r, { type: "exit", exit }, start);
+    const stairs = r.human?.transit;
+    if (stairs?.kind !== "walking") throw new Error("stairs");
+    const at = start + 45;
+    const point = ds.complexes[complex] as { lat: number; lon: number };
+    const seeker = { kind: "street" as const, complex, exit, since: at, at: point };
+    r = { ...r, seeker, seekerTrail: [...r.seekerTrail, { t: at, state: seeker }] };
+    const during = advanceSolo(r, at + 1, idx);
+    expect(during.result).toBeNull();
+    expect(during.human?.transit).toEqual(stairs);
+    expect(during.human?.lock).toBeNull();
+    expect(during.human?.entered?.at).toBe(at);
+    for (const initial of [r, during]) {
+      const arrived = advanceSolo(initial, stairs.end + 1, idx);
+      expect(arrived.result).toBeNull();
+      expect(arrived.human?.lock).toEqual({ cause: "zone", at: stairs.end });
+      expect(arrived.spot).toEqual(r.human?.exits[exit]);
+      expect(
+        applyHiderIntent(arrived, { type: "walkTo", ...point, pano: "next" }, stairs.end + 2, idx)
+          .ok,
+      ).toBe(false);
+    }
   });
   it("forces the nearest platform exit and freezes at 10:35, even across a long advance", () => {
     const r = underground();
@@ -234,7 +310,7 @@ describe("played hide", () => {
     const c = ds.complexes[complex] as { lat: number; lon: number };
     const a = offsetMeters(c, 500, 0);
     const b = offsetMeters(c, 300, 0);
-    const start = TEN + 1300;
+    const start = TEN + 1400;
     const end = start + 200;
     const state = {
       kind: "walking" as const,
@@ -255,6 +331,15 @@ describe("played hide", () => {
     const entry = firstZoneEntry([{ t: start, state }], c, end);
     expect(entry?.at).toBeCloseTo(start + 100, 1);
     expect(entry?.walked).toBe(true);
+    const r = street();
+    const walking = { ...r, seeker: state, seekerTrail: [...r.seekerTrail, { t: start, state }] };
+    expect(advanceSolo(walking, start + 90, idx).human?.lock).toBeNull();
+    const done = advanceSolo(walking, end, idx);
+    expect(done.human?.lock?.cause).toBe("zone");
+    expect(done.human?.lock?.at).toBeCloseTo(start + 100, 1);
+    expect(done.human?.entered).toMatchObject({ walked: true, complex: 0 });
+    expect(done.spot).toEqual(hiderView(r, start, idx).spot);
+    expect(done.result).toBeNull();
   });
   it("shows but disables distant exits; allows the nearest if all are distant", () => {
     const r = underground();
@@ -280,6 +365,26 @@ describe("played hide", () => {
       },
     };
     expect(hiderExits(r, changed).map((e) => e.allowed)).toEqual([true, false]);
+    const verified = setHiderExit(setHiderExit(r, 0, { ...a, pano: "near" }), 1, {
+      ...b,
+      pano: "far",
+    });
+    expect(applyHiderIntent(verified, { type: "exit", exit: 0 }, r.seekStart, changed).ok).toBe(
+      true,
+    );
+    expect(applyHiderIntent(verified, { type: "exit", exit: 1 }, r.seekStart, changed)).toEqual({
+      ok: false,
+      error: "Outside your zone",
+    });
+    // Once any exit is in-zone, an outside exit gets no exception, even if verified.
+    const place = changed.ds.complexes[complex];
+    if (!place) throw new Error("complex");
+    place.exits[0] = [original.lat, original.lon];
+    expect(hiderExits(r, changed).map((e) => e.allowed)).toEqual([true, false]);
+    expect(applyHiderIntent(verified, { type: "exit", exit: 1 }, r.seekStart, changed)).toEqual({
+      ok: false,
+      error: "Outside your zone",
+    });
   });
 });
 
@@ -429,6 +534,31 @@ describe("human answers and cards", () => {
       applyHiderIntent(r, { type: "playCard", revision: 1, card: 1, payment: [0] }, t + 1, idx).ok,
     ).toBe(false);
   });
+  it.each(["tourist", "wrongWay"] as const)(
+    "applies %s to the next stop with explicit payment",
+    (card) => {
+      let r = locked();
+      const d = departures(idx, hub, r.seekStart + 130)[0];
+      if (!d) throw new Error("train");
+      const t = d.dep + 1;
+      r = s(r, { type: "board", trip: d.trip, stop: d.stop }, d.dep - 1);
+      r = { ...r, hand: [card, "late5", "work15"] };
+      const payment = card === "tourist" ? [1, 2] : [1];
+      const done = h(r, { type: "playCard", revision: 0, card: 0, payment }, t);
+      const trip = ds.trips[d.trip];
+      if (!trip) throw new Error("trip");
+      expect(done.curses).toEqual([
+        card === "wrongWay"
+          ? { card, at: t, dir: trip.dir === 0 ? 1 : 0, until: t + WRONG_WAY_MAX_SECONDS }
+          : { card, at: t, station: trip.stops[d.stop + 1] },
+      ]);
+      expect(done.hand).toEqual(card === "tourist" ? [] : ["work15"]);
+      if (card === "tourist") {
+        expect(done.seeker).toMatchObject({ kind: "train", to: d.stop + 1 });
+        expect(done.seekerTrail.at(-1)).toEqual({ t, state: done.seeker });
+      }
+    },
+  );
   it("redraw consumes itself plus two explicit cards; its play and draw remain private", () => {
     let r = locked();
     r = { ...r, hand: ["redraw", "work15", "fog", "late5"], deck: ["veto", "tourist", "delays10"] };

@@ -73,7 +73,7 @@
   margin: 8px 0;
 }
 .sc-hide-rules li::marker {
-  color: var(--color-terra);
+  color: var(--color-ink);
 }
 .sc-hide-card {
   display: flex;

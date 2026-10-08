@@ -293,3 +293,16 @@ panorama graph. The actual Google endgame check covers one location. A full huma
 pacing pass, especially long quiet rides, and deployed Chrome/Safari/Firefox checks
 remain before launch. Fog and Signal loss still cost the bot nothing; photos are fixtures,
 and no photo panorama ID is used to locate the hider. Those perception gaps carry to M3.
+
+### S3 review regression check — 2026-10-08
+
+After sharing curse activation between controllers (including `WRONG_WAY_MAX_SECONDS`),
+`pnpm sim:match` again ran all 780 rounds. Every reported metric matched the pre-review
+run, excluding runtime. No deck, price, curse limit or bot-hider policy changed.
+
+New regressions cover exit stairs crossing 10:35 and zone entry, early/outside-zone exits,
+neighbour-zone freeze through `advanceSolo`, pre-10:20 seeker refusals, cached and
+rate-limited exit metadata, and real seeker actions through the server tick. A throwing
+`storeHideRound` still permits live pushes; unchanged rounds are not re-encoded or saved.
+MapLibre browser fixtures verified H / U / K / V / R, disabled controls, modal keyboard
+ownership, Notice leave/stay choices, and capitalized homepage difficulty labels.

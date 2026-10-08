@@ -32,8 +32,6 @@ import {
   type Difficulty,
   dailyNumber,
   dailyRandom,
-  defaultHiderExit,
-  driveSeeker,
   type GameClock,
   gameTime,
   type HiderView,
@@ -50,7 +48,6 @@ import {
   RECONNECT_GRACE_MS,
   type RoundMode,
   realMsUntil,
-  rejectSeekerAction,
   resumeClock,
   SESSION_PARAM,
   type SeekerDriver,
@@ -59,14 +56,13 @@ import {
   type SoloIntent,
   type SoloRound,
   type SoloView,
-  setHiderExit,
   skipSolo,
   soloView,
   startClock,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
-import { restoreHideRound, storeHideRound } from "./hidePersistence.ts";
-import { exitSpot, seekerStreetTarget, verifyHideSpot } from "./hideSpots.ts";
+import { restoreHideRound } from "./hidePersistence.ts";
+import { exitSpot, prepareHiderExit, seekerStreetTarget, verifyHideSpot } from "./hideSpots.ts";
 import {
   clientAddress,
   MAX_SESSIONS,
@@ -75,10 +71,12 @@ import {
   WALKS_PER_MINUTE,
 } from "./limits.ts";
 import { MatchLog } from "./matchLog.ts";
+import { createSessionPersistence } from "./persistence.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
 import { isStreetPoint, officialSpot, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
 import { restorable, type SavedSession, SessionDb } from "./store.ts";
+import { tick as tickGame } from "./tick.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
@@ -312,23 +310,7 @@ const sessions = new SessionStore<Game>({
 });
 
 /** Save a session's game, so it survives a restart. Called whenever the round or clock changes. */
-function persist(session: Session<Game>, now: number) {
-  const { game } = session;
-  db.save({
-    token: session.token,
-    game: {
-      round: game.round.human ? storeHideRound(game.round, dataset) : game.round,
-      seekerLastActionAt: game.driver?.lastActionAt,
-      clock: game.clock,
-      lastSeq: game.lastSeq,
-      logId: game.log.id,
-      cardsLogged: game.cardsLogged,
-      stationLogged: game.stationLogged,
-    },
-    droppedAt: session.droppedAt,
-    updatedAt: now,
-  });
-}
+const persist = createSessionPersistence(dataset, (saved) => db.save(saved));
 
 // Failed metadata rehydrations keep their saved IDs for a reconnect retry. A single
 // unavailable panorama must neither crash startup nor silently replace someone's round.
@@ -430,61 +412,16 @@ function sendState(session: Session<Game>, seq: number, now: number) {
  * only if what the seeker may see has changed.
  */
 async function tick(session: Session<Game>, now: number) {
-  const { game } = session;
-  if (game.clock.pausedAt !== null || game.round.result) return;
-  const before = game.round;
-  game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
-  if (game.round.human && game.round.human.station !== null && !game.round.result) {
-    const exit = defaultHiderExit(game.round, idx);
-    if (!game.round.human.exits[exit] && now >= (game.exitRetryAt ?? 0)) {
-      const spot = await exitSpot(dataset, game.round.hider, exit);
-      game.exitRetryAt = Date.now() + 10_000;
-      if (spot) game.round = setHiderExit(game.round, exit, spot);
-      now = Date.now();
-      game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
-    }
-    if (game.driver && !game.round.result) {
-      let t = gameTime(game.clock, now);
-      const view = soloView(game.round, t, idx);
-      const step = driveSeeker(view, game.driver, t, idx, game.clock.speed);
-      game.driver = step.driver;
-      let intent = step.intent;
-      if (intent?.type === "walkTo") {
-        const spot = await seekerStreetTarget(view, intent.lat, intent.lon, t, idx);
-        now = Date.now();
-        t = gameTime(game.clock, now);
-        if (spot) intent = { type: "walkTo", ...spot };
-        else {
-          game.driver = rejectSeekerAction(game.driver, view, intent, "No street panorama", t, idx);
-          intent = null;
-        }
-      }
-      if (intent) {
-        const out = applySoloIntent(game.round, intent, t, idx);
-        game.driver = { ...game.driver, lastActionAt: t, waitUntil: t + 3 * game.clock.speed };
-        game.log.write("intent", {
-          t,
-          side: "seeker",
-          type: intent.type,
-          ...(intent.type === "walkTo" ? { pano: intent.pano } : { intent }),
-          ok: out.ok,
-        });
-        if (out.ok) game.round = out.round;
-        else game.driver = rejectSeekerAction(game.driver, view, intent, out.error, t, idx);
-      }
-    }
-  }
-  const changed = game.round !== before;
-  logCards(game);
-  if (changed) logEnd(game);
-  if (game.round.stationFoundAt !== null && !game.stationLogged) {
-    game.stationLogged = true;
-    game.log.write("station_found", { t: game.round.stationFoundAt });
-  }
-  if (changed || game.driver) persist(session, now);
-  if (session.conn && JSON.stringify(viewNow(game, now)) !== game.shown) {
-    sendState(session, game.lastSeq, now);
-  }
+  await tickGame(session, now, {
+    idx,
+    exitSpot,
+    seekerStreetTarget,
+    persist,
+    sendState,
+    viewNow,
+    logCards,
+    logEnd,
+  });
 }
 
 /** Yesterday's hider, revealed once its day is over (the homepage's "Yesterday's hider"). */
@@ -772,10 +709,17 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     }
   }
 
-  if (intent.type === "exit" && s.game.round.human && s.game.round.human.station !== null) {
-    const spot = await exitSpot(dataset, s.game.round.hider, intent.exit);
-    if (spot) s.game.round = setHiderExit(s.game.round, intent.exit, spot);
+  if (intent.type === "exit" && s.game.round.human && s.game.clock.pausedAt === null) {
+    const prepared = await prepareHiderExit(
+      s.game.round,
+      intent.exit,
+      gameTime(s.game.clock, Date.now()),
+      idx,
+      () => walks.allow(s.token, Date.now()),
+    );
     if (s.conn !== socket) return;
+    s.game.round = prepared.round;
+    tooManyWalks = prepared.limited;
   }
   const game = s.game;
   game.lastSeq = seq;

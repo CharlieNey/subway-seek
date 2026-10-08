@@ -328,7 +328,7 @@ function Departures({
                   key={d}
                   onClick={() => setDifficulty(d)}
                 >
-                  {d}
+                  {d.charAt(0).toUpperCase() + d.slice(1)}
                 </button>
               ))}
               <p>Searches with {SEEKER_LEVELS[difficulty].endgameAt} stations left.</p>

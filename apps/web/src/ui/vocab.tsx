@@ -122,12 +122,36 @@ export function Rule({ children, className }: { children: ReactNode; className?:
   return <span className={cn("sc-rule", className)}>{children}</span>;
 }
 
-/** A light row with a terra cotta square, dismissed by clicking. */
-export function Notice({ children, onDismiss }: { children: ReactNode; onDismiss: () => void }) {
+/** A light row with a terra cotta square; optional actions keep confirmation in the game. */
+export function Notice({
+  children,
+  onDismiss,
+  actions,
+  dismissLabel = "Dismiss",
+}: {
+  children: ReactNode;
+  onDismiss: () => void;
+  actions?: ReactNode;
+  dismissLabel?: string;
+}) {
+  if (actions)
+    return (
+      <div className="sc-notice cursor-default" role="alert">
+        <span>
+          {children}
+          <span className="mt-2 flex gap-2">
+            {actions}
+            <Button small onClick={onDismiss}>
+              {dismissLabel}
+            </Button>
+          </span>
+        </span>
+      </div>
+    );
   return (
     <button type="button" className="sc-notice sc-focus" onClick={onDismiss}>
       <span>{children}</span>
-      <small>Dismiss</small>
+      <small>{dismissLabel}</small>
     </button>
   );
 }

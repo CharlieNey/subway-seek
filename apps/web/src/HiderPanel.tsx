@@ -57,6 +57,7 @@ export function HiderPanel({
   const [tab, setTab] = useState("zone");
   const [picked, setPicked] = useState<number | null>(null);
   const [photo, setPhoto] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const screen = useLinkScreen();
   const down = screen.kind !== "none";
   const hiding = t < view.seekStart;
@@ -141,13 +142,34 @@ export function HiderPanel({
             type="button"
             disabled={busy}
             className="text-[12px] text-ink-2 underline decoration-grout"
-            onClick={() => {
-              if (window.confirm("Leave this round? It won't count.")) send({ type: "leaveHide" });
-            }}
+            onClick={() => setLeaving(true)}
           >
             Leave this round
           </button>
         </div>
+        {leaving && (
+          <div className="mx-4 mt-2">
+            <Notice
+              onDismiss={() => setLeaving(false)}
+              dismissLabel="Stay"
+              actions={
+                <Button
+                  small
+                  kind="ink"
+                  disabled={busy}
+                  onClick={() => {
+                    setLeaving(false);
+                    send({ type: "leaveHide" });
+                  }}
+                >
+                  Leave round
+                </Button>
+              }
+            >
+              Leave this round? It won't count.
+            </Notice>
+          </div>
+        )}
         {notice && (
           <div className="mx-4 mt-2">
             <Notice onDismiss={dismissNotice}>{notice}</Notice>
@@ -275,6 +297,7 @@ export function HiderPanel({
             <>
               <Button
                 kind="ink"
+                keys="U"
                 disabled={busy || !exit}
                 onClick={() => exit && send({ type: "exit", exit: exit.exit })}
               >
@@ -286,6 +309,7 @@ export function HiderPanel({
             <>
               <Button
                 kind="terra"
+                keys="H"
                 disabled={busy || !view.spot}
                 onClick={() => view.spot && send({ type: "hideHere", ...view.spot })}
               >
@@ -363,6 +387,7 @@ export function Incoming({
             <>
               {view.hand.includes("veto") && (
                 <Button
+                  keys="V"
                   disabled={busy}
                   onClick={() =>
                     send({ type: "answer", question: incoming.index, decision: "veto" })
@@ -373,6 +398,7 @@ export function Incoming({
               )}
               {view.hand.includes("randomize") && (
                 <Button
+                  keys="R"
                   disabled={busy || !incoming.randomizable}
                   onClick={() =>
                     send({ type: "answer", question: incoming.index, decision: "randomize" })

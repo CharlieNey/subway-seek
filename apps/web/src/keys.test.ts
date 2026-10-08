@@ -47,4 +47,12 @@ describe("keys", () => {
     expect(keyAction({ key: "b", metaKey: true }, idle)).toBeNull();
     expect(keyAction({ key: "1", ctrlKey: true }, idle)).toBeNull();
   });
+  it.each(["H", "U", "K", "V", "R"])(
+    "presses the hider's printed %s control without switching tabs",
+    (key) => {
+      expect(keyAction({ key }, idle)).toEqual({ kind: "press", key });
+      expect(keyAction({ key: key.toLowerCase() }, idle)).toEqual({ kind: "press", key });
+      expect(keyAction({ key, metaKey: true }, idle)).toBeNull();
+    },
+  );
 });
