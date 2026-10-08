@@ -17,18 +17,33 @@ interface Metadata {
   status: string;
   pano_id?: string;
   location?: { lat: number; lng: number };
+  /** "© Google" for Google's own imagery; a contributor's name for a user photosphere. */
+  copyright?: string;
 }
 
-async function metadata(query: string): Promise<HidingSpot | null> {
+/**
+ * Whether a panorama is Google's own street imagery. The client only ever walks to
+ * Google's panoramas (StreetViewSource.GOOGLE), and the metadata endpoint has no such
+ * filter (`source=outdoor` still returns user photospheres), so a user photosphere picked
+ * as the hiding spot can never be reached: the 2026-10-07 daily's hider stood on one, with
+ * the nearest Google panorama 25.4 m away, just outside the catch distance.
+ */
+export function officialImagery(d: Pick<Metadata, "copyright">): boolean {
+  return /\bGoogle\b/.test(d.copyright ?? "");
+}
+
+async function metadata(query: string, officialOnly = false): Promise<HidingSpot | null> {
   const url = `https://maps.googleapis.com/maps/api/streetview/metadata?${query}&key=${KEY}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
   const d = (await res.json()) as Metadata;
   if (d.status !== "OK" || !d.pano_id || !d.location) return null;
+  if (officialOnly && !officialImagery(d)) return null;
   return { lat: d.location.lat, lon: d.location.lng, pano: d.pano_id };
 }
 
+/** The nearest of Google's own outdoor panoramas within 40 m, as the client would find it. */
 export function nearestPano(lat: number, lon: number): Promise<HidingSpot | null> {
-  return metadata(`location=${lat},${lon}&radius=40&source=outdoor`);
+  return metadata(`location=${lat},${lon}&radius=40&source=outdoor`, true);
 }
 
 /** How far a walk's target may sit from the panorama Google has there. */
