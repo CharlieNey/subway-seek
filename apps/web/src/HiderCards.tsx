@@ -10,7 +10,7 @@ import {
 import type { World } from "./game.ts";
 import { isHider } from "./hide.ts";
 import { useLanded } from "./landing.ts";
-import { displayName } from "./names.ts";
+import { directionPhrase, displayName } from "./names.ts";
 import { CardEmblem } from "./ui/Card.tsx";
 import { TileTimer } from "./ui/vocab.tsx";
 
@@ -45,7 +45,7 @@ function curseLine(
       const way = station ? (c.dir === 0 ? station.northLabel : station.southLabel) : null;
       return {
         what: way
-          ? `Your next train runs ${way.toLowerCase()}`
+          ? `Your next train runs ${directionPhrase(way)}`
           : "Your next train runs the other way",
         minutesLeft: null,
         total: null,

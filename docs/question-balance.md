@@ -29,7 +29,7 @@ added to the hider's score) and cooldown, plus a 5-minute gap between any two qu
   show's transit-line question (asked while riding). You have to travel to ask about a line.
 - **Express is now relative** ("an express stop, like mine?"), so it reads as matching.
 - **Landmarks** (`packages/data/dataset/nyc-landmarks.json`, built by `build-landmarks`):
-  60 big parks (NYC Parks, 20+ acres), 84 notable museums, 190 public library branches,
+  60 big parks (NYC Parks, 20+ acres), 83 notable museums, 190 public library branches,
   51 hospitals with an ER, 5 zoos and the aquarium, JFK and LaGuardia. Staten Island and
   anything outside the city is left out. Each landmark is one pin and distances are
   measured to it (the show's "to the map icon" rule). Credit: OpenStreetMap contributors

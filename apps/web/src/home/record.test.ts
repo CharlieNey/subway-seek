@@ -55,6 +55,16 @@ describe("the record", () => {
       "tent",
     ]);
   });
+
+  it("doesn't read the title's 🚇 as a question", () => {
+    const share =
+      "Stand Clear #2 · from Jackson Hts-Roosevelt Av 🚇\nDidn't find it in 2 h 00 min · 3 questions\n🟰🎯🔥\nHider score: 2 h 30 min";
+    expect(familiesOf({ ...result("2026-10-06", 2, false, 120), share })).toEqual([
+      "match",
+      "radar",
+      "thermo",
+    ]);
+  });
 });
 
 describe("the hero's door", () => {

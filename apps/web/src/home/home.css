@@ -224,6 +224,18 @@
   font-size: 13px;
   color: var(--color-ink-2);
 }
+/* ---------- page not found ---------- */
+.hp-lost {
+  padding-block: 10px 30px;
+  text-align: center;
+}
+.hp-lost .hp-lede {
+  margin-inline: auto;
+}
+.hp-lost .hp-ctas {
+  justify-content: center;
+}
+
 .hp-hero-wains {
   height: 22px;
   margin: 0 -26px;

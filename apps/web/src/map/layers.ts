@@ -94,7 +94,8 @@ function pastBoundary(
   q: SoloView["asked"][number],
 ): RoundData["past"][number] | null {
   const answer = q.answer as Answer | null;
-  if (!answer || (typeof answer === "object" && "vetoed" in answer)) return null;
+  // A No (false) leaves its boundary too: only a missing answer or a Veto draws nothing.
+  if (answer === null || (typeof answer === "object" && "vetoed" in answer)) return null;
   const f = familyOf(q.q);
   switch (q.q.kind) {
     case "radar":

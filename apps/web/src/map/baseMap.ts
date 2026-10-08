@@ -79,8 +79,19 @@ export function createMapLibreBase(
       resolve();
     });
   });
-  const timeout = setTimeout(() => fail("The map tiles didn't arrive in 20 s"), 20_000);
-  map.on("load", () => clearTimeout(timeout));
+  // A background tab draws nothing, so "load" can't fire there: the 20 s count on screen.
+  let timeout: ReturnType<typeof setTimeout>;
+  const arm = () => {
+    timeout = setTimeout(() => {
+      if (document.hidden) document.addEventListener("visibilitychange", arm, { once: true });
+      else fail("The map tiles didn't arrive in 20 s");
+    }, 20_000);
+  };
+  arm();
+  map.on("load", () => {
+    clearTimeout(timeout);
+    document.removeEventListener("visibilitychange", arm);
+  });
   map.on("error", (e) => {
     const reason = e.error?.message ?? String(e.error);
     console.error(`map: ${reason}`);

@@ -29,7 +29,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { keepArmed } from "./ask.ts";
 import { ATTEMPT_TIMEOUT_MS, attemptFailed, type Link, startAttempt } from "./connection.ts";
-import { doorOf, type StoredSession, tokenFor, withoutDoor } from "./doors.ts";
+import { type Door, doorOf, type StoredSession, tokenFor, withoutDoor } from "./doors.ts";
 import { isHider } from "./hide.ts";
 import {
   type DailyResult,
@@ -259,10 +259,16 @@ window.addEventListener("pagehide", rememberSession);
 /** How this page was opened: today's daily, practice, the last daily's replay, or carry on. */
 const door = doorOf(location.search);
 
-export function openingRound(): Extract<Door, { kind: "hide" }> | { kind: "daily" } {
-  if (door.kind === "hide") return door;
+/**
+ * The round this page is opening, before the server says: its door, or the practice round
+ * it carries on. Anything else opens (or resumes) today's daily.
+ */
+export function openingRound(): Extract<Door, { kind: "practice" | "hide" }> | { kind: "daily" } {
+  if (door.kind === "practice" || door.kind === "hide") return door;
   const stored = door.kind === "resume" ? loadSession() : null;
-  return stored?.live && stored.mode === "hide" ? { kind: "hide" } : { kind: "daily" };
+  return stored?.live && (stored.mode === "practice" || stored.mode === "hide")
+    ? { kind: stored.mode }
+    : { kind: "daily" };
 }
 
 let sessionToken: string | null = null;

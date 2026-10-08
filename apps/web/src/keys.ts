@@ -5,7 +5,7 @@
  * and a key just presses that control (`data-key`), so it does exactly what a click does.
  * A key typed into a control that already answers it (a focused button's Enter or Space)
  * is left to the control; a focused question chip doesn't count, so Enter after clicking
- * a chip asks rather than disarming it.
+ * a chip asks rather than disarming it, and nor does the tab you're on.
  */
 export type KeyAction =
   | { kind: "disarm" }

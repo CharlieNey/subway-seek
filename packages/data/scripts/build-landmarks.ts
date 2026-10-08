@@ -56,6 +56,7 @@ const DENY = new Set([
   "The Yankees Museum", // inside the stadium
   "Ellis Island Immigration Museum", // harbor islands: no subway
   "Statue of Liberty Museum",
+  "Rubin Museum of Art", // closed its galleries on W 17 St on 2024-10-06; OSM still lists it
   "Commanding Officer's Quarters", // inside Fort Hamilton (an army base)
   "Recreational Area", // no real name
   "Battery Park City", // a neighborhood's parks, not one park

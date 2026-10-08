@@ -4,6 +4,7 @@
  * then the one main action on the wainscot.
  */
 import {
+  type Difficulty,
   dailyNumber,
   nextEventTime,
   nyDate,
@@ -15,7 +16,16 @@ import {
 } from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
-import { askBlocker, askLabel, currentHint, HINTS, type HintId, hhmm, priceText } from "./ask.ts";
+import {
+  askBlocker,
+  askLabel,
+  currentHint,
+  HINTS,
+  type HintId,
+  hhmm,
+  hm,
+  priceText,
+} from "./ask.ts";
 import {
   BootBoard,
   BootWainscot,
@@ -35,10 +45,10 @@ import { HiderResult } from "./HiderResult.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
 import { stillStanding } from "./map/eliminate.ts";
-import { formatDay } from "./names.ts";
+import { displayName, formatDay } from "./names.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { ReplayPanel } from "./ReplayPanel.tsx";
-import { hm, ResultCard } from "./Result.tsx";
+import { ResultCard } from "./Result.tsx";
 import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { SOUNDS, useSound } from "./sound.ts";
@@ -61,10 +71,14 @@ import { LINES, lineFor, roundKey } from "./voice.ts";
 
 const DIFFICULTY_LABEL = { easy: "Easy", normal: "Normal", hard: "Hard" } as const;
 
-/** The round on one line: before the server answers, today's daily from the date. */
+const practiceLine = (d: Difficulty | undefined) =>
+  `Practice round${!d || d === "normal" ? "" : ` · ${DIFFICULTY_LABEL[d]}`}`;
+
+/** The round on one line: before the server answers, the round the page is opening. */
 function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
   if (!view) {
     const opening = openingRound();
+    if (opening.kind === "practice") return practiceLine(opening.difficulty);
     if (opening.kind === "hide")
       return `You hide · ${DIFFICULTY_LABEL[opening.difficulty ?? "normal"]}`;
     const date = nyDate(new Date());
@@ -73,7 +87,7 @@ function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
   if (isHider(view)) return `You hide · ${DIFFICULTY_LABEL[view.difficulty]}`;
   return view.daily
     ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
-    : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`;
+    : practiceLine(view.difficulty);
 }
 
 /**
@@ -88,21 +102,30 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
   if (s.kind === "train") {
     const trip = world.ds.trips[s.trip];
     const waiting = trip ? t < (trip.dep[s.from] as number) : false;
+    const next = nextEventTime(ownTransit(view), t, world.idx, "next");
+    const end = nextEventTime(ownTransit(view), t, world.idx, "end");
+    // Your stop is the last stop until you pick one, so say which: a skip to the end of
+    // the line can be most of an hour. One that lands after time's up would end the round.
+    const stop = displayName(world.ds.stations[trip?.stops[s.to] as number]?.name ?? "");
+    const toEnd = trip && s.to === trip.stops.length - 1 ? "the last stop" : "your stop";
+    const late = (at: number | null) => !isHider(view) && at !== null && at >= view.seekEnd;
     return [
       {
         glyph: "▸",
         key: "Space",
-        title: waiting
-          ? "Skip to the departure · Space"
-          : "Skip to 30 s before the next stop · Space",
-        disabled: busy || nextEventTime(ownTransit(view), t, world.idx, "next") === null,
+        title: late(next)
+          ? "The next stop is after time's up"
+          : waiting
+            ? "Skip to the departure · Space"
+            : "Skip to 30 s before the next stop · Space",
+        disabled: busy || next === null || late(next),
         onClick: go("next"),
       },
       {
         glyph: "▸▸",
         key: "Shift+Space",
-        title: "Skip to your stop · Shift+Space",
-        disabled: busy,
+        title: late(end) ? `${stop} is after time's up` : `Skip to ${toEnd}, ${stop} · Shift+Space`,
+        disabled: busy || late(end),
         onClick: go("end"),
       },
     ];
@@ -376,9 +399,11 @@ function useKeys(world: World | null, view: SoloView | null, t: number | null) {
       if (useReplay.getState().active || v.result) return;
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable]")) return;
-      // A focused question chip doesn't own Enter: Enter asks what's armed.
+      // A focused question chip doesn't own Enter: Enter asks what's armed. Nor does the
+      // tab you're on, which you just clicked: Enter asks and Space skips ahead.
       const onControl =
-        !!target?.closest("button, a, [role=slider]") && !target?.closest("[data-chip]");
+        !!target?.closest("button, a, [role=slider]") &&
+        !target?.closest('[data-chip], [role=tab][aria-selected="true"]');
       const canAsk = !!armed && !busy && askBlocker(armed, v, now, w.idx) === null;
       const action = keyAction(e, { armed: !!armed, canAsk, onControl });
       if (!action) return;

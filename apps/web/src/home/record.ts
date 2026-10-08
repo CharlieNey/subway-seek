@@ -102,7 +102,12 @@ const EMOJI_FAMILY: Record<string, Family | null> = {
 
 export function familiesOf(r: DailyResult): Family[] {
   if (r.families) return r.families;
-  const line = r.share.split("\n").find((l) => [...l].some((c) => c in EMOJI_FAMILY)) ?? "";
+  // Past the title line, whose 🚇 is the game's mark, not a route question.
+  const line =
+    r.share
+      .split("\n")
+      .slice(1)
+      .find((l) => [...l].some((c) => c in EMOJI_FAMILY)) ?? "";
   const out: Family[] = [];
   for (const g of Array.from(new Intl.Segmenter().segment(line), (s) => s.segment)) {
     const f = EMOJI_FAMILY[g];

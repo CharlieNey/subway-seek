@@ -1,4 +1,10 @@
-import { resolve, streetPoint, type Walking } from "@stand-clear/engine";
+import {
+  CATCH_METERS,
+  distanceMeters,
+  resolve,
+  streetPoint,
+  type Walking,
+} from "@stand-clear/engine";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn.ts";
 import {
@@ -9,7 +15,7 @@ import {
   compassLetters,
   compassWord,
 } from "./compass.ts";
-import { useGame, useGamePick } from "./game.ts";
+import { nowGameTime, useGame, useGamePick } from "./game.ts";
 import { cursed } from "./HiderCards.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { ARROWS, type Arrow } from "./keys.ts";
@@ -18,7 +24,7 @@ import { useAttributionClearance } from "./map/attribution.ts";
 import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { play } from "./sound.ts";
-import { nearestPano, panoPoint } from "./street.ts";
+import { nearestPano, panoPoint, walkToward } from "./street.ts";
 import { Button, Caption, Kbd, Num, Plaque, TileTimer } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
@@ -156,14 +162,14 @@ export function StreetView({ visible }: { visible: boolean }) {
     const m = new google.maps.Marker({
       position: { lat: spotLat, lng: spotLon },
       map: panoRef.current,
-      title: "The hider: click to catch",
+      title: "The hider",
       icon: {
         url: GOLD_SQUARE,
         scaledSize: new google.maps.Size(30, 30),
         anchor: new google.maps.Point(15, 15),
       },
     });
-    m.addListener("click", () => useGame.getState().send({ type: "catch" }));
+    m.addListener("click", () => clickHider(spotLat, spotLon));
     markerRef.current = m;
   }, [ready, spotLat, spotLon]);
 
@@ -228,7 +234,17 @@ export function StreetView({ visible }: { visible: boolean }) {
           <Caption>Facing {compassLetters(heading)}</Caption>
         </div>
       )}
-      {spot && <CatchBand />}
+      {spot && (
+        <CatchBand
+          line={
+            !standing || !standingPoint
+              ? `Get within ${CATCH_METERS} m to catch`
+              : distanceMeters(standingPoint, spot) <= CATCH_METERS
+                ? "Click them to catch"
+                : "Click them to walk closer"
+          }
+        />
+      )}
       {standing && sinceArrival < 900 && (
         // Daylight at the top of the stairs: the pane brightens from the top down.
         <div className="pointer-events-none absolute inset-0 z-[6] overflow-hidden">
@@ -396,10 +412,27 @@ function Stairs({ state, t, speed }: { state: Walking; t: number; speed: number 
 }
 
 /**
- * Someone's here: the screen's one express band, ink with gold trim, at the top center.
- * The seeker gets it only within 40 m; the hider's gold marker sets beside it.
+ * Clicking the hider: within 25 m it's the catch. Farther, it walks you to them, since a
+ * walk stops where they come into view, at 40 m. Mid-walk a click does nothing: you catch
+ * standing still.
  */
-function CatchBand() {
+function clickHider(lat: number, lon: number) {
+  const { view, world, send } = useGame.getState();
+  const t = nowGameTime();
+  if (!view || !world || t === null || isHider(view)) return;
+  const s = resolve(ownTransit(view), t, world.idx);
+  if (s.kind !== "street") return;
+  if (distanceMeters(streetPoint(s, world.idx), { lat, lon }) <= CATCH_METERS) {
+    send({ type: "catch" });
+  } else void walkToward(lat, lon);
+}
+
+/**
+ * Someone's here: the screen's one express band, ink with gold trim, at the top center.
+ * The seeker gets it only within 40 m; the hider's gold marker sets beside it. The line
+ * under it says what a click on them does from where you stand.
+ */
+function CatchBand({ line }: { line: string }) {
   return (
     // It unrolls from the top of Street View after a two-frame hold (33 ms), the beat the
     // sound lands on.
@@ -411,7 +444,7 @@ function CatchBand() {
         <b className="font-display text-[15px] font-bold tracking-[0.12em] uppercase">
           Someone's here
         </b>
-        <span className="text-[12px] opacity-[0.82]">Click them to catch</span>
+        <span className="text-[12px] opacity-[0.82]">{line}</span>
       </div>
     </div>
   );

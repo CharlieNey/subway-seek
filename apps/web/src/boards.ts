@@ -13,7 +13,7 @@ import {
   type OnPlatform,
   type TimetableIndex,
 } from "@stand-clear/engine";
-import { displayName } from "./names.ts";
+import { directionPhrase, displayName } from "./names.ts";
 
 export interface CountdownLine {
   route: Route;
@@ -73,7 +73,7 @@ export function platformBoard(
           struck = true;
         } else if (wrongWay?.card === "wrongWay" && wrongWay.dir !== dir) {
           const way = wrongWay.dir === 0 ? st.northLabel : st.southLabel;
-          reason = `Wrong way: ${way.toLowerCase()} only`;
+          reason = `Wrong way: ${directionPhrase(way)} only`;
           struck = true;
         } else if (state.arrivedDir !== null && state.arrivedDir !== dir && first.dep < changeBy) {
           reason = "too soon to change platforms";

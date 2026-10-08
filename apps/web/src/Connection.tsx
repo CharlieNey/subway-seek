@@ -7,7 +7,7 @@
 import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { type LinkScreen, LOST_TRIES, linkScreen, refused } from "./connection.ts";
-import { useGame } from "./game.ts";
+import { openingRound, useGame } from "./game.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Button, Plaque, TileTimer, Wainscot, WainscotText } from "./ui/vocab.tsx";
 
@@ -138,7 +138,7 @@ function serverRow(screen: LinkScreen, networkDone: boolean) {
   return {
     state: connecting ? ("now" as const) : ("wait" as const),
     status: connecting ? "Connecting" : "Waiting",
-    note: "Today's round starts when it answers",
+    note: "Your round starts when it answers",
   };
 }
 
@@ -194,7 +194,9 @@ export function ServerPlaque({ screen }: { screen: Extract<LinkScreen, { kind: "
   const now = useNow(1);
   const keptUntil = screen.firstTryAt + RECONNECT_GRACE_MS;
   const safe = !screen.midRound
-    ? "Nothing is lost. Today's daily hasn't started, and it'll be the same round when you get in."
+    ? openingRound().kind === "practice"
+      ? "Nothing is lost. Your round hasn't started yet."
+      : "Nothing is lost. Today's daily hasn't started, and it'll be the same round when you get in."
     : now < keptUntil
       ? SOLO_PAUSES_ON_DROP
         ? `Your round is paused on the server and kept until ${clockTime(keptUntil)}.`
