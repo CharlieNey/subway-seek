@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "hardness": "tsx scripts/hardness.ts"
   },
   "dependencies": {
     "@deck.gl/core": "^9.4.0",

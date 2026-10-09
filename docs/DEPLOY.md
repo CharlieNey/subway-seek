@@ -66,8 +66,9 @@ The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2026-10-28 
 ```sh
 pnpm data:build --refresh --date=2026-11-11     # a plain Wednesday within the new feed's validity
 pnpm --filter @stand-clear/data build-landmarks  # only if OSM/Parks data should refresh too
+pnpm data:hardness                               # the /hardest page's table; a test fails if it's stale
 pnpm test && pnpm sim && pnpm sim:endgame        # the balance docs quote these; update them if the numbers move
-git add packages/data/dataset && git commit -m "Data: re-pin the timetable to 2026-11-11"
+git add packages/data/dataset apps/web/src/home/hardness.json && git commit -m "Data: re-pin the timetable to 2026-11-11"
 ```
 
 Pick a Wednesday with no holiday and no major planned work, at least a week ahead so the daily's archive of results isn't cut off mid-week. `pnpm data:check` runs in CI and warns (never fails) when the pin is within a week or in the past. The loading board shows the service day to players.

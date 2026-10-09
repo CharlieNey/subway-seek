@@ -814,3 +814,98 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- the two pages off the homepage: hardest stations, changelog ---------- */
+.hp-page-wall {
+  padding-bottom: 0;
+}
+.hp-page-lede {
+  padding: 28px 28px 26px;
+  max-width: 760px;
+}
+.hp-page-lede h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.005em;
+  margin-bottom: 12px;
+}
+.hp-hubs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hp-rank {
+  list-style: none;
+  border-top: 2px solid var(--color-ink);
+}
+.hp-rank-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 110px 80px 70px;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--color-grout);
+  font-size: 14px;
+}
+.hp-rank-row .rk {
+  color: var(--color-ink-2);
+  font-size: 12px;
+}
+.hp-rank-row .nm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.hp-rank-row .nm b {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-rank-row .q b {
+  font-weight: 700;
+}
+.hp-rank-row .tw {
+  color: var(--color-ink-2);
+  font-size: 12.5px;
+}
+.hp-rank-row .bd {
+  text-align: right;
+}
+.hp-rank-row.band-easy .bd .sc-cap {
+  background: var(--color-match);
+}
+.hp-rank-row.band-hard .bd .sc-cap {
+  background: var(--color-thermo);
+}
+.hp-rank-note {
+  margin-top: 14px;
+  color: var(--color-ink-2);
+  max-width: 72ch;
+}
+.hp-log .hp-s-head h2 {
+  display: grid;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 20px;
+}
+.hp-log .hp-s-head ul {
+  list-style: square;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  max-width: 72ch;
+}
+@media (max-width: 760px) {
+  .hp-rank-row {
+    grid-template-columns: 28px minmax(0, 1fr) 90px;
+  }
+  .hp-rank-row .tw,
+  .hp-rank-row .bd {
+    display: none;
+  }
+}

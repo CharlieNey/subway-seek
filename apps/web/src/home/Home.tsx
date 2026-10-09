@@ -4,7 +4,13 @@
  * modes are a departures board, the footer is the wainscot. It never connects to a round
  * (the server starts one the moment a page connects); its doors are links to /play.
  */
-import { dailyNumber, nyDate, RECONNECT_GRACE_MS, SEEKER_LEVELS } from "@stand-clear/engine";
+import {
+  DAILY_EPOCH,
+  dailyNumber,
+  nyDate,
+  RECONNECT_GRACE_MS,
+  SEEKER_LEVELS,
+} from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
@@ -210,12 +216,15 @@ export function Home() {
             <p className="fine">
               Timetable and station data from the MTA. Map and Street View imagery from Google. The
               places the questions ask about © OpenStreetMap contributors and NYC Parks. Stand Clear
-              is a fan-made game and isn't affiliated with the MTA.
+              is a fan-made game and isn't affiliated with the MTA. Daily{" "}
+              <b className="n">#{today.number}</b>, running since {formatDay(DAILY_EPOCH)}.
             </p>
             <nav aria-label="Footer">
               <a href="#how">How it plays</a>
               <a href="#record">Daily seeking record</a>
               <a href="/play?practice">Practice</a>
+              <a href="/hardest">Hardest stations</a>
+              <a href="/changelog">Changelog</a>
               <a href="/terms.html">Terms, data and privacy</a>
             </nav>
           </div>

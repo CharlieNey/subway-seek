@@ -32,6 +32,7 @@ Human-hide server snapshots store panorama IDs and rehydrate coordinates when re
 
 | Command | What it does |
 |---|---|
+| `pnpm data:hardness` | Rebuild `apps/web/src/home/hardness.json`, the /hardest page's ranking of every station by questions-to-find per hub; run after a re-pin |
 | `pnpm data:build` | Rebuild `packages/data/dataset/nyc-subway.json` from cached MTA downloads (`--refresh` re-downloads) |
 | `pnpm --filter @stand-clear/data build-landmarks` | Rebuild `nyc-landmarks.json` (parks, museums, libraries, hospitals, zoos, airports) from OpenStreetMap + NYC Open Data |
 | `pnpm test` | Vitest across all packages |
