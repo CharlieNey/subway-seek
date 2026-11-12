@@ -16,7 +16,7 @@ const page =
   import.meta.env.DEV && path === "/sheet"
     ? import("./Sheet.tsx").then(({ Sheet }) => <Sheet />)
     : path === "/play"
-      ? import("./App.tsx").then(({ App }) => <App />)
+      ? import("./PlayPage.tsx").then(({ PlayPage }) => <PlayPage />)
       : path === "/" || path === "/index.html"
         ? import("./home/Home.tsx").then(({ Home }) => <Home />)
         : path === "/hardest"

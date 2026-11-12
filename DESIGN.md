@@ -16,7 +16,7 @@ Two layers of deduction make it work online:
 ## Format
 
 - **v1: 1v1.** One hider, one seeker, then swap. Longest hide wins. **Ties stand in v1**; an overtime round is in the parking lot.
-- **Platform:** desktop browser first (map + Street View + board side by side); responsive phone layout later.
+- **Platform:** desktop browser first (map + Street View + board side by side); responsive phone layout later. Below 860 px, `/play` shows a computer notice before loading or connecting the game: 380 px for the board plus at least 480 px for the map. Back to the homepage is the main action; a quiet Try anyway opens the desktop layout, preserving the chosen mode and the escape on refresh. The homepage gives the same warning and escape. Resizing an open round keeps its game mounted and its clock running.
 - Build around **two sides (hider / seekers), each with 1+ players**. Every later format is then a config change:
   - 1 hider vs 2 seekers: the show's format; one seeker rides while the other studies photos
   - 2v2 duos: pairs take turns hiding
@@ -718,7 +718,7 @@ One job: get the visitor into today's daily in one click. Shared result lines ar
   - Stats: played, found, streak and fastest find.
   - A tile wall with one tile per day, built from the browser's existing history. Found days are ink with the time, finds under 45 minutes get a gold edge, misses are struck through in terra cotta, and days off stay blank.
 - **Yesterday's hider (new idea):** once a day is over, its station is revealed as a mosaic tablet with your result. The question trail is drawn as family squares, not the share text's emoji.
-- **Phones:** shared links get opened on phones, and the game is desktop-first. The main button becomes "Best on a computer · Copy link", with "Play anyway" beside it, and everything else stays.
+- **Narrow screens:** below 860 px, the hero says "Play on a computer" and explains that trying the desktop layout here may leave controls cramped or cut off. Copy link is the main action; the quiet Try anyway link opens `/play` with its computer notice explicitly bypassed. Other game links show the notice first.
 - **States:**
   - First visit: an empty tile wall with today outlined in gold.
   - Daily in progress: "Resume daily #23".
@@ -1046,8 +1046,10 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 ## Decision log
 
+
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-12 | Below 860 px, show a computer notice before starting a round, with a homepage link and quiet Try anyway escape; match the homepage copy | QA found the fixed 380 px board leaves only 13 px of map on a phone. A phone layout is out of scope; reserve 480 px for the map on supported screens |
 | 2026-10-08 | S3 built with the approved 4/3/2 crossover retained after pacing checks | Ten paired scenarios per level hit a 10/10 ceiling; expanded 52 per level caught Easy 48, Normal 48, Hard 50. Implements Charlie's instruction to measure before changing mapping or prices. Virtual-clock simulations and live fixtures are labeled separately in match-balance.md; long quiet rides remain a manual playtest question |
 | 2026-10-08 | S3 review: stairs are an in-progress exit, exempt from underground catch and 10:35 relocation; zone entry on stairs freezes at the chosen exit upon arrival | Charlie's review; preserve the decided exit travel time and chosen panorama |
 | 2026-10-08 | S3 review: neutral zone caption/list markers; H / U / K / V / R on Hide here / Up at Exit / Keep / Veto / Randomize; Notice confirms leaving; homepage Easy / Normal / Hard | Charlie's requested quality pass; reuse printed controls and the built confirmation vocabulary |

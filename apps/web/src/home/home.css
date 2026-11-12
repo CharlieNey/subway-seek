@@ -797,12 +797,6 @@
   .hp-hero-wains {
     margin: 0 -14px;
   }
-  .hp .hp-desk {
-    display: none;
-  }
-  .hp-phone {
-    display: block;
-  }
   .hp-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -812,6 +806,16 @@
   }
   .hp-foot .inner {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 380 px board + 480 px of map; matches PlayPage's computer notice. */
+@media (width < 860px) {
+  .hp .hp-desk {
+    display: none;
+  }
+  .hp-phone {
+    display: block;
   }
 }
 

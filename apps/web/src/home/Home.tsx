@@ -146,13 +146,17 @@ export function Home() {
                   )}
                 </div>
                 <div className="hp-phone hp-phone-note">
-                  <b>Best on a computer</b>
-                  Stand Clear needs room for the map, Street View and the board side by side. Send
-                  yourself the link, or play here anyway.
+                  <b>Play on a computer</b>
+                  Stand Clear is played on a computer. The map, Street View and the board need room
+                  side by side. Copy the link for later, or try the desktop layout here; controls
+                  may be cramped or cut off.
                   <div className="row">
                     <CopyButton text={`${location.origin}/`} label="Copy link" ink />
-                    <a className="sc-btn" href={done ? "/play?practice" : "/play?daily"}>
-                      Play anyway
+                    <a
+                      className="hp-alt"
+                      href={done ? "/play?practice&tryAnyway=1" : "/play?daily&tryAnyway=1"}
+                    >
+                      Try anyway
                     </a>
                   </div>
                 </div>
