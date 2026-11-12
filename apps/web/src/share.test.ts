@@ -20,6 +20,7 @@ const view = (over: Partial<SoloView>): SoloView => ({
   hider: null,
   replay: null,
   hasSpot: false,
+  hasExitPhoto: false,
   stationFoundAt: null,
   spotNearby: null,
   footThermometer: null,

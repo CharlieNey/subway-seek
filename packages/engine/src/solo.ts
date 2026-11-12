@@ -906,6 +906,8 @@ export interface SoloView {
   replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
   /** Whether this round has a Street View endgame (a hiding spot to catch). */
   hasSpot: boolean;
+  /** Exit-photo capability only; never exposes the exit panorama or a human's movement. */
+  hasExitPhoto: boolean;
   /**
    * When the hunt ended: you first reached the hider's station or, caught from a
    * neighbouring station's street, came up there. Only revealed with the hider.
@@ -1020,6 +1022,7 @@ export function soloView(round: SoloRound, t: number, idx: TimetableIndex): Solo
     hider: revealed ? round.hider : null,
     replay: over ? { hider: revealed ? round.hiderTrail : [], seeker: round.seekerTrail } : null,
     hasSpot: round.human ? true : round.spot !== null,
+    hasExitPhoto: round.human ? true : round.photoExit !== null,
     ...(round.human
       ? {
           mobileHider: true,

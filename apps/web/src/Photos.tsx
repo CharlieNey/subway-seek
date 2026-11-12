@@ -11,7 +11,7 @@ import {
   type SoloView,
   syncedGameTime,
 } from "@stand-clear/engine";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { type ChipState, hhmm, LOOK_WORD } from "./ask.ts";
 import { reducedMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
@@ -44,6 +44,7 @@ export function Compass({
   onArm,
   onHover,
   dimmed,
+  unavailable,
 }: {
   label: string;
   from: "exit" | "spot";
@@ -51,11 +52,18 @@ export function Compass({
   onArm: (q: Question) => void;
   onHover: (q: Question | null) => void;
   dimmed?: boolean;
+  unavailable?: string;
 }) {
+  const reasonId = useId();
   return (
-    <div className={cn("flex flex-col gap-1.5", dimmed && "opacity-40")}>
+    <div className={cn("flex flex-col gap-1.5", dimmed && !unavailable && "opacity-40")}>
       <span className="text-[12px] text-ink-2">{label}</span>
-      <div className="grid grid-cols-[repeat(3,34px)] grid-rows-[repeat(3,30px)] gap-[3px]">
+      <div
+        className={cn(
+          "grid grid-cols-[repeat(3,34px)] grid-rows-[repeat(3,30px)] gap-[3px]",
+          unavailable && "opacity-40",
+        )}
+      >
         {GRID.map((look) => {
           if (!isLook(look)) return <i key={look} />;
           const q: Question = { kind: "photo", from, look };
@@ -67,11 +75,13 @@ export function Compass({
               data-chip=""
               aria-label={`Photo from ${from === "exit" ? "their exit" : "their spot"}, facing ${LOOK_WORD[look]}`}
               aria-pressed={state === "armed"}
-              title={state === "closed" ? "Vetoed · closed this round" : undefined}
-              onClick={state === "closed" ? undefined : () => onArm(q)}
-              onMouseEnter={() => onHover(q)}
+              disabled={!!unavailable}
+              aria-describedby={unavailable ? reasonId : undefined}
+              title={unavailable ?? (state === "closed" ? "Vetoed · closed this round" : undefined)}
+              onClick={unavailable || state === "closed" ? undefined : () => onArm(q)}
+              onMouseEnter={unavailable ? undefined : () => onHover(q)}
               onMouseLeave={() => onHover(null)}
-              onFocus={() => onHover(q)}
+              onFocus={unavailable ? undefined : () => onHover(q)}
               onBlur={() => onHover(null)}
               className={cn(
                 "sc-focus flex items-center justify-center font-display text-[12px] font-bold tracking-[0.08em] uppercase",
@@ -88,6 +98,11 @@ export function Compass({
           );
         })}
       </div>
+      {unavailable && (
+        <p id={reasonId} className="max-w-[130px] text-[12px] leading-[1.4] text-ink-2">
+          {unavailable}
+        </p>
+      )}
     </div>
   );
 }

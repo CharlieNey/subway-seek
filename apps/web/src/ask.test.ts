@@ -6,6 +6,7 @@ import {
   createSoloRound,
   type Question,
   type SoloRound,
+  SPOT_PHOTOS_OPEN_SECONDS,
   soloView,
   type TimetableIndex,
 } from "@stand-clear/engine";
@@ -79,6 +80,25 @@ describe("arming a question", () => {
 });
 
 describe("what stops a question", () => {
+  it("blocks every missing exit direction while keeping spot photos independently available", () => {
+    const view = soloView(round, T0, idx);
+    for (const look of ["N", "E", "S", "W", "up"] as const) {
+      const q = { kind: "photo", from: "exit", look } as const;
+      expect(askBlocker(q, view, T0, idx)).toBe("No exit photo this round.");
+      expect(askBlocker(q, { ...view, hasExitPhoto: true }, T0, idx)).toBeNull();
+    }
+    const spot = { kind: "photo", from: "spot", look: "N" } as const;
+    const withSpot = { ...view, hasSpot: true };
+    expect(askBlocker(spot, withSpot, T0, idx)).toBe("Spot photos open at 10:35");
+    expect(askBlocker(spot, withSpot, T0 + SPOT_PHOTOS_OPEN_SECONDS, idx)).toBeNull();
+    expect(askBlocker(spot, view, T0 + SPOT_PHOTOS_OPEN_SECONDS, idx)).toBe(
+      "No hiding spot this round.",
+    );
+    expect(
+      askBlocker(spot, { ...withSpot, hasExitPhoto: true }, T0 + SPOT_PHOTOS_OPEN_SECONDS, idx),
+    ).toBeNull();
+  });
+
   it("says when a cooling category is ready, in words", () => {
     const r = ask(round, radar1, T0);
     const v = soloView(r, T0 + 60, idx);

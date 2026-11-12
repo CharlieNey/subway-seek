@@ -123,6 +123,8 @@ export function askBlocker(
 ): string | null {
   if (view.result) return "This round is over.";
   if (closedKeys(view).has(questionKey(q))) return "Vetoed · closed this round";
+  if (q.kind === "photo" && q.from === "exit" && !view.hasExitPhoto)
+    return "No exit photo this round.";
   const category = categoryOf(q);
   const ready = readyAt(view, category);
   if (t < ready) return `Ready at ${hhmm(ready)}`;

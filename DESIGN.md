@@ -111,6 +111,7 @@ Definitions:
 Split by what the photo is *of*:
 
 - **Station photos — any time.**
+  - **Solo availability:** the seeker's view reports an exit-photo capability without its panorama ID or coordinates. If no exit panorama was picked, every exit direction is disabled with "No exit photo this round." Spot photos keep their independent availability and 15-minute opening time. Human-hide capability stays constant so it never reveals an exit, movement or lock.
   - Taken from **any exit the hider picks** at their station, so they work while the hider is still walking. (Solo today: the server picks one exit per round, seeded, since a bot can't choose.)
   - The game opens a temporary Street View at that exit for the hider to aim; the hider doesn't move.
   - **No prompt ever requires station-name signage**, and the hider frames the view, so a station photo is never a free answer.
@@ -1049,6 +1050,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-12 | Expose exit-photo capability in the seeker view; disable unavailable exit directions with a reason and guard confirmation | QA found rounds with working spot photos but no exit photo still offered a request the server rejected. Keep the sources independent and human-hide movement private |
 | 2026-11-12 | Below 860 px, show a computer notice before starting a round, with a homepage link and quiet Try anyway escape; match the homepage copy | QA found the fixed 380 px board leaves only 13 px of map on a phone. A phone layout is out of scope; reserve 480 px for the map on supported screens |
 | 2026-10-08 | S3 built with the approved 4/3/2 crossover retained after pacing checks | Ten paired scenarios per level hit a 10/10 ceiling; expanded 52 per level caught Easy 48, Normal 48, Hard 50. Implements Charlie's instruction to measure before changing mapping or prices. Virtual-clock simulations and live fixtures are labeled separately in match-balance.md; long quiet rides remain a manual playtest question |
 | 2026-10-08 | S3 review: stairs are an in-progress exit, exempt from underground catch and 10:35 relocation; zone entry on stairs freezes at the chosen exit upon arrival | Charlie's review; preserve the decided exit travel time and chosen panorama |

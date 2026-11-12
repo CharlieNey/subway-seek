@@ -259,6 +259,10 @@ describe("photo questions", () => {
   it("answers from the station exit with a camera looking the asked way, without narrowing", () => {
     const base = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
     const round: SoloRound = { ...base, photoExit: "exit-pano" };
+    const view = soloView(round, round.seekStart, idx);
+    expect(view.hasExitPhoto).toBe(true);
+    expect(view.hasSpot).toBe(false);
+    expect(view).not.toHaveProperty("photoExit");
     const r = ask(round, "exit", round.seekStart);
     if (!r.ok) throw new Error(r.error);
     const a = r.round.asked[0];
@@ -280,6 +284,29 @@ describe("photo questions", () => {
 
   it("has no photo when the round has no exit panorama", () => {
     const round = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
-    expect(ask(round, "exit", round.seekStart).ok).toBe(false);
+    expect(soloView(round, round.seekStart, idx).hasExitPhoto).toBe(false);
+    expect(ask(round, "exit", round.seekStart)).toEqual({
+      ok: false,
+      error: "No photo available for this round.",
+    });
+    expect(round.asked).toHaveLength(0);
+    expect(bonusSeconds(round)).toBe(0);
+  });
+
+  it("keeps spot photos available when the exit photo is missing", () => {
+    const base = createSoloRound(idx, { hub, hideStart: TEN, random: seededRandom(4) });
+    const c = ds.complexes[base.hider];
+    if (!c) throw new Error("complex");
+    const round = placeHider(base, { ...east(c.lat, c.lon, 100), pano: "spot-pano" }, idx);
+    const t = round.seekStart + 15 * 60;
+    const view = soloView(round, t, idx);
+    expect(view.hasExitPhoto).toBe(false);
+    expect(view.hasSpot).toBe(true);
+    expect(view).not.toHaveProperty("photoExit");
+    expect(view.spotNearby).toBeNull();
+    const r = ask(round, "spot", t);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.round.asked[0]?.answer).toMatchObject({ photo: { pano: "spot-pano" } });
+    expect(bonusSeconds(r.round)).toBe(15 * 60);
   });
 });

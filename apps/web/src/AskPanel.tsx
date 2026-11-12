@@ -485,10 +485,11 @@ function PhotosBlock({
             <Compass
               label="From their station's exit"
               from="exit"
-              stateOf={(q) => a.state(q, cooling)}
+              stateOf={(q) => a.state(q, cooling || !view.hasExitPhoto)}
               onArm={a.toggle}
               onHover={a.hover}
               dimmed={cooling}
+              unavailable={view.hasExitPhoto ? undefined : "No exit photo this round."}
             />
             {view.hasSpot && (
               <Compass

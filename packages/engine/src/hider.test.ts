@@ -576,6 +576,8 @@ describe("human answers and cards", () => {
     expect(view.hider).toBeNull();
     expect(view.hiderHand).toBeNull();
     expect(view.spotNearby).toBeNull();
+    expect(view.hasExitPhoto).toBe(true);
+    expect(view).not.toHaveProperty("photoExit");
     expect(view).not.toHaveProperty("human");
     expect(view).not.toHaveProperty("lock");
     expect(
@@ -585,6 +587,7 @@ describe("human answers and cards", () => {
           hand: ["veto", "tourist"],
           human: { ...(r.human as HumanHider), lock: null },
           spot: null,
+          photoExit: null,
         },
         t,
         idx,
