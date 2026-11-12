@@ -203,7 +203,7 @@ export function Sheet() {
             </Lamps>
             <Lamps>
               <Lamp lit family="tent">
-                Tentacles
+                Nearest
               </Lamp>
             </Lamps>
           </Row>
@@ -222,7 +222,7 @@ export function Sheet() {
                 <p>Is your station within 1 mi of me?</p>
                 <AnswerWindow secondsLeft={6} />
               </ExpressBand>
-              <ExpressBand family="tent" label="Tentacles · 11:02 · from 23 St">
+              <ExpressBand family="tent" label="Nearest · 11:02 · from 23 St">
                 <p>Of the hospitals within 2 mi of me, which is nearest your station?</p>
                 <span className="sc-band-answer flex items-center gap-2">
                   <Pict kind="hospital" size={17} /> Bellevue
@@ -245,7 +245,7 @@ export function Sheet() {
             <div className="flex w-[348px] max-w-full flex-col">
               <Rule>Stops</Rule>
               <CoolRow family="match" label="Matching" next="next 10:40" />
-              <CoolRow family="tent" label="Tentacles" next="next 11:10" />
+              <CoolRow family="tent" label="Nearest" next="next 11:10" />
             </div>
           </Row>
 

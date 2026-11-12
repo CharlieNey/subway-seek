@@ -124,9 +124,7 @@ describe("what stops a question", () => {
 describe("the wainscot and the hints", () => {
   it("labels the confirm with the question and its price", () => {
     expect(askLabel(radar1)).toBe("Ask · Radar 1 mi");
-    expect(askLabel({ kind: "tentacles", landmark: "hospital" })).toBe(
-      "Ask · Tentacles · Hospitals",
-    );
+    expect(askLabel({ kind: "tentacles", landmark: "hospital" })).toBe("Ask · Nearest · Hospitals");
     expect(askLabel({ kind: "photo", from: "spot", look: "N" })).toBe("Ask · Spot photo · N");
     expect(priceText(radar1)).toBe("+10 min to their score");
     expect(priceText({ kind: "tentacles", landmark: "museum" })).toBe("+20 min to their score");

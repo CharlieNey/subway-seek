@@ -78,7 +78,7 @@ const CATEGORY_TITLE: Record<Exclude<QuestionCategory, "onFoot">, string> = {
   measuring: "Measuring · closer than me?",
   radar: "Radar · within …",
   thermometer: "Thermometer",
-  tentacles: "Tentacles · which is nearest you?",
+  tentacles: "Nearest · which one are you closest to?",
   photo: "Photos",
 };
 const STATION_CATEGORIES = [

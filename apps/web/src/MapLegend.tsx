@@ -55,7 +55,7 @@ function questionTitle(q: Question): string {
     case "measuring":
       return `Measuring · ${LANDMARK_WORDS[q.landmark].many}`;
     case "tentacles":
-      return `Tentacles · ${LANDMARK_WORDS[q.landmark].many} within ${radarLabel(TENTACLE_MILES[q.landmark] ?? 0)}`;
+      return `Nearest · ${LANDMARK_WORDS[q.landmark].many} within ${radarLabel(TENTACLE_MILES[q.landmark] ?? 0)}`;
     case "route":
       return `Matching · the ${q.letter}`;
     case "spotRadar":

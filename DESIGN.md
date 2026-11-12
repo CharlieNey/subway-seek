@@ -223,7 +223,7 @@ One **shared, server-authoritative game clock** at **6×** real time:
 Built in M0 (`packages/data`). What the data turned out to be:
 
 - **Source:** MTA's **regular** subway GTFS, not the "supplemented" feed — that one layers in this week's planned work. Plus MTA's *Subway Stations* and *Subway Entrances and Exits* datasets on data.ny.gov for borough, official complex IDs, structure and exits.
-- **Pinned date:** Wednesday 2026-10-28 (re-pinned 2026-10-08; 2026-10-14 before) → the single `Weekday` service (8,348 trips, 236k stop times). Times run past 24:00 (up to 28:02).
+- **Pinned date:** Wednesday 2026-12-02 (re-pinned 2026-11-12 from feed `20261028-fall-2026-pick-with-long-term-supplements`; 2026-10-28 and 2026-10-14 before) → the single `Weekday` service (8,349 trips, 236k stop times). Times run past 24:00.
 - **Scope:** 475 stations in 424 complexes. Staten Island Railway is excluded: you can't reach it without the ferry.
 - **Complexes:** MTA's official complex IDs; e.g. Times Sq = 127 + 725 + 902 + A27 + R16, 12 routes. Each complex's center is its busiest station's coordinate.
 - **Transfers:** 613 from GTFS, including same-station ones (min 180 s). Six are real free transfers *between* complexes (e.g. 59 St ↔ Lexington Av/63 St), kept as walkable transfers.
@@ -1166,3 +1166,4 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | 2026-10-05 | Ties stand in v1; overtime round later | Charlie |
 | 2026-10-05 | Station photos from any exit the hider picks | Charlie |
 | 2026-10-05 | Accessibility deferred | Charlie |
+| 2026-11-12 | "Tentacles" is called "Nearest" on screen; internal ids (`tentacles`, `tent`) unchanged so replays and the protocol still parse | No Jet Lag names (CLAUDE.md) |

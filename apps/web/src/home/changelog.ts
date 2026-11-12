@@ -11,6 +11,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-12",
+    title: "A fresh timetable, and Nearest",
+    lines: [
+      "The timetable is pinned to Wednesday 2026-12-02, from the MTA's fall 2026 schedule.",
+      "The nearest-landmark question is now called Nearest. It works the same way.",
+    ],
+  },
+  {
     date: "2026-10-09",
     title: "The hardest stations, and this page",
     lines: [

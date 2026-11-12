@@ -25,7 +25,7 @@ export const FAMILY_NAME: Record<Family, string> = {
   thermo: "Thermometer",
   match: "Matching",
   measure: "Measuring",
-  tent: "Tentacles",
+  tent: "Nearest",
   photo: "Photos",
 };
 
