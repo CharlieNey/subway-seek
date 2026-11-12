@@ -1050,6 +1050,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-12 | Easy ranking badges use Matching's deep green trim with glaze text | The 12 px caption had 3.64:1 contrast on the family green; the existing deep green keeps the palette and raises it to 7.03:1 |
 | 2026-11-12 | Expose exit-photo capability in the seeker view; disable unavailable exit directions with a reason and guard confirmation | QA found rounds with working spot photos but no exit photo still offered a request the server rejected. Keep the sources independent and human-hide movement private |
 | 2026-11-12 | Below 860 px, show a computer notice before starting a round, with a homepage link and quiet Try anyway escape; match the homepage copy | QA found the fixed 380 px board leaves only 13 px of map on a phone. A phone layout is out of scope; reserve 480 px for the map on supported screens |
 | 2026-10-08 | S3 built with the approved 4/3/2 crossover retained after pacing checks | Ten paired scenarios per level hit a 10/10 ceiling; expanded 52 per level caught Easy 48, Normal 48, Hard 50. Implements Charlie's instruction to measure before changing mapping or prices. Virtual-clock simulations and live fixtures are labeled separately in match-balance.md; long quiet rides remain a manual playtest question |

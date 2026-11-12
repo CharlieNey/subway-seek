@@ -880,7 +880,7 @@
   text-align: right;
 }
 .hp-rank-row.band-easy .bd .sc-cap {
-  background: var(--color-match);
+  background: var(--color-match-trim);
 }
 .hp-rank-row.band-hard .bd .sc-cap {
   background: var(--color-thermo);
