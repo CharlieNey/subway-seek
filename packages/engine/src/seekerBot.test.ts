@@ -110,13 +110,29 @@ describe("planning a journey from intents", () => {
   });
 
   it("on the train, stays the course for the same targets and gets off early for one behind", () => {
-    const t = TEN + 20 * 60;
     const south = stationsOf(ds.stations[station("137")]?.complex as number); // Chambers St
-    const plan = planFromPlatform(idx, station("132"), t, t + 3600, south); // from 14 St (1/2/3)
-    const board = plan?.intents.find((i) => i.type === "board");
-    if (board?.type !== "board") throw new Error("expected a ride");
-    const alight = plan?.intents.find((i) => i.type === "alightAt");
-    if (alight?.type !== "alightAt") throw new Error("expected a stop");
+    // From 14 St (1/2/3). Which train comes first depends on the pinned timetable, and an
+    // express runs 14 St to Chambers St with no stop between, so find a start time whose
+    // planned ride has at least one intermediate stop to get off at.
+    let t = TEN + 20 * 60;
+    let plan = planFromPlatform(idx, station("132"), t, t + 3600, south);
+    const rideOf = (p: typeof plan) => {
+      const b = p?.intents.find((i) => i.type === "board");
+      const a = p?.intents.find((i) => i.type === "alightAt");
+      return b?.type === "board" && a?.type === "alightAt" ? { board: b, alight: a } : null;
+    };
+    while (
+      (rideOf(plan)?.alight.stop ?? 0) - (rideOf(plan)?.board.stop ?? 0) < 2 &&
+      t < TEN + 80 * 60
+    ) {
+      t += 60;
+      plan = planFromPlatform(idx, station("132"), t, t + 3600, south);
+    }
+    const ride = rideOf(plan);
+    if (!ride) throw new Error("expected a ride");
+    const { board, alight } = ride;
+    if (alight.stop - board.stop < 2)
+      throw new Error("expected a local ride with a stop in between");
     const trip = ds.trips[board.trip];
     if (!trip) throw new Error("no trip");
     const riding = {

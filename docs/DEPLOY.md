@@ -75,7 +75,7 @@ Before anything is public, in this order. `gcloud auth login` first; the command
 
 ## Re-pinning the timetable
 
-The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2026-10-28 today). The MTA publishes a new GTFS feed every few weeks, and a pinned day in the past stops matching any real schedule. Routine, about monthly, or when `pnpm data:check` warns:
+The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2026-12-02 today). The MTA publishes a new GTFS feed every few weeks, and a pinned day in the past stops matching any real schedule. Routine, about monthly, or when `pnpm data:check` warns:
 
 ```sh
 pnpm data:build --refresh --date=2026-11-11     # a plain Wednesday within the new feed's validity

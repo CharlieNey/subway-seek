@@ -1,5 +1,5 @@
 {
-  "serviceDate": "2026-10-28",
+  "serviceDate": "2026-12-02",
   "hideStart": "10:00",
   "hideMinutes": 20,
   "routes": {
@@ -169,10 +169,10 @@
     {
       "id": "127",
       "name": "Times Sq-42 St",
-      "reachable": 97,
-      "byQuestions": { "1": 1, "2": 2, "3": 8, "4": 14, "5": 20, "6": 14, "7": 34, "8": 4 },
+      "reachable": 99,
+      "byQuestions": { "1": 1, "2": 2, "3": 8, "4": 14, "5": 20, "6": 11, "7": 41, "8": 2 },
       "stations": [
-        { "name": "86 St", "routes": ["B", "C"], "questions": 8, "twins": 1, "band": "hard" },
+        { "name": "135 St", "routes": ["2", "3"], "questions": 8, "twins": 1, "band": "hard" },
         {
           "name": "81 St-Museum of Natural History",
           "routes": ["B", "C"],
@@ -180,14 +180,6 @@
           "twins": 0,
           "band": "hard"
         },
-        {
-          "name": "Chambers St",
-          "routes": ["2", "3", "A", "C", "E", "R", "W"],
-          "questions": 8,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "City Hall", "routes": ["R", "W"], "questions": 8, "twins": 0, "band": "hard" },
         { "name": "103 St", "routes": ["1"], "questions": 7, "twins": 2, "band": "hard" },
         {
           "name": "116 St-Columbia University",
@@ -198,15 +190,26 @@
         },
         { "name": "125 St", "routes": ["1"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "116 St", "routes": ["2", "3"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "135 St", "routes": ["2", "3"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "33 St-Rawson St", "routes": ["7"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "86 St", "routes": ["B", "C"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "96 St", "routes": ["B", "C"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Bedford Av", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Canal St", "routes": ["1"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Franklin St", "routes": ["1"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Graham Av", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Grand St", "routes": ["B", "D"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "Hunters Point Av", "routes": ["7"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Lorimer St", "routes": ["G", "L"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "103 St", "routes": ["6"], "questions": 7, "twins": 0, "band": "hard" },
+        {
+          "name": "110 St-Malcolm X Plaza",
+          "routes": ["2", "3"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         { "name": "116 St", "routes": ["B", "C"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "125 St", "routes": ["4", "5", "6"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "125 St", "routes": ["2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "137 St-City College",
@@ -217,13 +220,19 @@
         },
         { "name": "40 St-Lowery St", "routes": ["7"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "79 St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "86 St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "86 St", "routes": ["4", "5", "6"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "86 St", "routes": ["Q"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "96 St", "routes": ["1", "2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Borough Hall",
           "routes": ["2", "3", "4", "5", "R", "W"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        {
+          "name": "Broadway-Lafayette St",
+          "routes": ["6", "B", "D", "F", "M"],
           "questions": 7,
           "twins": 0,
           "band": "hard"
@@ -237,7 +246,7 @@
         },
         {
           "name": "Canal St",
-          "routes": ["A", "C", "E"],
+          "routes": ["6", "J", "N", "Q", "R", "W"],
           "questions": 7,
           "twins": 0,
           "band": "hard"
@@ -257,6 +266,14 @@
           "band": "hard"
         },
         {
+          "name": "Chambers St",
+          "routes": ["2", "3", "A", "C", "E", "R", "W"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        { "name": "City Hall", "routes": ["R", "W"], "questions": 7, "twins": 0, "band": "hard" },
+        {
           "name": "Delancey St-Essex St",
           "routes": ["F", "J", "M"],
           "questions": 7,
@@ -271,13 +288,7 @@
           "band": "hard"
         },
         { "name": "Houston St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Queens Plaza",
-          "routes": ["E", "F", "R"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
+        { "name": "Prince St", "routes": ["R", "W"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Queensboro Plaza",
           "routes": ["7", "N", "W"],
@@ -297,44 +308,17 @@
         { "name": "2 Av", "routes": ["F"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "21 St", "routes": ["G"], "questions": 6, "twins": 1, "band": "normal" },
         {
-          "name": "33 St-Rawson St",
-          "routes": ["7"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        {
-          "name": "Broadway-Lafayette St",
-          "routes": ["6", "B", "D", "F", "M"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        {
-          "name": "Hunters Point Av",
-          "routes": ["7"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        { "name": "Spring St", "routes": ["6"], "questions": 6, "twins": 1, "band": "normal" },
-        {
-          "name": "110 St-Malcolm X Plaza",
-          "routes": ["2", "3"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
           "name": "125 St",
           "routes": ["A", "B", "C", "D"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
         },
+        { "name": "86 St", "routes": ["1"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "96 St", "routes": ["6"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Canal St",
-          "routes": ["6", "J", "N", "Q", "R", "W"],
+          "routes": ["A", "C", "E"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
@@ -347,7 +331,13 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Prince St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "Queens Plaza",
+          "routes": ["E", "F", "R"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "Rector St", "routes": ["1"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Wall St", "routes": ["2", "3"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "18 St", "routes": ["1"], "questions": 5, "twins": 1, "band": "normal" },
@@ -933,16 +923,79 @@
     {
       "id": "235",
       "name": "Atlantic Av-Barclays Ctr",
-      "reachable": 65,
-      "byQuestions": { "3": 9, "4": 10, "5": 8, "6": 26, "7": 12 },
+      "reachable": 74,
+      "byQuestions": { "3": 9, "4": 10, "5": 8, "6": 17, "7": 30 },
       "stations": [
+        { "name": "50 St", "routes": ["D"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "77 St", "routes": ["R"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Avenue H", "routes": ["Q"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "Beverly Rd", "routes": ["2", "5"], "questions": 7, "twins": 1, "band": "hard" },
+        {
+          "name": "Broadway-Lafayette St",
+          "routes": ["6", "B", "D", "F", "M"],
+          "questions": 7,
+          "twins": 1,
+          "band": "hard"
+        },
         { "name": "Church Av", "routes": ["2", "5"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "Cortelyou Rd", "routes": ["Q"], "questions": 7, "twins": 1, "band": "hard" },
+        {
+          "name": "Fort Hamilton Pkwy",
+          "routes": ["D"],
+          "questions": 7,
+          "twins": 1,
+          "band": "hard"
+        },
+        { "name": "Grand St", "routes": ["B", "D"], "questions": 7, "twins": 1, "band": "hard" },
+        {
+          "name": "Newkirk Av-Little Haiti",
+          "routes": ["2", "5"],
+          "questions": 7,
+          "twins": 1,
+          "band": "hard"
+        },
+        { "name": "Winthrop St", "routes": ["2", "5"], "questions": 7, "twins": 1, "band": "hard" },
+        {
+          "name": "14 St-Union Sq",
+          "routes": ["4", "5", "6", "L", "N", "Q", "R", "W"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        {
+          "name": "36 St",
+          "routes": ["D", "N", "R", "W"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        { "name": "45 St", "routes": ["R"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "53 St", "routes": ["R"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "55 St", "routes": ["D"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "59 St", "routes": ["N", "R"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "62 St", "routes": ["D", "N", "W"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "9 Av", "routes": ["D", "W"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Avenue J", "routes": ["Q"], "questions": 7, "twins": 0, "band": "hard" },
+        {
+          "name": "Bowling Green",
+          "routes": ["4", "5"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        {
+          "name": "Brooklyn Bridge-City Hall",
+          "routes": ["4", "5", "6", "J"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
+        {
+          "name": "Canal St",
+          "routes": ["A", "C", "E"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         {
           "name": "Canal St",
           "routes": ["6", "J", "N", "Q", "R", "W"],
@@ -950,107 +1003,39 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "Church Av", "routes": ["B", "Q"], "questions": 7, "twins": 0, "band": "hard" },
+        {
+          "name": "Crown Hts-Utica Av",
+          "routes": ["2", "3", "4"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         { "name": "Kings Hwy", "routes": ["B", "Q"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Kingston Av", "routes": ["2", "3"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Rector St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Wall St", "routes": ["2", "3"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Wall St", "routes": ["4", "5"], "questions": 7, "twins": 0, "band": "hard" },
         {
-          "name": "Newkirk Plaza",
-          "routes": ["B", "Q"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
+          "name": "14 St",
+          "routes": ["1", "2", "3", "F", "L", "M"],
+          "questions": 6,
+          "twins": 1,
+          "band": "normal"
         },
-        { "name": "Sterling St", "routes": ["2", "5"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Whitehall St-South Ferry",
-          "routes": ["1", "R", "W"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "50 St", "routes": ["D"], "questions": 6, "twins": 1, "band": "normal" },
+        { "name": "Astor Pl", "routes": ["6"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "Bay Ridge Av", "routes": ["R"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "Beverley Rd", "routes": ["Q"], "questions": 6, "twins": 1, "band": "normal" },
-        {
-          "name": "Beverly Rd",
-          "routes": ["2", "5"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        {
-          "name": "Broadway-Lafayette St",
-          "routes": ["6", "B", "D", "F", "M"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        {
-          "name": "Fort Hamilton Pkwy",
-          "routes": ["D"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        { "name": "Grand St", "routes": ["B", "D"], "questions": 6, "twins": 1, "band": "normal" },
-        {
-          "name": "Newkirk Av-Little Haiti",
-          "routes": ["2", "5"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        { "name": "Parkside Av", "routes": ["Q"], "questions": 6, "twins": 1, "band": "normal" },
-        {
-          "name": "Winthrop St",
-          "routes": ["2", "5"],
-          "questions": 6,
-          "twins": 1,
-          "band": "normal"
-        },
-        {
-          "name": "14 St-Union Sq",
-          "routes": ["4", "5", "6", "L", "N", "Q", "R", "W"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
-          "name": "36 St",
-          "routes": ["D", "N", "R", "W"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        { "name": "45 St", "routes": ["R"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "59 St", "routes": ["N", "R"], "questions": 6, "twins": 0, "band": "normal" },
-        {
-          "name": "62 St",
-          "routes": ["D", "N", "W"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        { "name": "9 Av", "routes": ["D", "W"], "questions": 6, "twins": 0, "band": "normal" },
-        {
-          "name": "Bowling Green",
-          "routes": ["4", "5"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
-          "name": "Brooklyn Bridge-City Hall",
-          "routes": ["4", "5", "6", "J"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
+        { "name": "Bowery", "routes": ["J"], "questions": 6, "twins": 1, "band": "normal" },
         {
           "name": "Chambers St",
           "routes": ["1", "2", "3"],
           "questions": 6,
-          "twins": 0,
+          "twins": 1,
           "band": "normal"
         },
+        { "name": "Cortelyou Rd", "routes": ["Q"], "questions": 6, "twins": 1, "band": "normal" },
+        { "name": "Parkside Av", "routes": ["Q"], "questions": 6, "twins": 1, "band": "normal" },
         {
           "name": "Chambers St",
           "routes": ["2", "3", "A", "C", "E", "R", "W"],
@@ -1058,14 +1043,7 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Church Av", "routes": ["B", "Q"], "questions": 6, "twins": 0, "band": "normal" },
-        {
-          "name": "Crown Hts-Utica Av",
-          "routes": ["2", "3", "4"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
+        { "name": "City Hall", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Fulton St",
           "routes": ["2", "3", "4", "5", "A", "C", "J"],
@@ -1074,14 +1052,29 @@
           "band": "normal"
         },
         {
-          "name": "Kingston Av",
-          "routes": ["2", "3"],
+          "name": "Newkirk Plaza",
+          "routes": ["B", "Q"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Wall St", "routes": ["2", "3"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "Wall St", "routes": ["4", "5"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "Rector St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "Spring St", "routes": ["6"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "Sterling St",
+          "routes": ["2", "5"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "Whitehall St-South Ferry",
+          "routes": ["1", "R", "W"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        { "name": "WTC Cortlandt", "routes": ["1"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "DeKalb Av",
           "routes": ["B", "Q", "R", "W"],
@@ -1192,39 +1185,21 @@
     {
       "id": "635",
       "name": "14 St-Union Sq",
-      "reachable": 103,
-      "byQuestions": { "1": 1, "3": 1, "4": 12, "5": 33, "6": 24, "7": 24, "8": 8 },
+      "reachable": 102,
+      "byQuestions": { "1": 1, "3": 1, "4": 12, "5": 33, "6": 23, "7": 28, "8": 4 },
       "stations": [
-        { "name": "110 St", "routes": ["6"], "questions": 8, "twins": 1, "band": "hard" },
-        {
-          "name": "68 St-Hunter College",
-          "routes": ["6"],
-          "questions": 8,
-          "twins": 1,
-          "band": "hard"
-        },
-        { "name": "96 St", "routes": ["6"], "questions": 8, "twins": 1, "band": "hard" },
-        { "name": "103 St", "routes": ["6"], "questions": 8, "twins": 0, "band": "hard" },
-        {
-          "name": "21 St-Queensbridge",
-          "routes": ["M"],
-          "questions": 8,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "57 St", "routes": ["M"], "questions": 8, "twins": 0, "band": "hard" },
-        {
-          "name": "66 St-Lincoln Center",
-          "routes": ["1"],
-          "questions": 8,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "Roosevelt Island", "routes": ["M"], "questions": 8, "twins": 0, "band": "hard" },
+        { "name": "Grand St", "routes": ["L"], "questions": 8, "twins": 3, "band": "hard" },
+        { "name": "Broad St", "routes": ["J"], "questions": 8, "twins": 1, "band": "hard" },
+        { "name": "Rector St", "routes": ["1"], "questions": 8, "twins": 1, "band": "hard" },
+        { "name": "Morgan Av", "routes": ["L"], "questions": 8, "twins": 0, "band": "hard" },
         { "name": "Graham Av", "routes": ["L"], "questions": 7, "twins": 3, "band": "hard" },
-        { "name": "Grand St", "routes": ["L"], "questions": 7, "twins": 3, "band": "hard" },
+        { "name": "Montrose Av", "routes": ["L"], "questions": 7, "twins": 3, "band": "hard" },
+        { "name": "21 St", "routes": ["G"], "questions": 7, "twins": 2, "band": "hard" },
+        { "name": "Hunters Point Av", "routes": ["7"], "questions": 7, "twins": 2, "band": "hard" },
+        { "name": "110 St", "routes": ["6"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "77 St", "routes": ["6"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "86 St", "routes": ["Q"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "96 St", "routes": ["6"], "questions": 7, "twins": 1, "band": "hard" },
         {
           "name": "Bowling Green",
           "routes": ["4", "5"],
@@ -1232,10 +1207,8 @@
           "twins": 1,
           "band": "hard"
         },
-        { "name": "DeKalb Av", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "Jefferson St", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "Rector St", "routes": ["1"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "Wall St", "routes": ["4", "5"], "questions": 7, "twins": 1, "band": "hard" },
+        { "name": "103 St", "routes": ["6"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "116 St", "routes": ["6"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "149 St-Hostos",
@@ -1245,7 +1218,6 @@
           "band": "hard"
         },
         { "name": "3 Av-138 St", "routes": ["6"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "33 St-Rawson St", "routes": ["7"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "36 Av", "routes": ["N", "W"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "39 Av-Dutch Kills",
@@ -1254,7 +1226,6 @@
           "twins": 0,
           "band": "hard"
         },
-        { "name": "40 St-Lowery St", "routes": ["7"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "5 Av/59 St",
           "routes": ["N", "R", "W"],
@@ -1262,6 +1233,7 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "57 St", "routes": ["M"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "57 St-7 Av",
           "routes": ["N", "Q", "R", "W"],
@@ -1276,10 +1248,18 @@
           "twins": 0,
           "band": "hard"
         },
+        {
+          "name": "66 St-Lincoln Center",
+          "routes": ["1"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         { "name": "72 St", "routes": ["B", "C"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "72 St", "routes": ["1", "2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "72 St", "routes": ["Q"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "86 St", "routes": ["4", "5", "6"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Jefferson St", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Queensboro Plaza",
           "routes": ["7", "N", "W"],
@@ -1287,6 +1267,7 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "York St", "routes": ["F"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Lorimer St",
           "routes": ["G", "L"],
@@ -1294,8 +1275,6 @@
           "twins": 3,
           "band": "normal"
         },
-        { "name": "Montrose Av", "routes": ["L"], "questions": 6, "twins": 3, "band": "normal" },
-        { "name": "21 St", "routes": ["G"], "questions": 6, "twins": 2, "band": "normal" },
         {
           "name": "Court Sq",
           "routes": ["7", "E", "F", "G"],
@@ -1304,13 +1283,12 @@
           "band": "normal"
         },
         {
-          "name": "Hunters Point Av",
-          "routes": ["7"],
+          "name": "68 St-Hunter College",
+          "routes": ["6"],
           "questions": 6,
-          "twins": 2,
+          "twins": 1,
           "band": "normal"
         },
-        { "name": "Broad St", "routes": ["J"], "questions": 6, "twins": 1, "band": "normal" },
         {
           "name": "Lexington Av/63 St",
           "routes": ["M", "Q"],
@@ -1326,10 +1304,31 @@
           "twins": 0,
           "band": "normal"
         },
+        {
+          "name": "21 St-Queensbridge",
+          "routes": ["M"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "23 St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "23 St", "routes": ["F", "M"], "questions": 6, "twins": 0, "band": "normal" },
         {
+          "name": "33 St-Rawson St",
+          "routes": ["7"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
           "name": "34 St-Hudson Yards",
+          "routes": ["7"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "40 St-Lowery St",
           "routes": ["7"],
           "questions": 6,
           "twins": 0,
@@ -1373,7 +1372,6 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Morgan Av", "routes": ["L"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Queens Plaza",
           "routes": ["E", "F", "R"],
@@ -1382,7 +1380,13 @@
           "band": "normal"
         },
         { "name": "Rector St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "York St", "routes": ["F"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "Roosevelt Island",
+          "routes": ["M"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         {
           "name": "47-50 Sts-Rockefeller Ctr",
           "routes": ["B", "D", "F", "M"],
@@ -1573,8 +1577,8 @@
     {
       "id": "G14",
       "name": "Jackson Hts-Roosevelt Av",
-      "reachable": 52,
-      "byQuestions": { "3": 2, "4": 8, "5": 22, "6": 20 },
+      "reachable": 53,
+      "byQuestions": { "3": 2, "4": 7, "5": 24, "6": 20 },
       "stations": [
         {
           "name": "103 St-Corona Plaza",
@@ -1730,6 +1734,13 @@
           "band": "normal"
         },
         {
+          "name": "42 St-Bryant Pk",
+          "routes": ["7", "B", "D", "F", "M"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
           "name": "47-50 Sts-Rockefeller Ctr",
           "routes": ["B", "D", "F", "M"],
           "questions": 5,
@@ -1748,6 +1759,13 @@
         {
           "name": "Court Sq",
           "routes": ["7", "E", "F", "G"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "Grand Central-42 St",
+          "routes": ["4", "5", "6", "7", "GS"],
           "questions": 5,
           "twins": 0,
           "band": "normal"
@@ -1792,13 +1810,6 @@
         },
         { "name": "36 St", "routes": ["M", "R"], "questions": 4, "twins": 0, "band": "easy" },
         {
-          "name": "42 St-Bryant Pk",
-          "routes": ["7", "B", "D", "F", "M"],
-          "questions": 4,
-          "twins": 0,
-          "band": "easy"
-        },
-        {
           "name": "59 St",
           "routes": ["4", "5", "6", "N", "R", "W"],
           "questions": 4,
@@ -1813,9 +1824,23 @@
     {
       "id": "A38",
       "name": "Fulton St",
-      "reachable": 91,
-      "byQuestions": { "4": 12, "5": 19, "6": 24, "7": 36 },
+      "reachable": 93,
+      "byQuestions": { "4": 12, "5": 19, "6": 23, "7": 37, "8": 2 },
       "stations": [
+        {
+          "name": "15 St-Prospect Park",
+          "routes": ["F", "G"],
+          "questions": 8,
+          "twins": 0,
+          "band": "hard"
+        },
+        {
+          "name": "Kingston-Throop Avs",
+          "routes": ["C"],
+          "questions": 8,
+          "twins": 0,
+          "band": "hard"
+        },
         { "name": "18 St", "routes": ["1"], "questions": 7, "twins": 3, "band": "hard" },
         {
           "name": "23 St-Baruch College",
@@ -1836,13 +1861,8 @@
         },
         { "name": "23 St", "routes": ["R", "W"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "23 St", "routes": ["F", "M"], "questions": 7, "twins": 2, "band": "hard" },
-        {
-          "name": "4 Av-9 St",
-          "routes": ["F", "G", "R", "W"],
-          "questions": 7,
-          "twins": 2,
-          "band": "hard"
-        },
+        { "name": "Carroll St", "routes": ["F", "G"], "questions": 7, "twins": 2, "band": "hard" },
+        { "name": "Union St", "routes": ["R", "W"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "28 St", "routes": ["R", "W"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "28 St", "routes": ["6"], "questions": 7, "twins": 1, "band": "hard" },
         {
@@ -1860,7 +1880,6 @@
           "band": "hard"
         },
         { "name": "Nostrand Av", "routes": ["A", "C"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "Utica Av", "routes": ["A", "C"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "1 Av", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "14 St",
@@ -1899,9 +1918,16 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "7 Av", "routes": ["F", "G"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "72 St", "routes": ["1", "2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "86 St", "routes": ["4", "5", "6"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Bedford Av", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
+        {
+          "name": "Atlantic Av-Barclays Ctr",
+          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         {
           "name": "Bedford-Nostrand Avs",
           "routes": ["G"],
@@ -1909,6 +1935,7 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "Bergen St", "routes": ["2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Clinton-Washington Avs",
           "routes": ["G"],
@@ -1925,13 +1952,6 @@
           "band": "hard"
         },
         { "name": "Hewes St", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Kingston-Throop Avs",
-          "routes": ["C"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
         { "name": "Lafayette Av", "routes": ["C"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Marcy Av", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Smith-9 Sts", "routes": ["F", "G"], "questions": 7, "twins": 0, "band": "hard" },
@@ -1953,13 +1973,12 @@
         { "name": "Houston St", "routes": ["1"], "questions": 6, "twins": 3, "band": "normal" },
         { "name": "23 St", "routes": ["1"], "questions": 6, "twins": 2, "band": "normal" },
         {
-          "name": "Carroll St",
-          "routes": ["F", "G"],
+          "name": "4 Av-9 St",
+          "routes": ["F", "G", "R", "W"],
           "questions": 6,
           "twins": 2,
           "band": "normal"
         },
-        { "name": "Union St", "routes": ["R", "W"], "questions": 6, "twins": 2, "band": "normal" },
         { "name": "8 St-NYU", "routes": ["R", "W"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "Classon Av", "routes": ["G"], "questions": 6, "twins": 1, "band": "normal" },
         {
@@ -1969,6 +1988,7 @@
           "twins": 1,
           "band": "normal"
         },
+        { "name": "Utica Av", "routes": ["A", "C"], "questions": 6, "twins": 1, "band": "normal" },
         {
           "name": "14 St-Union Sq",
           "routes": ["4", "5", "6", "L", "N", "Q", "R", "W"],
@@ -1976,14 +1996,6 @@
           "twins": 0,
           "band": "normal"
         },
-        {
-          "name": "Atlantic Av-Barclays Ctr",
-          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        { "name": "Bergen St", "routes": ["2", "3"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Bowling Green",
           "routes": ["4", "5"],
@@ -2022,6 +2034,13 @@
           "band": "normal"
         },
         { "name": "Franklin St", "routes": ["1"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "Grand Army Plaza",
+          "routes": ["2", "3"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         {
           "name": "Nevins St",
           "routes": ["2", "3", "4", "5"],
@@ -2152,15 +2171,13 @@
     {
       "id": "A24",
       "name": "59 St-Columbus Circle",
-      "reachable": 88,
-      "byQuestions": { "3": 4, "4": 11, "5": 25, "6": 20, "7": 28 },
+      "reachable": 86,
+      "byQuestions": { "3": 4, "4": 11, "5": 25, "6": 22, "7": 24 },
       "stations": [
         { "name": "103 St", "routes": ["B", "C"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "103 St", "routes": ["1"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "116 St", "routes": ["B", "C"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "125 St", "routes": ["1"], "questions": 7, "twins": 2, "band": "hard" },
-        { "name": "2 Av", "routes": ["F"], "questions": 7, "twins": 2, "band": "hard" },
-        { "name": "8 St-NYU", "routes": ["R", "W"], "questions": 7, "twins": 2, "band": "hard" },
         {
           "name": "Cathedral Pkwy (110 St)",
           "routes": ["1"],
@@ -2236,7 +2253,6 @@
           "band": "hard"
         },
         { "name": "18 St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Bedford Av", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Canal St", "routes": ["1"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Canal St",
@@ -2247,7 +2263,7 @@
         },
         {
           "name": "Chambers St",
-          "routes": ["2", "3", "A", "C", "E", "R", "W"],
+          "routes": ["1", "2", "3"],
           "questions": 7,
           "twins": 0,
           "band": "hard"
@@ -2255,13 +2271,6 @@
         {
           "name": "Delancey St-Essex St",
           "routes": ["F", "J", "M"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
-        {
-          "name": "Fulton St",
-          "routes": ["2", "3", "4", "5", "A", "C", "J"],
           "questions": 7,
           "twins": 0,
           "band": "hard"
@@ -2282,7 +2291,6 @@
         },
         { "name": "28 St", "routes": ["6"], "questions": 6, "twins": 3, "band": "normal" },
         { "name": "21 St", "routes": ["G"], "questions": 6, "twins": 2, "band": "normal" },
-        { "name": "Astor Pl", "routes": ["6"], "questions": 6, "twins": 2, "band": "normal" },
         {
           "name": "Cathedral Pkwy (110 St)",
           "routes": ["B", "C"],
@@ -2298,6 +2306,8 @@
           "band": "normal"
         },
         { "name": "116 St", "routes": ["2", "3"], "questions": 6, "twins": 1, "band": "normal" },
+        { "name": "2 Av", "routes": ["F"], "questions": 6, "twins": 1, "band": "normal" },
+        { "name": "8 St-NYU", "routes": ["R", "W"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "Houston St", "routes": ["1"], "questions": 6, "twins": 1, "band": "normal" },
         {
           "name": "116 St-Columbia University",
@@ -2340,7 +2350,14 @@
         },
         {
           "name": "Chambers St",
-          "routes": ["1", "2", "3"],
+          "routes": ["2", "3", "A", "C", "E", "R", "W"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "Fulton St",
+          "routes": ["2", "3", "4", "5", "A", "C", "J"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
@@ -2518,33 +2535,9 @@
     {
       "id": "A41",
       "name": "Jay St-MetroTech",
-      "reachable": 85,
-      "byQuestions": { "3": 10, "4": 10, "5": 17, "6": 28, "7": 20 },
+      "reachable": 77,
+      "byQuestions": { "3": 9, "4": 12, "5": 20, "6": 28, "7": 8 },
       "stations": [
-        { "name": "Bedford Av", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
-        {
-          "name": "Bushwick Av-Aberdeen St",
-          "routes": ["L"],
-          "questions": 7,
-          "twins": 1,
-          "band": "hard"
-        },
-        { "name": "Graham Av", "routes": ["L"], "questions": 7, "twins": 1, "band": "hard" },
-        {
-          "name": "15 St-Prospect Park",
-          "routes": ["F", "G"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
-        {
-          "name": "23 St-Baruch College",
-          "routes": ["6"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "25 St", "routes": ["R", "W"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "34 St-Herald Sq",
           "routes": ["B", "D", "F", "M", "N", "Q", "R", "W"],
@@ -2559,7 +2552,6 @@
           "twins": 0,
           "band": "hard"
         },
-        { "name": "Atlantic Av", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Broadway Junction",
           "routes": ["A", "C", "J", "L"],
@@ -2567,33 +2559,19 @@
           "twins": 0,
           "band": "hard"
         },
-        { "name": "Euclid Av", "routes": ["A", "C"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Flushing Av", "routes": ["G"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Fort Hamilton Pkwy",
-          "routes": ["F", "G"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
-        { "name": "Lorimer St", "routes": ["G", "L"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Myrtle-Willoughby Avs",
-          "routes": ["G"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
+        { "name": "Hewes St", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Nostrand Av", "routes": ["A", "C"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Parkside Av", "routes": ["Q"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Ralph Av", "routes": ["C"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Utica Av", "routes": ["A", "C"], "questions": 7, "twins": 0, "band": "hard" },
+        {
+          "name": "Prospect Park",
+          "routes": ["B", "FS", "Q"],
+          "questions": 7,
+          "twins": 0,
+          "band": "hard"
+        },
         { "name": "Van Siclen Av", "routes": ["C"], "questions": 7, "twins": 0, "band": "hard" },
-        { "name": "Wall St", "routes": ["2", "3"], "questions": 6, "twins": 2, "band": "normal" },
-        { "name": "Wall St", "routes": ["4", "5"], "questions": 6, "twins": 2, "band": "normal" },
-        { "name": "Broadway", "routes": ["G"], "questions": 6, "twins": 1, "band": "normal" },
-        { "name": "Greenpoint Av", "routes": ["G"], "questions": 6, "twins": 1, "band": "normal" },
-        { "name": "Hewes St", "routes": ["J", "M"], "questions": 6, "twins": 1, "band": "normal" },
+        { "name": "Broad St", "routes": ["J"], "questions": 6, "twins": 3, "band": "normal" },
+        { "name": "Wall St", "routes": ["4", "5"], "questions": 6, "twins": 3, "band": "normal" },
         { "name": "Liberty Av", "routes": ["C"], "questions": 6, "twins": 1, "band": "normal" },
         { "name": "Rockaway Av", "routes": ["C"], "questions": 6, "twins": 1, "band": "normal" },
         {
@@ -2617,8 +2595,23 @@
           "twins": 0,
           "band": "normal"
         },
+        {
+          "name": "15 St-Prospect Park",
+          "routes": ["F", "G"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "2 Av", "routes": ["F"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "23 St", "routes": ["F", "M"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "23 St-Baruch College",
+          "routes": ["6"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        { "name": "25 St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "36 St",
           "routes": ["D", "N", "R", "W"],
@@ -2626,10 +2619,11 @@
           "twins": 0,
           "band": "normal"
         },
+        { "name": "7 Av", "routes": ["B", "Q"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Astor Pl", "routes": ["6"], "questions": 6, "twins": 0, "band": "normal" },
         {
-          "name": "Atlantic Av-Barclays Ctr",
-          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
+          "name": "Bedford-Nostrand Avs",
+          "routes": ["G"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
@@ -2642,26 +2636,14 @@
           "band": "normal"
         },
         {
-          "name": "Broadway-Lafayette St",
-          "routes": ["6", "B", "D", "F", "M"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
           "name": "Canal St",
           "routes": ["A", "C", "E"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
         },
-        {
-          "name": "Clinton-Washington Avs",
-          "routes": ["C"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
+        { "name": "Classon Av", "routes": ["G"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "Euclid Av", "routes": ["A", "C"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Franklin Av-Medgar Evers College",
           "routes": ["2", "3", "4", "5", "FS"],
@@ -2676,34 +2658,40 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Lafayette Av", "routes": ["C"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "Nassau Av", "routes": ["G"], "questions": 6, "twins": 0, "band": "normal" },
         {
-          "name": "Nevins St",
-          "routes": ["2", "3", "4", "5"],
+          "name": "Myrtle-Willoughby Avs",
+          "routes": ["G"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
         },
-        {
-          "name": "Prospect Park",
-          "routes": ["B", "FS", "Q"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
+        { "name": "Ralph Av", "routes": ["C"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Rector St", "routes": ["R", "W"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Spring St", "routes": ["C", "E"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "Spring St", "routes": ["6"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "7 Av", "routes": ["B", "Q"], "questions": 5, "twins": 0, "band": "normal" },
+        { "name": "Utica Av", "routes": ["A", "C"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "York St", "routes": ["F"], "questions": 6, "twins": 0, "band": "normal" },
+        { "name": "Atlantic Av", "routes": ["L"], "questions": 5, "twins": 0, "band": "normal" },
         {
-          "name": "Bedford-Nostrand Avs",
-          "routes": ["G"],
+          "name": "Atlantic Av-Barclays Ctr",
+          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
           "questions": 5,
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Bergen St", "routes": ["2", "3"], "questions": 5, "twins": 0, "band": "normal" },
+        {
+          "name": "Broadway-Lafayette St",
+          "routes": ["6", "B", "D", "F", "M"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "Brooklyn Bridge-City Hall",
+          "routes": ["4", "5", "6", "J"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
         {
           "name": "Chambers St",
           "routes": ["1", "2", "3"],
@@ -2711,7 +2699,21 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Classon Av", "routes": ["G"], "questions": 5, "twins": 0, "band": "normal" },
+        {
+          "name": "Chambers St",
+          "routes": ["2", "3", "A", "C", "E", "R", "W"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
+        { "name": "City Hall", "routes": ["R", "W"], "questions": 5, "twins": 0, "band": "normal" },
+        {
+          "name": "Clinton-Washington Avs",
+          "routes": ["C"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
         {
           "name": "Clinton-Washington Avs",
           "routes": ["G"],
@@ -2727,13 +2729,6 @@
           "band": "normal"
         },
         {
-          "name": "Eastern Pkwy-Brooklyn Museum",
-          "routes": ["2", "3"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
           "name": "Franklin Av",
           "routes": ["C", "FS"],
           "questions": 5,
@@ -2741,13 +2736,6 @@
           "band": "normal"
         },
         { "name": "Fulton St", "routes": ["G"], "questions": 5, "twins": 0, "band": "normal" },
-        {
-          "name": "Fulton St",
-          "routes": ["2", "3", "4", "5", "A", "C", "J"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
-        },
         {
           "name": "Grand Army Plaza",
           "routes": ["2", "3"],
@@ -2763,6 +2751,15 @@
           "twins": 0,
           "band": "normal"
         },
+        { "name": "Lafayette Av", "routes": ["C"], "questions": 5, "twins": 0, "band": "normal" },
+        {
+          "name": "Nevins St",
+          "routes": ["2", "3", "4", "5"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
+        { "name": "Spring St", "routes": ["6"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Union St", "routes": ["R", "W"], "questions": 5, "twins": 0, "band": "normal" },
         {
           "name": "W 4 St-Wash Sq",
@@ -2771,8 +2768,8 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "York St", "routes": ["F"], "questions": 5, "twins": 0, "band": "normal" },
-        { "name": "Broad St", "routes": ["J"], "questions": 4, "twins": 2, "band": "easy" },
+        { "name": "Rector St", "routes": ["1"], "questions": 4, "twins": 3, "band": "easy" },
+        { "name": "Wall St", "routes": ["2", "3"], "questions": 4, "twins": 3, "band": "easy" },
         {
           "name": "4 Av-9 St",
           "routes": ["F", "G", "R", "W"],
@@ -2780,22 +2777,8 @@
           "twins": 0,
           "band": "easy"
         },
+        { "name": "Bergen St", "routes": ["2", "3"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Bowery", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
-        {
-          "name": "Brooklyn Bridge-City Hall",
-          "routes": ["4", "5", "6", "J"],
-          "questions": 4,
-          "twins": 0,
-          "band": "easy"
-        },
-        {
-          "name": "Chambers St",
-          "routes": ["2", "3", "A", "C", "E", "R", "W"],
-          "questions": 4,
-          "twins": 0,
-          "band": "easy"
-        },
-        { "name": "City Hall", "routes": ["R", "W"], "questions": 4, "twins": 0, "band": "easy" },
         {
           "name": "Delancey St-Essex St",
           "routes": ["F", "J", "M"],
@@ -2804,8 +2787,23 @@
           "band": "easy"
         },
         { "name": "East Broadway", "routes": ["F"], "questions": 4, "twins": 0, "band": "easy" },
+        {
+          "name": "Fulton St",
+          "routes": ["2", "3", "4", "5", "A", "C", "J"],
+          "questions": 4,
+          "twins": 0,
+          "band": "easy"
+        },
         { "name": "Grand St", "routes": ["B", "D"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Smith-9 Sts", "routes": ["F", "G"], "questions": 4, "twins": 0, "band": "easy" },
+        {
+          "name": "Whitehall St-South Ferry",
+          "routes": ["1", "R", "W"],
+          "questions": 4,
+          "twins": 0,
+          "band": "easy"
+        },
+        { "name": "WTC Cortlandt", "routes": ["1"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "7 Av", "routes": ["F", "G"], "questions": 3, "twins": 0, "band": "easy" },
         { "name": "Bergen St", "routes": ["F", "G"], "questions": 3, "twins": 0, "band": "easy" },
         {
@@ -2826,14 +2824,7 @@
         { "name": "Clark St", "routes": ["2", "3"], "questions": 3, "twins": 0, "band": "easy" },
         { "name": "High St", "routes": ["A", "C"], "questions": 3, "twins": 0, "band": "easy" },
         { "name": "Marcy Av", "routes": ["J", "M"], "questions": 3, "twins": 0, "band": "easy" },
-        { "name": "Prospect Av", "routes": ["R", "W"], "questions": 3, "twins": 0, "band": "easy" },
-        {
-          "name": "Whitehall St-South Ferry",
-          "routes": ["1", "R", "W"],
-          "questions": 3,
-          "twins": 0,
-          "band": "easy"
-        }
+        { "name": "Prospect Av", "routes": ["R", "W"], "questions": 3, "twins": 0, "band": "easy" }
       ]
     },
     {
@@ -3225,18 +3216,25 @@
     {
       "id": "414",
       "name": "161 St-Yankee Stadium",
-      "reachable": 47,
-      "byQuestions": { "1": 1, "2": 4, "3": 8, "4": 14, "5": 20 },
+      "reachable": 46,
+      "byQuestions": { "1": 1, "2": 4, "3": 8, "4": 16, "5": 15, "6": 2 },
       "stations": [
-        { "name": "103 St", "routes": ["6"], "questions": 5, "twins": 3, "band": "normal" },
-        { "name": "110 St", "routes": ["6"], "questions": 5, "twins": 3, "band": "normal" },
         {
-          "name": "110 St-Malcolm X Plaza",
-          "routes": ["2", "3"],
-          "questions": 5,
-          "twins": 3,
+          "name": "Kingsbridge Rd",
+          "routes": ["B", "D"],
+          "questions": 6,
+          "twins": 1,
           "band": "normal"
         },
+        {
+          "name": "182-183 Sts",
+          "routes": ["B", "D"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        { "name": "103 St", "routes": ["6"], "questions": 5, "twins": 3, "band": "normal" },
+        { "name": "110 St", "routes": ["6"], "questions": 5, "twins": 3, "band": "normal" },
         { "name": "96 St", "routes": ["6"], "questions": 5, "twins": 3, "band": "normal" },
         {
           "name": "68 St-Hunter College",
@@ -3253,23 +3251,8 @@
           "twins": 1,
           "band": "normal"
         },
-        {
-          "name": "Kingsbridge Rd",
-          "routes": ["B", "D"],
-          "questions": 5,
-          "twins": 1,
-          "band": "normal"
-        },
         { "name": "116 St", "routes": ["B", "C"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "116 St", "routes": ["6"], "questions": 5, "twins": 0, "band": "normal" },
-        { "name": "116 St", "routes": ["2", "3"], "questions": 5, "twins": 0, "band": "normal" },
-        {
-          "name": "182-183 Sts",
-          "routes": ["B", "D"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
-        },
         {
           "name": "3 Av-149 St",
           "routes": ["2", "5"],
@@ -3308,15 +3291,16 @@
           "band": "normal"
         },
         {
-          "name": "Lexington Av/53 St",
-          "routes": ["6", "E", "F"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
+          "name": "110 St-Malcolm X Plaza",
+          "routes": ["2", "3"],
+          "questions": 4,
+          "twins": 3,
+          "band": "easy"
         },
         { "name": "170 St", "routes": ["B", "D"], "questions": 4, "twins": 1, "band": "easy" },
         { "name": "176 St", "routes": ["4"], "questions": 4, "twins": 1, "band": "easy" },
         { "name": "Mt Eden Av", "routes": ["4"], "questions": 4, "twins": 1, "band": "easy" },
+        { "name": "116 St", "routes": ["2", "3"], "questions": 4, "twins": 0, "band": "easy" },
         {
           "name": "138 St-Grand Concourse",
           "routes": ["4", "5"],
@@ -3376,10 +3360,9 @@
     {
       "id": "A51",
       "name": "Broadway Junction",
-      "reachable": 54,
-      "byQuestions": { "3": 2, "4": 13, "5": 21, "6": 18 },
+      "reachable": 52,
+      "byQuestions": { "3": 2, "4": 14, "5": 20, "6": 16 },
       "stations": [
-        { "name": "88 St", "routes": ["A"], "questions": 6, "twins": 4, "band": "normal" },
         {
           "name": "Howard Beach-JFK Airport",
           "routes": ["A"],
@@ -3404,13 +3387,6 @@
           "band": "normal"
         },
         { "name": "New Lots Av", "routes": ["L"], "questions": 6, "twins": 1, "band": "normal" },
-        {
-          "name": "75 St-Elderts Ln",
-          "routes": ["J"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
         { "name": "Alabama Av", "routes": ["J"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Grand St", "routes": ["L"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Grant Av", "routes": ["A"], "questions": 6, "twins": 0, "band": "normal" },
@@ -3428,6 +3404,7 @@
         { "name": "Sutter Av", "routes": ["L"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Van Siclen Av", "routes": ["J"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "80 St", "routes": ["A"], "questions": 5, "twins": 4, "band": "normal" },
+        { "name": "88 St", "routes": ["A"], "questions": 5, "twins": 4, "band": "normal" },
         {
           "name": "Aqueduct-N Conduit Av",
           "routes": ["A"],
@@ -3436,7 +3413,6 @@
           "band": "normal"
         },
         { "name": "Cleveland St", "routes": ["J"], "questions": 5, "twins": 1, "band": "normal" },
-        { "name": "DeKalb Av", "routes": ["L"], "questions": 5, "twins": 1, "band": "normal" },
         {
           "name": "Flushing Av",
           "routes": ["J", "M"],
@@ -3447,19 +3423,13 @@
         { "name": "Livonia Av", "routes": ["L"], "questions": 5, "twins": 1, "band": "normal" },
         { "name": "Atlantic Av", "routes": ["L"], "questions": 5, "twins": 0, "band": "normal" },
         {
-          "name": "Bushwick Av-Aberdeen St",
-          "routes": ["L"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
-        },
-        {
           "name": "Canarsie-Rockaway Pkwy",
           "routes": ["L"],
           "questions": 5,
           "twins": 0,
           "band": "normal"
         },
+        { "name": "Central Av", "routes": ["M"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "East 105 St", "routes": ["L"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Euclid Av", "routes": ["A", "C"], "questions": 5, "twins": 0, "band": "normal" },
         {
@@ -3469,7 +3439,6 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Gates Av", "routes": ["J"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Halsey St", "routes": ["L"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Hewes St", "routes": ["J", "M"], "questions": 5, "twins": 0, "band": "normal" },
         {
@@ -3486,10 +3455,17 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Kosciuszko St", "routes": ["J"], "questions": 5, "twins": 0, "band": "normal" },
+        {
+          "name": "Knickerbocker Av",
+          "routes": ["M"],
+          "questions": 5,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "Marcy Av", "routes": ["J", "M"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Van Siclen Av", "routes": ["C"], "questions": 5, "twins": 0, "band": "normal" },
         { "name": "Wilson Av", "routes": ["L"], "questions": 5, "twins": 0, "band": "normal" },
+        { "name": "DeKalb Av", "routes": ["L"], "questions": 4, "twins": 1, "band": "easy" },
         {
           "name": "Myrtle-Wyckoff Avs",
           "routes": ["L", "M"],
@@ -3498,9 +3474,15 @@
           "band": "easy"
         },
         { "name": "Norwood Av", "routes": ["J"], "questions": 4, "twins": 1, "band": "easy" },
-        { "name": "Central Av", "routes": ["M"], "questions": 4, "twins": 0, "band": "easy" },
+        {
+          "name": "Bushwick Av-Aberdeen St",
+          "routes": ["L"],
+          "questions": 4,
+          "twins": 0,
+          "band": "easy"
+        },
         { "name": "Crescent St", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
-        { "name": "Cypress Hills", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
+        { "name": "Gates Av", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Halsey St", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Junius St", "routes": ["2", "3"], "questions": 4, "twins": 0, "band": "easy" },
         {
@@ -3510,7 +3492,7 @@
           "twins": 0,
           "band": "easy"
         },
-        { "name": "Knickerbocker Av", "routes": ["M"], "questions": 4, "twins": 0, "band": "easy" },
+        { "name": "Kosciuszko St", "routes": ["J"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Liberty Av", "routes": ["C"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Ralph Av", "routes": ["C"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "Rockaway Av", "routes": ["C"], "questions": 4, "twins": 0, "band": "easy" },
@@ -3522,20 +3504,17 @@
     {
       "id": "D20",
       "name": "W 4 St-Wash Sq",
-      "reachable": 100,
-      "byQuestions": { "1": 1, "3": 2, "4": 13, "5": 26, "6": 23, "7": 33, "8": 2 },
+      "reachable": 99,
+      "byQuestions": { "1": 1, "3": 2, "4": 13, "5": 26, "6": 24, "7": 31, "8": 2 },
       "stations": [
-        { "name": "Morgan Av", "routes": ["L"], "questions": 8, "twins": 4, "band": "hard" },
-        { "name": "Flushing Av", "routes": ["J", "M"], "questions": 8, "twins": 0, "band": "hard" },
-        { "name": "Graham Av", "routes": ["L"], "questions": 7, "twins": 4, "band": "hard" },
-        { "name": "Grand St", "routes": ["L"], "questions": 7, "twins": 4, "band": "hard" },
-        { "name": "Montrose Av", "routes": ["L"], "questions": 7, "twins": 4, "band": "hard" },
+        { "name": "York St", "routes": ["F"], "questions": 8, "twins": 2, "band": "hard" },
+        { "name": "Lafayette Av", "routes": ["C"], "questions": 8, "twins": 0, "band": "hard" },
         { "name": "49 St", "routes": ["N", "R", "W"], "questions": 7, "twins": 3, "band": "hard" },
         { "name": "50 St", "routes": ["1"], "questions": 7, "twins": 3, "band": "hard" },
         { "name": "86 St", "routes": ["Q"], "questions": 7, "twins": 3, "band": "hard" },
+        { "name": "Grand St", "routes": ["L"], "questions": 7, "twins": 3, "band": "hard" },
         { "name": "Bergen St", "routes": ["F", "G"], "questions": 7, "twins": 2, "band": "hard" },
         { "name": "Carroll St", "routes": ["F", "G"], "questions": 7, "twins": 2, "band": "hard" },
-        { "name": "York St", "routes": ["F"], "questions": 7, "twins": 2, "band": "hard" },
         {
           "name": "57 St-7 Av",
           "routes": ["N", "Q", "R", "W"],
@@ -3545,7 +3524,6 @@
         },
         { "name": "86 St", "routes": ["4", "5", "6"], "questions": 7, "twins": 1, "band": "hard" },
         { "name": "96 St", "routes": ["1", "2", "3"], "questions": 7, "twins": 1, "band": "hard" },
-        { "name": "Bergen St", "routes": ["2", "3"], "questions": 7, "twins": 1, "band": "hard" },
         {
           "name": "Lexington Av/63 St",
           "routes": ["M", "Q"],
@@ -3553,7 +3531,6 @@
           "twins": 1,
           "band": "hard"
         },
-        { "name": "Union St", "routes": ["R", "W"], "questions": 7, "twins": 1, "band": "hard" },
         {
           "name": "21 St-Queensbridge",
           "routes": ["M"],
@@ -3587,13 +3564,6 @@
         { "name": "7 Av", "routes": ["B", "Q"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "72 St", "routes": ["B", "C"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "72 St", "routes": ["Q"], "questions": 7, "twins": 0, "band": "hard" },
-        {
-          "name": "Atlantic Av-Barclays Ctr",
-          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
-          "questions": 7,
-          "twins": 0,
-          "band": "hard"
-        },
         { "name": "Bedford Av", "routes": ["L"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Borough Hall",
@@ -3602,6 +3572,7 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "Clark St", "routes": ["2", "3"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Court Sq",
           "routes": ["7", "E", "F", "G"],
@@ -3609,14 +3580,16 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "Flushing Av", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Hewes St", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "High St", "routes": ["A", "C"], "questions": 7, "twins": 0, "band": "hard" },
         {
-          "name": "DeKalb Av",
-          "routes": ["B", "Q", "R", "W"],
+          "name": "Jay St-MetroTech",
+          "routes": ["A", "C", "F", "R", "W"],
           "questions": 7,
           "twins": 0,
           "band": "hard"
         },
-        { "name": "High St", "routes": ["A", "C"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Lexington Av/53 St",
           "routes": ["6", "E", "F"],
@@ -3624,7 +3597,7 @@
           "twins": 0,
           "band": "hard"
         },
-        { "name": "Lorimer St", "routes": ["G", "L"], "questions": 7, "twins": 0, "band": "hard" },
+        { "name": "Marcy Av", "routes": ["J", "M"], "questions": 7, "twins": 0, "band": "hard" },
         {
           "name": "Queens Plaza",
           "routes": ["E", "F", "R"],
@@ -3632,8 +3605,8 @@
           "twins": 0,
           "band": "hard"
         },
+        { "name": "Union St", "routes": ["R", "W"], "questions": 7, "twins": 0, "band": "hard" },
         { "name": "Broad St", "routes": ["J"], "questions": 6, "twins": 4, "band": "normal" },
-        { "name": "Broadway", "routes": ["G"], "questions": 6, "twins": 4, "band": "normal" },
         { "name": "Rector St", "routes": ["1"], "questions": 6, "twins": 4, "band": "normal" },
         { "name": "Wall St", "routes": ["4", "5"], "questions": 6, "twins": 4, "band": "normal" },
         {
@@ -3643,6 +3616,9 @@
           "twins": 3,
           "band": "normal"
         },
+        { "name": "Broadway", "routes": ["G"], "questions": 6, "twins": 3, "band": "normal" },
+        { "name": "Graham Av", "routes": ["L"], "questions": 6, "twins": 3, "band": "normal" },
+        { "name": "Montrose Av", "routes": ["L"], "questions": 6, "twins": 3, "band": "normal" },
         {
           "name": "72 St",
           "routes": ["1", "2", "3"],
@@ -3669,6 +3645,13 @@
         },
         { "name": "7 Av", "routes": ["B", "D", "E"], "questions": 6, "twins": 0, "band": "normal" },
         {
+          "name": "Atlantic Av-Barclays Ctr",
+          "routes": ["2", "3", "4", "5", "B", "D", "N", "Q", "R", "W"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
           "name": "Bowling Green",
           "routes": ["4", "5"],
           "questions": 6,
@@ -3682,9 +3665,14 @@
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Clark St", "routes": ["2", "3"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "DeKalb Av",
+          "routes": ["B", "Q", "R", "W"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "East Broadway", "routes": ["F"], "questions": 6, "twins": 0, "band": "normal" },
-        { "name": "Hewes St", "routes": ["J", "M"], "questions": 6, "twins": 0, "band": "normal" },
         {
           "name": "Hoyt-Schermerhorn Sts",
           "routes": ["A", "C", "G"],
@@ -3693,21 +3681,26 @@
           "band": "normal"
         },
         {
-          "name": "Jay St-MetroTech",
-          "routes": ["A", "C", "F", "R", "W"],
-          "questions": 6,
-          "twins": 0,
-          "band": "normal"
-        },
-        { "name": "Lafayette Av", "routes": ["C"], "questions": 6, "twins": 0, "band": "normal" },
-        {
           "name": "Lorimer St",
           "routes": ["J", "M"],
           "questions": 6,
           "twins": 0,
           "band": "normal"
         },
-        { "name": "Marcy Av", "routes": ["J", "M"], "questions": 6, "twins": 0, "band": "normal" },
+        {
+          "name": "Lorimer St",
+          "routes": ["G", "L"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
+        {
+          "name": "Nevins St",
+          "routes": ["2", "3", "4", "5"],
+          "questions": 6,
+          "twins": 0,
+          "band": "normal"
+        },
         { "name": "Wall St", "routes": ["2", "3"], "questions": 6, "twins": 0, "band": "normal" },
         { "name": "Rector St", "routes": ["R", "W"], "questions": 5, "twins": 4, "band": "normal" },
         { "name": "WTC Cortlandt", "routes": ["1"], "questions": 5, "twins": 4, "band": "normal" },
@@ -3870,8 +3863,8 @@
     {
       "id": "A15",
       "name": "125 St",
-      "reachable": 51,
-      "byQuestions": { "3": 4, "4": 22, "5": 13, "6": 12 },
+      "reachable": 52,
+      "byQuestions": { "3": 4, "4": 21, "5": 15, "6": 12 },
       "stations": [
         { "name": "79 St", "routes": ["1"], "questions": 6, "twins": 2, "band": "normal" },
         { "name": "116 St", "routes": ["B", "C"], "questions": 6, "twins": 0, "band": "normal" },
@@ -3916,6 +3909,13 @@
           "band": "normal"
         },
         {
+          "name": "34 St-Hudson Yards",
+          "routes": ["7"],
+          "questions": 5,
+          "twins": 1,
+          "band": "normal"
+        },
+        {
           "name": "49 St",
           "routes": ["N", "R", "W"],
           "questions": 5,
@@ -3941,13 +3941,8 @@
           "band": "normal"
         },
         { "name": "28 St", "routes": ["R", "W"], "questions": 5, "twins": 0, "band": "normal" },
-        {
-          "name": "34 St-Penn Station",
-          "routes": ["A", "C", "E"],
-          "questions": 5,
-          "twins": 0,
-          "band": "normal"
-        },
+        { "name": "50 St", "routes": ["C", "E"], "questions": 5, "twins": 0, "band": "normal" },
+        { "name": "50 St", "routes": ["1"], "questions": 5, "twins": 0, "band": "normal" },
         {
           "name": "59 St-Columbus Circle",
           "routes": ["1", "A", "B", "C", "D"],
@@ -3973,12 +3968,13 @@
         { "name": "5 Av/53 St", "routes": ["E", "F"], "questions": 4, "twins": 2, "band": "easy" },
         { "name": "57 St", "routes": ["M"], "questions": 4, "twins": 2, "band": "easy" },
         {
-          "name": "34 St-Hudson Yards",
-          "routes": ["7"],
+          "name": "34 St-Penn Station",
+          "routes": ["1", "2", "3"],
           "questions": 4,
           "twins": 1,
           "band": "easy"
         },
+        { "name": "72 St", "routes": ["1", "2", "3"], "questions": 4, "twins": 1, "band": "easy" },
         {
           "name": "145 St",
           "routes": ["A", "B", "C", "D"],
@@ -4008,6 +4004,13 @@
         { "name": "175 St", "routes": ["A"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "181 St", "routes": ["1"], "questions": 4, "twins": 0, "band": "easy" },
         {
+          "name": "34 St-Penn Station",
+          "routes": ["A", "C", "E"],
+          "questions": 4,
+          "twins": 0,
+          "band": "easy"
+        },
+        {
           "name": "42 St-Bryant Pk",
           "routes": ["7", "B", "D", "F", "M"],
           "questions": 4,
@@ -4021,11 +4024,8 @@
           "twins": 0,
           "band": "easy"
         },
-        { "name": "50 St", "routes": ["C", "E"], "questions": 4, "twins": 0, "band": "easy" },
-        { "name": "50 St", "routes": ["1"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "7 Av", "routes": ["B", "D", "E"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "72 St", "routes": ["B", "C"], "questions": 4, "twins": 0, "band": "easy" },
-        { "name": "72 St", "routes": ["1", "2", "3"], "questions": 4, "twins": 0, "band": "easy" },
         { "name": "96 St", "routes": ["B", "C"], "questions": 4, "twins": 0, "band": "easy" },
         {
           "name": "Times Sq-42 St",
