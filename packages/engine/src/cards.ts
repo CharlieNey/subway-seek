@@ -52,14 +52,14 @@ export const CARDS: Record<CardId, CardDef> = {
   delays10: {
     title: "Delays",
     kind: "bonus",
-    rule: "Adds 10 min, same terms.",
+    rule: "Adds 10 min to your score if you're still holding it when the round ends.",
     line: "We are delayed because of train traffic ahead.",
     bonusSeconds: 10 * 60,
   },
   work15: {
     title: "Planned work",
     kind: "bonus",
-    rule: "Adds 15 min, same terms.",
+    rule: "Adds 15 min to your score if you're still holding it when the round ends.",
     line: "Trains are running with delays because of planned work.",
     bonusSeconds: 15 * 60,
   },
