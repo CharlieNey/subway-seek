@@ -25,7 +25,7 @@ Online 1v1 hide and seek on the real NYC subway timetable and Google Street View
 
 ## Look
 
-The visual language is **Mosaic** (DESIGN.md, Look and motion): IRT tile for identity, IND color bands for information, squares for game data and circles only for trains, Josefin Sans for captions and Libre Franklin for text, no rounded corners or shadows. Family colors: Radar blue, Thermometer red, Matching green, Measuring ochre, Photo violet, Tentacles teal. Design pages are private claude.ai artifacts linked from `DESIGN.md`.
+The visual language is **Mosaic** (DESIGN.md, Look and motion): IRT tile for identity, IND color bands for information, squares for game data and circles only for trains, Josefin Sans for captions and Libre Franklin for text, no rounded corners or shadows. Family colors: Radar blue, Thermometer red, Matching green, Measuring ochre, Photo violet, Nearest teal (internal id `tent`; it was called Tentacles until 2026-11-12). Design pages are private claude.ai artifacts linked from `DESIGN.md`.
 
 ## Don'ts
 
