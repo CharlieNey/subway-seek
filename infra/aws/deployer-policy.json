@@ -22,6 +22,7 @@
       "Action": [
         "iam:CreateRole",
         "iam:GetRole",
+        "iam:UpdateAssumeRolePolicy",
         "iam:AttachRolePolicy",
         "iam:CreateInstanceProfile",
         "iam:GetInstanceProfile",

@@ -24,20 +24,20 @@ docker buildx build --platform "$PLATFORM" -f "$ROOT/apps/server/Dockerfile" \
 
 # --- Run commands on the instance over SSM ----------------------------------------------
 run() {
-  local id
+  local id result
   id=$(aws ssm send-command --region "$REGION" --instance-ids "$INSTANCE_ID" \
     --document-name AWS-RunShellScript --comment "stand-clear deploy $TAG" \
     --parameters "commands=$(python3 -c 'import json,sys; print(json.dumps([sys.argv[1]]))' "$1")" \
     --query 'Command.CommandId' --output text)
   aws ssm wait command-executed --region "$REGION" --command-id "$id" --instance-id "$INSTANCE_ID" || true
-  aws ssm get-command-invocation --region "$REGION" --command-id "$id" --instance-id "$INSTANCE_ID" \
-    --query '[Status,StandardOutputContent,StandardErrorContent]' --output text
+  result=$(aws ssm get-command-invocation --region "$REGION" --command-id "$id" --instance-id "$INSTANCE_ID" --output json)
+  python3 -c 'import json,sys; r=json.load(sys.stdin); print(r["Status"]); print(r.get("StandardOutputContent", "")); print(r.get("StandardErrorContent", ""), file=sys.stderr); sys.exit(0 if r["Status"] == "Success" else 1)' <<< "$result"
 }
 
 # The compose files travel as base64 inside the command (SSM has no file copy).
 COMPOSE_B64=$(base64 < "$ROOT/infra/aws/docker-compose.yml" | tr -d '\n')
 CADDY_B64=$(base64 < "$ROOT/infra/aws/Caddyfile" | tr -d '\n')
-INSTALL="set -e; mkdir -p /opt/stand-clear && cd /opt/stand-clear
+INSTALL="set -e; umask 077; mkdir -p /opt/stand-clear && cd /opt/stand-clear
 echo $COMPOSE_B64 | base64 -d > docker-compose.yml
 echo $CADDY_B64 | base64 -d > Caddyfile"
 
@@ -64,7 +64,18 @@ sed -i 's#^IMAGE=.*#IMAGE=$ECR:$TAG#' .env
 docker compose pull --quiet
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
-sleep 5
+healthy=false
+for attempt in \$(seq 1 30); do
+  if docker compose exec -T server node -e \"fetch('http://localhost:8787/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\"; then
+    healthy=true
+    break
+  fi
+  sleep 2
+done
+if [ \"\$healthy\" != true ]; then
+  docker compose logs --tail 20 server
+  exit 1
+fi
 docker compose ps
 docker compose logs --tail 5 server"
 

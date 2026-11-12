@@ -8,6 +8,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] `vercel.json` (build, SPA rewrite, immutable hashed assets, security headers).
 - [x] `docs/DEPLOY.md`: first deploy, env vars, re-pin routine, smoke test, rollback.
 - [ ] `infra/aws/setup.sh` (needs the AWS CLI signed in), point the A record at the Elastic IP, then `infra/aws/deploy.sh --first`. Add the four repository secrets for the deploy Action.
+- AWS status checked 2026-10-12: CLI signed in; ECR, the instance IAM role/profile, and the security group exist. GitHub OIDC and three deploy secrets are configured by `infra/aws/setup-github.sh`. EC2 is blocked by AWS account verification; no instance/IP or `INSTANCE_ID` yet. Resolve the account block, rerun both setup scripts, then set DNS and deploy. Details and the support link: `docs/DEPLOY.md`.
 - [ ] Import the repo in Vercel; set `VITE_SERVER_URL` and `VITE_GOOGLE_MAPS_API_KEY`.
 - [ ] A domain, and the server's `wss://` URL behind it.
 
