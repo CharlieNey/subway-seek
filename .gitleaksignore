@@ -1,0 +1,8 @@
+# Known false positives, checked 2026-11-20 (`gitleaks git -v .` should report none).
+# Google's documented example URL-signing secret, the fixture sign.test.ts checks against
+# (developers.google.com/maps/documentation/streetview/digital-signature).
+7c0d50cca788cb415e72e601626ba9ee5ec41c6d:apps/server/src/sign.test.ts:generic-api-key:15
+7c0d50cca788cb415e72e601626ba9ee5ec41c6d:apps/server/src/sign.test.ts:generic-api-key:45
+89bc23859d06055f43b757fa477ebd973d759a3a:apps/server/src/sign.test.ts:generic-api-key:57
+# RFC 6455's sample Sec-WebSocket-Key ("the sample nonce" in base64), in a protocol test.
+c962493092c50b5fa6a566f18d223647c582da6f:apps/server/src/socketErrors.test.ts:generic-api-key:68
