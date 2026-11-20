@@ -306,3 +306,27 @@ rate-limited exit metadata, and real seeker actions through the server tick. A t
 `storeHideRound` still permits live pushes; unchanged rounds are not re-encoded or saved.
 MapLibre browser fixtures verified H / U / K / V / R, disabled controls, modal keyboard
 ownership, Notice leave/stay choices, and capitalized homepage difficulty labels.
+
+## Re-run on the fall 2026 timetable (2026-11-20)
+
+The 2026-11-12 re-pin moved the game to the MTA's fall 2026 feed (the weekday schedule changed), and only `pnpm sim` and `pnpm sim:endgame` were re-run then. The 2026-11-20 re-pin to 2027-03-03 kept that same schedule byte for byte, so these numbers are the current timetable's. Same commands and seeds as above (`pnpm sim:match`, 780 rounds, seed 1; `pnpm sim:hide --rounds 52 --seed 1`).
+
+| `sim:match` | Easy | Normal (the daily) | Hard |
+|---|---|---|---|
+| Found | 100% | 98% (was 96%) | 96% (was 94%) |
+| Station found: median (p25–p90) | 27 (15–49) | 39 (28–70) | 49 (39–80) |
+| Endgame: median (p25–p90) | 23 (15–37) | 24 (16–39) | 23 (16–37) |
+| Endgame share of seeking (median) | 46% | **37%** (was 38%) | 32% |
+| Seeking in all: median (p25–p90) | 48 (40–71) | **63 (53–96)** | 76 (60–104) |
+| Hider score: median (p25–p90) | 137 (116–178) | **174 (149–231)** (was 176) | 199 (177–253) |
+| Wrong stations visited a round | 0.51 | 0.72 | 0.80 |
+
+| `sim:hide`, 52 paired hides | Caught | Median seeking, game-min | Median hider score, min |
+|---|---:|---:|---:|
+| Easy seeker | 50/52 (was 48) | 73.2 | 180.4 |
+| Normal seeker | 51/52 (was 48) | 71.4 | 183.1 |
+| Hard seeker | 51/52 (was 50) | 70.7 | 180.5 |
+
+- **Round shape unchanged** within the seed-to-seed spread noted above: Normal's station time, endgame share and score moved by 1–2 minutes, and the endgame stays in the design's third-to-half target on every level.
+- **You hide:** the three seeker levels now catch 50–51 of 52, so the 2026-10-08 line "Hard caught two more paired hides than Easy" no longer holds; Hard is one ahead of Easy and 2.5 min faster at the median. The levels still differ mostly in time, not in catch rate, as that run found. No price, deck or band change is suggested by this.
+- `pnpm sim`: thrifty seeker pins the station in 1,028 of 1,028 games, mean 5.4 questions (p90 7). `pnpm sim:endgame`: asker median 17.5 game-min, 3.3 questions. Both match the 2026-11-12 run.
