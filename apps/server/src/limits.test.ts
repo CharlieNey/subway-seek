@@ -24,13 +24,22 @@ describe("RateLimiter", () => {
 });
 
 describe("clientAddress", () => {
-  it("prefers Fly's header, then the first forwarded hop, then the socket", () => {
-    expect(clientAddress({ "fly-client-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9" }, "::1")).toBe(
-      "1.2.3.4",
-    );
-    expect(clientAddress({ "x-forwarded-for": "5.6.7.8, 10.0.0.1" }, "::1")).toBe("5.6.7.8");
-    expect(clientAddress({ "x-forwarded-for": ["5.6.7.8", "10.0.0.1"] }, "::1")).toBe("5.6.7.8");
-    expect(clientAddress({}, "::1")).toBe("::1");
+  const spoofed = { "fly-client-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9, 5.6.7.8" };
+
+  it("ignores forwarding headers unless the deploy trusts one", () => {
+    // Straight on, a client could rotate these to dodge the new-round limit.
+    expect(clientAddress(spoofed, "::1")).toBe("::1");
+    expect(clientAddress(spoofed, "::1", "")).toBe("::1");
     expect(clientAddress({}, undefined)).toBe("unknown");
+  });
+
+  it("reads the trusted header: the last forwarded hop, or a single-address header", () => {
+    expect(clientAddress(spoofed, "::1", "x-forwarded-for")).toBe("5.6.7.8");
+    expect(
+      clientAddress({ "x-forwarded-for": ["9.9.9.9", "5.6.7.8"] }, "::1", "X-Forwarded-For"),
+    ).toBe("5.6.7.8");
+    expect(clientAddress(spoofed, "::1", "fly-client-ip")).toBe("1.2.3.4");
+    // Trusted but missing: the socket.
+    expect(clientAddress({}, "10.0.0.2", "fly-client-ip")).toBe("10.0.0.2");
   });
 });

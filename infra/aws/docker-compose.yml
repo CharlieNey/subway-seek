@@ -14,6 +14,8 @@ services:
       PORT: "8787"
       MATCH_LOG_DIR: /data/logs
       SESSION_DB: /data/sessions.sqlite
+      # Caddy replaces X-Forwarded-For with the address it saw (apps/server/src/limits.ts).
+      CLIENT_IP_HEADER: x-forwarded-for
       NODE_OPTIONS: --disable-warning=ExperimentalWarning
     volumes:
       # Match logs and live sessions, on the instance's EBS volume. Survives deploys.

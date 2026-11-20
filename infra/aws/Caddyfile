@@ -1,6 +1,6 @@
 # TLS from Let's Encrypt for the server's host, and everything (WebSocket upgrades included)
-# proxied to the game server. Caddy adds X-Forwarded-For, which the server's rate limits
-# read (apps/server/src/limits.ts).
+# proxied to the game server. Caddy sets X-Forwarded-For to the address it saw, which the
+# server's rate limits read (CLIENT_IP_HEADER in docker-compose.yml, apps/server/src/limits.ts).
 {$SERVER_HOST} {
 	encode zstd gzip
 	reverse_proxy server:8787

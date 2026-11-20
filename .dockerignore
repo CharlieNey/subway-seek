@@ -3,6 +3,7 @@ node_modules
 **/dist
 apps/web
 apps/server/logs
+apps/server/data
 packages/data/raw
 .git
 .github

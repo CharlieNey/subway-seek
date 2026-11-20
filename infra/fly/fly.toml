@@ -19,6 +19,8 @@ primary_region = "ewr"
   # Match logs and live sessions go on the volume below, so they survive deploys.
   MATCH_LOG_DIR = "/data/logs"
   SESSION_DB = "/data/sessions.sqlite"
+  # Fly's edge sets this to the client's address (apps/server/src/limits.ts).
+  CLIENT_IP_HEADER = "fly-client-ip"
   # Node's built-in SQLite prints an experimental-feature warning at boot; it's stable enough.
   NODE_OPTIONS = "--disable-warning=ExperimentalWarning"
 

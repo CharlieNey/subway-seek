@@ -1,8 +1,9 @@
 /**
- * M2 server: every session plays solo rounds against a bot hider. The bot leaves
- * Times Sq at 10:00 and hides somewhere it could reach in 20 minutes; the seeker's
- * clock starts at 10:20. The server holds the round (including the secret hider) and
- * only ever sends the seeker's view of it. Rooms and a human hider come in M3.
+ * The game server. Every session is a solo round: the daily or a practice round (a bot
+ * hides from one of 13 hubs at 10:00 and the player seeks from 10:20) or You hide (the
+ * player hides and a bot seeks). The server holds the whole round, the secret parts
+ * included, and only ever sends a player the engine's view for their side (soloView,
+ * hiderView). Two-player rooms aren't built yet (DESIGN.md).
  *
  * A session outlives its connection (sessions.ts): the round's clock runs on through a
  * drop, and a reconnect with the session token within the grace period picks it up again.
@@ -82,8 +83,17 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HIDE_START = 10 * 3600;
 const SPEED = 6;
 // Mixed into the daily seed so players can't compute today's answer from the client code.
-const DAILY_SECRET = process.env.DAILY_SECRET ?? "dev-only-daily-secret";
+// The dev default is in this public repo, so a production server refuses to start without one.
+if (!process.env.DAILY_SECRET && process.env.NODE_ENV === "production") {
+  console.error("DAILY_SECRET is required in production (docs/DEPLOY-PLAN.md)");
+  process.exit(1);
+}
+const DAILY_SECRET = process.env.DAILY_SECRET || "dev-only-daily-secret";
 if (!process.env.DAILY_SECRET) console.warn("DAILY_SECRET not set — using a dev secret");
+// The one forwarding header the proxy in front sets (limits.ts); unset, the socket address.
+const CLIENT_IP_HEADER = process.env.CLIENT_IP_HEADER;
+/** Client messages are a few hundred bytes; anything near this is not the game's client. */
+const MAX_MESSAGE_BYTES = 16 * 1024;
 
 const t0 = performance.now();
 const dataset = loadDataset();
@@ -286,7 +296,7 @@ async function newGame(mode: RoundMode, difficulty?: Difficulty) {
 
 /**
  * Live sessions on disk (store.ts), so a deploy or a crash doesn't end the rounds in
- * progress. SESSION_DB is a file on the Fly volume in production; locally it's
+ * progress. SESSION_DB is a file on the host's persistent volume in production; locally it's
  * apps/server/data/sessions.sqlite (gitignored).
  */
 const SESSION_DB =
@@ -506,7 +516,7 @@ const httpServer = createServer((req, res) => {
   }
   res.writeHead(404).end();
 });
-const wss = new WebSocketServer({ server: httpServer });
+const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_MESSAGE_BYTES });
 httpServer.listen(PORT);
 
 const tickPending = new WeakSet<Session<Game>>();
@@ -544,7 +554,7 @@ wss.on("connection", async (socket, req) => {
   socket.on("pong", () => alive.set(socket, true));
   const params = new URL(req.url ?? "/", "http://localhost").searchParams;
   const token = params.get(SESSION_PARAM);
-  const address = clientAddress(req.headers, req.socket.remoteAddress);
+  const address = clientAddress(req.headers, req.socket.remoteAddress, CLIENT_IP_HEADER);
   let session = sessions.get(token);
   if (!session && token && pendingRestores.has(token)) {
     try {

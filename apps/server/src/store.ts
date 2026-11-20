@@ -1,6 +1,6 @@
 /**
  * Live sessions on disk, so a deploy or a crash doesn't end every round in progress.
- * Node's built-in SQLite (one file on the Fly volume, SESSION_DB) holds each session's
+ * Node's built-in SQLite (one file on the host's volume, SESSION_DB) holds each session's
  * game as JSON, written whenever it changes. At boot the rows come back: sessions whose
  * grace period has run out are dropped, the rest wait for their player to reconnect with
  * the clock running on, as it does through any drop of a solo round.

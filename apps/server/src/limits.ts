@@ -44,16 +44,25 @@ export const WALKS_PER_MINUTE = 40;
 export const MAX_SESSIONS = 500;
 
 /**
- * The client's address, behind Fly's proxy or straight on. Fly sets `fly-client-ip`;
- * other proxies set `x-forwarded-for` (first hop); otherwise the socket's own address.
+ * The client's address, for the per-address limit. A forwarding header is whatever the
+ * client sent unless a proxy in front overwrites it, so one is read only when `trusted`
+ * names it (CLIENT_IP_HEADER, set per host: docs/DEPLOY-PLAN.md). `x-forwarded-for` gives
+ * its last hop, the address the proxy itself saw, since a client can put anything before
+ * it; any other header (`fly-client-ip`, `x-real-ip`) is one address. Otherwise, and when
+ * the header is missing, the socket's own address.
  */
 export function clientAddress(
   headers: Record<string, string | string[] | undefined>,
   remote: string | undefined,
+  trusted?: string,
 ): string {
-  const fly = headers["fly-client-ip"];
-  if (typeof fly === "string" && fly) return fly;
-  const fwd = headers["x-forwarded-for"];
-  const first = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(",")[0]?.trim();
-  return first || remote || "unknown";
+  const name = trusted?.trim().toLowerCase();
+  const raw = name ? headers[name] : undefined;
+  const value = Array.isArray(raw) ? raw.join(",") : raw;
+  const hops = value
+    ?.split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  const fromHeader = name === "x-forwarded-for" ? hops?.at(-1) : hops?.[0];
+  return fromHeader || remote || "unknown";
 }
