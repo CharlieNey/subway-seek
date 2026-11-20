@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { gameTime, jumpClock, pauseClock, realMsUntil, resumeClock, startClock } from "./clock.ts";
+import { receivedSync, syncedGameTime } from "./protocol.ts";
 
 const TEN_AM = 10 * 3600;
 
@@ -47,5 +48,18 @@ describe("fast-forward", () => {
   it("never goes back", () => {
     const c = startClock(TEN_AM, 6, 0);
     expect(gameTime(jumpClock(c, TEN_AM - 100, 10_000), 10_000)).toBe(TEN_AM + 60);
+  });
+});
+
+describe("the client's copy of the clock", () => {
+  it("keeps time with the server even when the computer's clock is off", () => {
+    // The server sends 10:00 at its 1_000 ms; this computer reads 301_000 ms (5 min fast).
+    const sent = { gameTime: TEN_AM, speed: 6, serverNow: 1_000, paused: false };
+    const fast = 300_000;
+    // Read against the server's timestamp, the game would be 30 game-min ahead.
+    expect(syncedGameTime(sent, 1_000 + fast) - TEN_AM).toBe(1800);
+    const local = receivedSync(sent, 1_000 + fast);
+    expect(syncedGameTime(local, 1_000 + fast)).toBe(TEN_AM);
+    expect(syncedGameTime(local, 11_000 + fast)).toBe(TEN_AM + 60);
   });
 });

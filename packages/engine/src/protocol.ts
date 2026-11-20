@@ -165,7 +165,17 @@ export type ServerMessage =
   | { type: "state"; seq: number; clock: ClockSync; view: SoloView }
   | { type: "rejected"; seq: number; error: string; clock: ClockSync; view: SoloView };
 
-/** Game time now, from the last sync. */
+/**
+ * A sync as received, re-anchored to the receiver's own clock. `serverNow` is the server's
+ * wall clock, and a computer's can be minutes off: read against it, a fast clock runs the
+ * game ahead (6 game-min per real minute) and a slow one stalls. Anchored at receipt
+ * instead, the only error is the one-way delay, about half a game-second at 6×.
+ */
+export function receivedSync(sync: ClockSync, receivedAtMs: number): ClockSync {
+  return { ...sync, serverNow: receivedAtMs };
+}
+
+/** Game time now, from the last sync (anchored by `receivedSync` on the client). */
 export function syncedGameTime(sync: ClockSync, nowMs: number): number {
   if (sync.paused) return sync.gameTime;
   return sync.gameTime + ((nowMs - sync.serverNow) / 1000) * sync.speed;

@@ -18,6 +18,7 @@ import {
   Geometry,
   type HiderView,
   type Question,
+  receivedSync,
   SESSION_PARAM,
   type ServerMessage,
   SOLO_PAUSES_ON_DROP,
@@ -343,7 +344,7 @@ function handle(msg: ServerMessage) {
         link: { kind: "open" },
         everOpen: true,
         ...armedFor(msg.view, fresh),
-        sync: msg.clock,
+        sync: receivedSync(msg.clock, Date.now()),
         view: msg.view,
         busy: pending.length > 0,
         ...(lost ? { notice: "Your last round wasn't kept, so this one starts fresh." } : {}),
@@ -358,7 +359,7 @@ function handle(msg: ServerMessage) {
       if (fresh) useReplay.getState().close();
       useGame.setState({
         ...armedFor(msg.view, fresh),
-        sync: msg.clock,
+        sync: receivedSync(msg.clock, Date.now()),
         view: msg.view,
         ...settled(msg.seq),
         ...onView(msg.view),
@@ -369,7 +370,7 @@ function handle(msg: ServerMessage) {
     case "rejected":
       useGame.setState({
         ...armedFor(msg.view, false),
-        sync: msg.clock,
+        sync: receivedSync(msg.clock, Date.now()),
         view: msg.view,
         ...settled(msg.seq),
         notice: msg.error,
