@@ -374,6 +374,18 @@ const PHOTO_SIGNING =
 if (!PHOTO_SIGNING)
   console.warn("photo URLs unsigned — set GOOGLE_MAPS_BROWSER_KEY and STREETVIEW_SIGNING_SECRET");
 
+/**
+ * Street steps are checked against Street View metadata (spot.ts, hideSpots.ts). Without
+ * the server key, bot rounds are "find the station" only and a human hider can't come up.
+ */
+const STREET_VIEW = Boolean(process.env.GOOGLE_STREETVIEW_SERVER_KEY);
+if (!STREET_VIEW)
+  console.warn(
+    "GOOGLE_STREETVIEW_SERVER_KEY not set — no street endgame, and in You hide the hider can't come up",
+  );
+const NO_STREET_VIEW =
+  "This server has no Street View key, so you can't come up. Stay below: the seeker can still find your station.";
+
 /** The seeker's view right now (the hider's marker shows only when they're close). */
 const viewNow = (game: Game, now: number) =>
   game.round.human
@@ -695,7 +707,11 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
   // Street View lookup, so walks are limited per session (limits.ts).
   let offStreet = false;
   let tooManyWalks = false;
-  if (intent.type === "walkTo" || intent.type === "hideHere") {
+  const streetStep =
+    intent.type === "walkTo" || intent.type === "hideHere" || intent.type === "exit";
+  // Nothing to look up against: say so, rather than "try again" for ever.
+  const noStreetView = !STREET_VIEW && Boolean(s.game.round.human) && streetStep;
+  if (!noStreetView && (intent.type === "walkTo" || intent.type === "hideHere")) {
     tooManyWalks = !walks.allow(s.token, Date.now());
     if (!tooManyWalks) {
       if (s.game.round.human) {
@@ -709,7 +725,12 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     }
   }
 
-  if (intent.type === "exit" && s.game.round.human && s.game.clock.pausedAt === null) {
+  if (
+    !noStreetView &&
+    intent.type === "exit" &&
+    s.game.round.human &&
+    s.game.clock.pausedAt === null
+  ) {
     const prepared = await prepareHiderExit(
       s.game.round,
       intent.exit,
@@ -735,6 +756,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
       view: remember(s, now),
     });
   };
+  if (noStreetView) return reject(NO_STREET_VIEW);
   if (tooManyWalks) return reject("That's a lot of walking at once. Give it a moment.");
   if (offStreet)
     return reject(

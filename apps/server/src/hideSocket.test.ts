@@ -98,20 +98,23 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
     );
     const skipped = await send(4, { type: "skip", to: "end" });
     expect(skipped.clock.gameTime).toBeLessThanOrEqual(view.seekStart);
-    const last = await send(5, { type: "pause" });
+    // No Street View key here: a street step says so instead of "try again".
+    const exit = await send(5, { type: "exit", exit: 0 });
+    expect(exit.type === "rejected" && exit.error).toMatch(/no Street View key/);
+    const last = await send(6, { type: "pause" });
     socket?.close();
     await stop();
     await boot();
     const back = await connect(`session=${hello.session}`);
     expect(back.resumed).toBe(true);
-    expect(back.seq).toBe(5);
+    expect(back.seq).toBe(6);
     expect((back.view as HiderView).roundId).toBe(view.roundId);
     expect(back.clock.gameTime).toBe(last.clock.gameTime);
     expect((back.view as HiderView).self).toEqual((last.view as HiderView).self);
-    const left = await send(6, { type: "leaveHide" });
+    const left = await send(7, { type: "leaveHide" });
     expect((left.view as HiderView).incomplete).toBe("left");
     expect((left.view as HiderView).scoreSeconds).toBeNull();
-    const again = await send(7, { type: "newRound", mode: "hide", difficulty: "easy" });
+    const again = await send(8, { type: "newRound", mode: "hide", difficulty: "easy" });
     expect((again.view as HiderView).roundId).not.toBe(view.roundId);
     expect((again.view as HiderView).difficulty).toBe("easy");
   } finally {
