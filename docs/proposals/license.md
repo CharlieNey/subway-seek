@@ -1,6 +1,6 @@
 # Proposal: a license (for Charlie's decision)
 
-*Proposed 2026-11-20. Nothing is licensed yet: without a LICENSE file the repo is "all rights reserved", so a public repo could be read but not reused.*
+*Proposed 2026-11-20. **Accepted 2026-11-20:** Charlie said "use whatever license", so the recommendation below was applied as written: `LICENSE` (AGPL-3.0-only), `LICENSE-docs` (CC BY-NC 4.0), `LICENSES.md`, and the ODbL text and notice beside the landmark data. Before that, the repo had no license and was "all rights reserved".*
 
 ## What a license can and can't protect here
 

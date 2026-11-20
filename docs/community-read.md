@@ -1,3 +1,5 @@
+*What this is: research notes on what a subreddit says about fan apps, AI and the rules, kept as background for the launch. Not a prompt and not a rule.*
+
 # r/JetLagTheGame, read on 2026-10-09
 
 What the subreddit says about fan apps, online Hide and Seek and the rules, read through a real browser (Reddit blocks fetches). Thread ids are `reddit.com/comments/<id>`. For the launch framing in `docs/game-design-research.md` and DESIGN.md's Pitch.

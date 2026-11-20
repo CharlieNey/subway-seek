@@ -102,6 +102,10 @@ Client (`apps/web/.env.local`, or the static host's settings):
 
 Dev only, per tab: `?map=maplibre` or `?map=google`, and `?server=ws://localhost:8788` to point a tab at another server. Hosting: [`docs/DEPLOY-PLAN.md`](docs/DEPLOY-PLAN.md).
 
+## How this was built
+
+Charlie designed the game, its rules, balance and look, and made the decisions recorded in [`DESIGN.md`](DESIGN.md). Most of the code was written with Claude Code under that direction, and the tests and simulations are the check on it. The commit history keeps the Claude co-author lines. [`docs/UI_BUILD_PROMPT.md`](docs/UI_BUILD_PROMPT.md) and [`docs/S3_BUILD_PROMPT.md`](docs/S3_BUILD_PROMPT.md) are two of the prompts it was given.
+
 ## Credits
 
 - **Inspiration.** The format comes from the Hide + Seek seasons of [Jet Lag: The Game](https://en.wikipedia.org/wiki/Jet_Lag:_The_Game), the travel competition series by Wendover Productions. The question families, drawing cards on answers, Veto and Randomize, and curses paid for with cards follow its published home-game rules. The card text, curse names, art and look here are original, and Stand Clear is a fan project, not affiliated with or endorsed by Wendover Productions or Nebula.
@@ -111,4 +115,6 @@ Dev only, per tab: `?map=maplibre` or `?map=google`, and `?server=ws://localhost
 
 ## License
 
-Not chosen yet. The options and a recommendation are in [`docs/proposals/license.md`](docs/proposals/license.md). Until a license is added, all rights are reserved.
+- **Code:** GNU AGPL-3.0-only, in [`LICENSE`](LICENSE).
+- **Writing and art** (this README, `DESIGN.md`, `docs/`, the tile art): CC BY-NC 4.0, in [`LICENSE-docs`](LICENSE-docs).
+- **Data:** the OpenStreetMap-derived landmarks are ODbL; the MTA data stays under the MTA's terms. What is under what: [`LICENSES.md`](LICENSES.md).

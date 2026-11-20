@@ -517,7 +517,7 @@ Today a vetoed question can be asked again once its category cools down. So Veto
 
 ### Card faces (proposed)
 
-Every card is a small plaque in the Mosaic look (see Look and motion). Art and layout: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) (private artifact).
+Every card is a small plaque in the Mosaic look (see Look and motion). Art and layout: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) (private link).
 
 - **Anatomy, the same on every card:** a tile frame naming the kind, a kind caption, the value or cost in the corner, a 28 × 28 mosaic emblem, a typeset title, the exact rule, a line in the conductor's voice, and when it can be played.
 - **The kind is told by pattern as well as color**, so it survives color blindness and the 52 px hand size:
@@ -581,7 +581,7 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
     - `mosaicStyle.json` is the same design as a legacy style array, for a map created without a Map ID. A Map ID ignores the `styles` option.
     - Change both files together.
     - Push the cloud style with the Map Management API: PATCH `styleConfigs/a45edf63b9a210393eb6e2eb`. It takes OAuth, an `X-Goog-User-Project: stand-clear-nyc` header, and the project number `75066973119` in resource paths.
-- Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817). Both are private artifacts.
+- Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC) (private link). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817) (private link). Both are private artifacts.
 
 ### Interaction
 
@@ -655,7 +655,7 @@ Cards keep their own lines (Cards › Card faces). Everything else in the game i
 
 ### Sidebar
 
-The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private artifact).
+The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private link).
 
 - **Top bar:** "Stand Clear" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with nothing under it. In solo rounds two square buttons sit beside the clock, ▸ and ▸▸: the departure or the next stop, and your stop.
 - **The round:** stations possible, time left and minutes to the hider's score, as three numbers on a 2 px ink rule with grout dividers. Stations possible is the hero, set larger. Tabular figures. "Give up" is a quiet underlined link.
@@ -705,7 +705,7 @@ Street View takes the top three fifths of the main column and the map the bottom
 
 ### Homepage (proposed)
 
-One job: get the visitor into today's daily in one click. Shared result lines are how new players arrive, and they arrive wanting today's puzzle. Full mock, responsive: [Stand Clear Homepage](https://claude.ai/artifact/TLySzn31W8WUSPrapZN7dB) (private artifact).
+One job: get the visitor into today's daily in one click. Shared result lines are how new players arrive, and they arrive wanting today's puzzle. Full mock, responsive: [Stand Clear Homepage](https://claude.ai/artifact/TLySzn31W8WUSPrapZN7dB) (private link).
 
 - **Hero, on the platform wall:** the Stand Clear mosaic tablet. Below it, "Hide and seek on the real New York subway." Then "Play today's daily · #23" in ink, with "or a practice round" as a text link beside it (decided 2026-10-06: one door), and one line of facts: "Daily #23 · Tue, Oct 27 · everyone hunts the same hidden station · starts at Times Sq–42 St, 10:20".
 - **Live map:** today's timetable at 6×, every dot a train, every square a reachable station. Ambient motion that's real data (rule 8). It never hints at today's station.
@@ -938,7 +938,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | **Score tally** | both | The score is drawn as a bar of tiles, one tile per 5 game-min. Ink for elapsed time, the question's family color for each question bonus (+10 min = 2 tiles), gold for time-bonus cards held. Tiles set left to right at 40 ms each while the total counts up. Both rounds' bars stack, and the winner's gets an express trim. The bar shows where the score came from, not just the number. | bars appear full |
 | **Replay (S2)** | both | Game time is compressed uniformly. That is linear, never eased, per rule 1. Dots travel their real routes and leave trails of square tesserae: ink for you, terra cotta for the other player. Where both rode the same tracks, the trails run side by side. Each question sets as a family-colored square at its origin with its answer, and questions asked from one place stack. At the end, the hider's station tablet sets and the zone ring draws. | trails drawn in full; scrubber only |
 
-**Demo:** every row above plays in the [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) page, part two (private artifact). Each row has a timeline labeled with its tokens, slow-motion playback, and its reduced-motion version. Building it produced the refinements now written into the rows for Arrive, Up to the street, Ask, Seeker is in your zone, Card draw and Curse lands.
+**Demo:** every row above plays in the [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) page, part two (private link). Each row has a timeline labeled with its tokens, slow-motion playback, and its reduced-motion version. Building it produced the refinements now written into the rows for Arrive, Up to the street, Ask, Seeker is in your zone, Card draw and Curse lands.
 
 **Implementation notes**
 
@@ -1174,3 +1174,4 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | 2026-10-05 | Station photos from any exit the hider picks | Charlie |
 | 2026-10-05 | Accessibility deferred | Charlie |
 | 2026-11-12 | "Tentacles" is called "Nearest" on screen; internal ids (`tentacles`, `tent`) unchanged so replays and the protocol still parse | No Jet Lag names (CLAUDE.md) |
+| 2026-11-20 | License: AGPL-3.0-only for the code, CC BY-NC 4.0 for the writing and art, ODbL for the OpenStreetMap-derived landmarks, MTA and data.ny.gov data under their own terms. The README says Claude Code wrote most of the code under Charlie's direction | Charlie: "use whatever license", so `docs/proposals/license.md` was applied as written. AGPL keeps a hosted copy of the engine open; the docs are readable and adaptable but not sellable; the ODbL is required for the landmarks whatever the code uses. Credit for the build is plain: design and decisions are Charlie's, most of the typing was the agent's, and the tests and sims check it |

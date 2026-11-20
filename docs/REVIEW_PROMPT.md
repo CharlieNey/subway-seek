@@ -1,3 +1,5 @@
+*What this is: a prompt given to an AI reviewer to critique `DESIGN.md` before building started.*
+
 # Review prompt
 
 You're reviewing the design doc for a hobby game I'm about to build: an online 1v1 hide and seek played on the real NYC subway timetable and Google Street View, inspired by Jet Lag: The Game's Hide + Seek.
