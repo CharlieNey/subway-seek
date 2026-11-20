@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p .",
-    "hardness": "tsx scripts/hardness.ts"
+    "hardness": "tsx scripts/hardness.ts && biome format --write src/home/hardness.json"
   },
   "dependencies": {
     "@deck.gl/core": "^9.4.0",

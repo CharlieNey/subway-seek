@@ -11,6 +11,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-20",
+    title: "The timetable, pinned into March",
+    lines: [
+      "The timetable is pinned to Wednesday 2027-03-03. It is the same fall 2026 weekday schedule, so trains run as before.",
+    ],
+  },
+  {
     date: "2026-11-12",
     title: "A fresh timetable, and Nearest",
     lines: [

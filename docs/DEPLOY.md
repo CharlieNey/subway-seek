@@ -75,17 +75,17 @@ Before anything is public, in this order. `gcloud auth login` first; the command
 
 ## Re-pinning the timetable
 
-The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2026-12-02 today). The MTA publishes a new GTFS feed every few weeks, and a pinned day in the past stops matching any real schedule. Routine, about monthly, or when `pnpm data:check` warns:
+The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2027-03-03 today). The MTA replaces its GTFS feed from time to time (the current one runs 2026-11-01 to 2027-05-15), and a pinned day in the past stops matching any real schedule. Re-pin when the MTA publishes a new feed, or when `pnpm data:check` warns:
 
 ```sh
-pnpm data:build --refresh --date=2026-11-11     # a plain Wednesday within the new feed's validity
+pnpm data:build --refresh --date=2027-03-03     # a plain Wednesday inside the feed's validity (feed_info.txt)
 pnpm --filter @stand-clear/data build-landmarks  # only if OSM/Parks data should refresh too
 pnpm data:hardness                               # the /hardest page's table; a test fails if it's stale
-pnpm test && pnpm sim && pnpm sim:endgame        # the balance docs quote these; update them if the numbers move
-git add packages/data/dataset apps/web/src/home/hardness.json && git commit -m "Data: re-pin the timetable to 2026-11-11"
+pnpm test && pnpm sim && pnpm sim:endgame && pnpm sim:match   # the balance docs quote these; update them if the numbers move
+git add packages/data/dataset apps/web/src/home/hardness.json && git commit -m "Data: re-pin the timetable to 2027-03-03"
 ```
 
-Pick a Wednesday with no holiday and no major planned work, at least a week ahead so the daily's archive of results isn't cut off mid-week. `pnpm data:check` runs in CI and warns (never fails) when the pin is within a week or in the past. The loading board shows the service day to players.
+Without `--date`, `pnpm data:build` rebuilds the current pin. Pick a Wednesday with no holiday, at least a week ahead so the daily's archive of results isn't cut off mid-week. If the new feed's `Weekday` service is unchanged, the rebuild only moves the date: diff the dataset's sections to see. `pnpm data:check` runs in CI and warns (never fails) when the pin is within a week or in the past. The loading board and the footer show the service day to players.
 
 ## Smoke test after a deploy
 

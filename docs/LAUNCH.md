@@ -31,7 +31,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 ## Timetable freshness
 
 - [x] `pnpm data:build --date=YYYY-MM-DD` re-pins; `pnpm data:check` reports the pin's age and warns in CI within a week of it.
-- [x] Re-pinned to 2026-12-02 on 2026-11-12 (feed `20261028-fall-2026-pick-with-long-term-supplements`). Earlier: 2026-10-28, set 2026-10-08. Next re-pin within a week of 2026-12-02, or sooner if the MTA publishes a new feed; then monthly.
+- [x] Re-pinned to 2027-03-03 on 2026-11-20 (feed `20261028-fall-2026-pick-with-long-term-supplements`, valid to 2027-05-15; the weekday schedule is identical to the 2026-12-02 pin, only the date moved). Earlier: 2026-12-02 (set 2026-11-12), 2026-10-28 (set 2026-10-08). Next re-pin when the MTA publishes a new feed, or by 2027-02-24, when `pnpm data:check` starts warning.
 
 ## Before the first share
 
