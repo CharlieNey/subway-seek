@@ -272,7 +272,7 @@ Built in M0 (`packages/data`). What the data turned out to be:
 | Map | Google Maps JS (vector Map ID with the Mosaic cloud style) + deck.gl overlays · MapLibre + OpenFreeMap as a dev fallback | Google's terms require a Google map beside Street View (decision B); one map load per session is within the free tier |
 | Geo maths | own great-circle helpers in the engine | Distances, zones, radar/measuring questions; no turf dependency so far |
 | Street View | Google Maps JS panorama (client) · Street View Static images for photos (browser-loaded) · metadata API on the server, free, for picking spots | Spike done 2026-10-05: walking inside one panorama is free, loads are billed, relay is forbidden (`docs/street-view-spike.md`) |
-| Hosting | Client on Vercel (static) · server on one EC2 instance in us-east-1 behind Caddy, with the image in ECR (`infra/aws`) | Long-lived WebSocket process with a disk, about $15 a month; Charlie has AWS. Fly.io was the first plan and stays as an alternative in `infra/fly` |
+| Hosting | *Proposed 2026-11-20 (`docs/DEPLOY-PLAN.md`):* client on Cloudflare Pages (static, free) · server on one Fly.io machine in `ewr` with a volume (`infra/fly`), about $4 a month | Long-lived WebSocket process with a disk, on accounts Charlie owns. The EC2 plan (`infra/aws`, 2026-10-07) ran in an account someone else administers; it stays as an alternative for a personal AWS account |
 | Persistence | None in v1: rooms in memory, each match appends its action log to a file | The log feeds playtest metrics and, later, replays |
 
 ### Repo layout
@@ -1050,6 +1050,8 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-20 | *Proposed:* host the server on one Fly.io machine (`ewr`, 512 MB, 1 GB volume) and the client on Cloudflare Pages; the deploy workflow targets Fly and runs only by hand | The EC2 plan of 2026-10-07 used an AWS account someone else administers, and EC2 was blocked there. Fly is about $4 a month (waived under $5), doesn't cut idle WebSockets and has volumes; Pages has no bandwidth cap. Comparison and sources: `docs/DEPLOY-PLAN.md` |
+| 2026-11-20 | Re-pinned to Wednesday 2027-03-03 from the same fall 2026 feed (valid to 2027-05-15) | The 2026-12-02 pin was 12 days out. The weekday schedule is byte-identical, so only the date moved and no balance number can change |
 | 2026-11-12 | Easy ranking badges use Matching's deep green trim with glaze text | The 12 px caption had 3.64:1 contrast on the family green; the existing deep green keeps the palette and raises it to 7.03:1 |
 | 2026-11-12 | Expose exit-photo capability in the seeker view; disable unavailable exit directions with a reason and guard confirmation | QA found rounds with working spot photos but no exit photo still offered a request the server rejected. Keep the sources independent and human-hide movement private |
 | 2026-11-12 | Below 860 px, show a computer notice before starting a round, with a homepage link and quiet Try anyway escape; match the homepage copy | QA found the fixed 380 px board leaves only 13 px of map on a phone. A phone layout is out of scope; reserve 480 px for the map on supported screens |

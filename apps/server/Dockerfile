@@ -1,7 +1,7 @@
-# The game server: one Node process holding the rounds, run on one EC2 instance in
-# us-east-1 behind Caddy (infra/aws). Build from the repo root, since the server depends on
-# the workspace's data and engine packages:
-#   docker build -f apps/server/Dockerfile .      # infra/aws/deploy.sh does this and pushes to ECR
+# The game server: one Node process holding the rounds, on Fly.io (infra/fly,
+# docs/DEPLOY-PLAN.md) or any Docker host (infra/aws has a Caddy setup). Build from the repo
+# root, since the server depends on the workspace's data and engine packages:
+#   docker build -f apps/server/Dockerfile .
 #
 # tsx runs the TypeScript directly, as `pnpm dev:server` does; the dataset JSON is in the
 # repo, so nothing is downloaded at build time.

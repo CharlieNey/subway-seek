@@ -1,4 +1,5 @@
-# The game server on one EC2 instance: the server container behind Caddy, which
+# An alternative to the Fly.io plan (docs/DEPLOY-PLAN.md), for an AWS account you own or any
+# VPS with Docker. The game server on one EC2 instance: the server container behind Caddy, which
 # terminates TLS (Let's Encrypt, automatic) and proxies WebSockets straight through.
 # Lives at /opt/stand-clear on the instance; `docker compose pull && docker compose up -d`
 # is a deploy (infra/aws/deploy.sh, or the GitHub Action).

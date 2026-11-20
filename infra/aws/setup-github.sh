@@ -1,5 +1,7 @@
 #!/bin/bash
 # Give this repository's main branch short-lived AWS credentials for server deploys.
+# Note: the GitHub workflow now deploys to Fly.io (docs/DEPLOY-PLAN.md). To deploy to AWS from
+# Actions, restore the AWS deploy job from .github/workflows/deploy-server.yml before 2026-11-20.
 # Run after setup.sh. If EC2 provisioning is still blocked, this configures the role
 # and the other three secrets; rerun with INSTANCE_ID once the instance exists.
 set -euo pipefail

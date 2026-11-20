@@ -4,22 +4,22 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 ## Hosting
 
-- [x] `apps/server/Dockerfile`; `infra/aws` (one EC2 instance in us-east-1 behind Caddy, image in ECR, deploys over SSM; a GitHub Action deploys on push). Fly kept in `infra/fly` as an alternative.
-- [x] `vercel.json` (build, SPA rewrite, immutable hashed assets, security headers).
-- [x] `docs/DEPLOY.md`: first deploy, env vars, re-pin routine, smoke test, rollback.
-- [ ] `infra/aws/setup.sh` (needs the AWS CLI signed in), point the A record at the Elastic IP, then `infra/aws/deploy.sh --first`. Add the four repository secrets for the deploy Action.
-- AWS status checked 2026-10-12: CLI signed in; ECR, the instance IAM role/profile, and the security group exist. GitHub OIDC and three deploy secrets are configured by `infra/aws/setup-github.sh`. EC2 is blocked by AWS account verification; no instance/IP or `INSTANCE_ID` yet. Resolve the account block, rerun both setup scripts, then set DNS and deploy. Details and the support link: `docs/DEPLOY.md`.
-- [ ] Import the repo in Vercel; set `VITE_SERVER_URL` and `VITE_GOOGLE_MAPS_API_KEY`.
-- [ ] A domain, and the server's `wss://` URL behind it.
+- [x] `apps/server/Dockerfile`; `infra/fly/fly.toml` (one always-on machine in `ewr` with a volume); `.github/workflows/deploy-server.yml` deploys to Fly after the checks, by hand for now. `infra/aws` (EC2 behind Caddy) kept as an alternative for an AWS account Charlie owns.
+- [x] `apps/web/public/_headers` for Cloudflare Pages; `vercel.json` for Vercel (build, SPA rewrite, immutable hashed assets, security headers).
+- [x] `docs/DEPLOY-PLAN.md` (hosts compared, costs, secrets, key restrictions, quotas, ordered steps) and `docs/DEPLOY.md` (runbook: deploys, re-pin routine, smoke test, rollback). 2026-11-20.
+- [ ] Fly: account, app, volume, secrets, first deploy (`DEPLOY-PLAN.md`, steps 1–3).
+- [ ] Cloudflare Pages: connect the repo; set `VITE_SERVER_URL`, `VITE_GOOGLE_MAPS_API_KEY`, `VITE_SITE_URL`, `NODE_VERSION`.
+- [ ] Retire the earlier AWS setup: the repository's AWS secrets, and the role, ECR repository and instance profile in that account (`DEPLOY-PLAN.md`, Retire the old setup).
+- [ ] Optional: a domain, and the server's `wss://` URL behind it.
 
 ## Google
 
 - [x] URL signing implemented and tested against Google's documented example (`apps/server/src/sign.ts`).
 - [x] Wired in: the server attaches a signed URL to every photo answer when `GOOGLE_MAPS_BROWSER_KEY` and `STREETVIEW_SIGNING_SECRET` are set, and the client uses it. Unsigned until then (it warns at startup).
-- [ ] Generate the signing secret; it and the browser key go into the instance's `.env` (`deploy.sh --first` asks for them). Then set the Static API's unsigned quota to 0.
+- [ ] Generate the signing secret; it and the browser key go into the server's secrets (`fly secrets set`). Then set the Static API's unsigned quota to 0 and check the server's metadata lookups still work.
 - [ ] Restrict the browser key's referrers to the production domain (and previews), APIs to Maps JavaScript + Street View Static.
 - [ ] Check the vector Map ID in Safari; fall back to the raster ID if the overlay fails.
-- [ ] Confirm the budget alert and daily caps against the expected first-week traffic.
+- [ ] Set the daily quotas under each API's free cap (`DEPLOY-PLAN.md`, Capping cost) and a $5 budget alert. Confirm the project's billing account is Charlie's own.
 
 ## Terms, attribution and privacy
 

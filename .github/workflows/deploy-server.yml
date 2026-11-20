@@ -1,27 +1,24 @@
-# Deploy the game server on every push to main that touches it: run the checks, build the
-# image, push it to ECR, then pull and restart on the EC2 instance over SSM
-# (infra/aws/deploy.sh does the same from a laptop). A commit that fails lint, typecheck or
-# the tests never deploys. Needs these repository secrets:
-#   AWS_ROLE_ARN   an IAM role GitHub can assume with OIDC (ECR push + ssm:SendCommand on the instance)
-#   AWS_REGION     us-east-1
-#   ECR_REPOSITORY 123.dkr.ecr.us-east-1.amazonaws.com/stand-clear-server
-#   INSTANCE_ID    the instance id from infra/aws/setup.sh
+# Deploy the game server to Fly.io (docs/DEPLOY-PLAN.md): run the checks, then `fly deploy`.
+# A commit that fails lint, typecheck, the tests or the timetable check never deploys.
+#
+# Manual for now: Actions → Deploy server → Run workflow. It needs one repository secret,
+# FLY_API_TOKEN (`fly tokens create deploy`, then `gh secret set FLY_API_TOKEN`). To deploy
+# on every push to main that touches the server, uncomment the `push:` block.
 name: Deploy server
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - apps/server/**
-      - packages/engine/**
-      - packages/data/**
-      - infra/aws/**
-      - pnpm-lock.yaml
-      - .github/workflows/deploy-server.yml
   workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - apps/server/**
+  #     - packages/engine/**
+  #     - packages/data/**
+  #     - infra/fly/**
+  #     - pnpm-lock.yaml
+  #     - .github/workflows/deploy-server.yml
 
 permissions:
-  id-token: write
   contents: read
 
 concurrency:
@@ -51,15 +48,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      - uses: docker/setup-buildx-action@v3
+      - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy
         env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECR: ${{ secrets.ECR_REPOSITORY }}
-          INSTANCE_ID: ${{ secrets.INSTANCE_ID }}
-          TAG: ${{ github.sha }}
-        run: infra/aws/deploy.sh
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: >-
+          flyctl deploy . --config infra/fly/fly.toml --dockerfile apps/server/Dockerfile
+          --remote-only --ha=false

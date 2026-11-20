@@ -1,5 +1,6 @@
-# Fly.io alternative for the game server (apps/server), kept in case AWS is ever dropped.
-# The plan is AWS (infra/aws, docs/DEPLOY.md). To use this instead: `fly deploy --config infra/fly/fly.toml`.
+# The game server (apps/server) on Fly.io: the plan in docs/DEPLOY-PLAN.md. From the repo root:
+#   fly deploy . --config infra/fly/fly.toml --dockerfile apps/server/Dockerfile --ha=false
+# (--ha=false: the volume mounts on one machine, and Fly would otherwise start two).
 #
 # One machine, always on: rounds live in memory, the daily is cached per New York date,
 # and WebSockets need a process that doesn't stop between requests. Newark is the region

@@ -1,8 +1,8 @@
 #!/bin/bash
 # Deploy the game server to the EC2 instance: build the image from the repo root, push it
 # to ECR, copy the compose files over SSM, pull and restart. No SSH; everything goes
-# through the AWS CLI and the instance's SSM agent. The same steps run in
-# .github/workflows/deploy-server.yml on every push to main.
+# through the AWS CLI and the instance's SSM agent. An alternative to the Fly.io plan
+# (docs/DEPLOY-PLAN.md), for an AWS account you own; no workflow runs it.
 #
 #   INSTANCE_ID=i-… ECR=123.dkr.ecr.us-east-1.amazonaws.com/stand-clear-server AWS_REGION=us-east-1 infra/aws/deploy.sh
 #   … --first    also installs /opt/stand-clear/.env from your answers (never stored here)
