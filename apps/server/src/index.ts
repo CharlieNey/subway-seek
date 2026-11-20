@@ -550,6 +550,9 @@ setInterval(() => {
 }, 10_000);
 
 wss.on("connection", async (socket, req) => {
+  // A malformed or oversized frame is an `error` on the socket, then a close. Without a
+  // listener Node treats it as unhandled and the process exits, ending every round.
+  socket.on("error", (err) => console.warn(`socket error: ${err.message}`));
   alive.set(socket, true);
   socket.on("pong", () => alive.set(socket, true));
   const params = new URL(req.url ?? "/", "http://localhost").searchParams;
