@@ -1,8 +1,33 @@
 # Stand Clear
 
-Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. Design, rules and build plan: [DESIGN.md](DESIGN.md).
+Online hide and seek on the real NYC subway timetable and Google Street View. A hider goes underground at 10:00 and gets off somewhere. The seeker rides the real weekday timetable at 6x speed, asks questions that rule stations out, then comes up and finds the hider on the street. Design, rules and build plan: [DESIGN.md](DESIGN.md).
 
-**Playable now:** seek a bot in the daily challenge or practice, or choose **You hide** and let a paced bot seek you. Ride the real timetable at 6×, use questions and cards, and finish on Google Street View. Human hides start at 10:00 with twenty game-minutes to ride; daily and practice seeking start at 10:20.
+![Home page](docs/screenshots/01-home.png)
+
+![A practice round: map, departure board, stations still possible](docs/screenshots/03-practice-round.png)
+
+![The Ask panel: question categories with prices in game minutes](docs/screenshots/04-ask-questions.png)
+
+*Screenshots from a local run with `VITE_MAP_PROVIDER=maplibre` (the free OpenFreeMap base map). Production uses Google Maps, which Street View requires.*
+
+## Status
+
+A solo hobby project, not deployed yet. The client builds for Vercel and the server for a single EC2 instance; the plan and what blocked it are in [docs/DEPLOY.md](docs/DEPLOY.md). You can play it locally against a bot today.
+
+## How it is built
+
+- `packages/engine`: the game rules as a pure function, (state, intent, time) to (new state, events). No sockets or timers, so the server, the bot, the balance simulations and the tests run the same code.
+- `packages/data`: turns the MTA's open GTFS feed into one 5 MB JSON file for a pinned weekday (424 station complexes, 8,349 trips).
+- `apps/server`: authoritative WebSocket server. Every message a player receives passes through one visibility filter, so the seeker never learns the hider's station except through answers.
+- `apps/web`: Vite and React client. Clients hold the public timetable and a shared clock and derive train positions, so the server sends events, not ticks.
+- Strict TypeScript throughout, Biome for lint and format, Vitest for tests. CI runs lint, typecheck, tests, a timetable-freshness check and the web build.
+
+## What was hard
+
+- **Google's terms shaped the architecture.** Street View must sit beside a Google map and cannot be relayed through a server, so the whole game moved to Google Maps and the server only validates against free metadata. The reasoning is in `docs/street-view-spike.md` and the DESIGN.md decision log.
+- **Balancing a game with no players yet.** Question prices, cooldowns and card values were tuned with simulations (`pnpm sim`, `pnpm sim:endgame`, `pnpm sim:match`) and the results are written up in `docs/`.
+- **Hidden information.** A seeker must not learn anything the rules do not give them, including from message timing. Several rules in the decision log exist because a review found a leak.
+- **The timetable expires.** The game runs one pinned service day, and `pnpm data:check` warns when it gets close. See "Re-pinning the timetable" in `docs/DEPLOY.md`.
 
 ## Quickstart
 

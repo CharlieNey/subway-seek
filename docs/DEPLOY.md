@@ -32,7 +32,7 @@ The role trusts only this repository's `main` branch. It can push to this game's
 
 ### Setup status (rechecked 2026-10-13)
 
-AWS CLI authentication works in account `ACCOUNT_ID` as IAM user `charlie`. The ECR repository `stand-clear-server`, instance role/profile `stand-clear-server-instance`, and security group `SECURITY_GROUP_ID` exist in `us-east-1`. The GitHub OIDC provider and `stand-clear-server-github` role are configured, and the repository has `AWS_ROLE_ARN`, `AWS_REGION`, and `ECR_REPOSITORY` set.
+AWS CLI authentication works in the AWS account as an IAM user. The ECR repository `stand-clear-server`, instance role/profile `stand-clear-server-instance`, and security group exist in `us-east-1`. The GitHub OIDC provider and `stand-clear-server-github` role are configured, and the repository has `AWS_ROLE_ARN`, `AWS_REGION`, and `ECR_REPOSITORY` set.
 
 The production `linux/amd64` image for commit `00cc458` is built and uploaded as `00cc458` and `latest` (manifest digest `sha256:e75e5f653acde14c81d2babb912b79956a03f667e97423923f0bffe65dfda70c`). Its local smoke test returned healthy responses from `/health` and `/daily`, opened a practice round over WebSocket, and resumed it after reconnecting. Lint, all package typechecks, 299 tests, and the timetable check passed. AWS policy simulation allows the GitHub role to push images and command the game's tagged instance; the live GitHub-to-EC2 path remains untested until an instance exists.
 
