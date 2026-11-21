@@ -51,6 +51,8 @@ import {
   type RoundMode,
   realMsUntil,
   resumeClock,
+  runSeeker,
+  SEEKER_LEVELS,
   type SeekerDriver,
   type ServerMessage,
   SOLO_PAUSES_ON_DROP,
@@ -505,6 +507,38 @@ function hiderOn(date: string): number {
 }
 
 /**
+ * Yesterday's daily as the bot seeker played it, for anyone to watch: phone visitors, who
+ * can't play a round, and anyone who missed the day (DESIGN.md, Phones). Its day is over,
+ * so the hider is public. It runs at the station only, as on the free map: no spot, so no
+ * Google coordinates, and the replay is the same whatever keys this server has. Built
+ * once per date, in well under a second (runSeeker skips the waits).
+ */
+const botReplays = new Map<string, unknown>();
+function yesterdayReplay(): { date: string; number: number; view: SoloView } | null {
+  const y = new Date(`${nyDate(new Date())}T12:00:00Z`);
+  y.setUTCDate(y.getUTCDate() - 1);
+  const date = y.toISOString().slice(0, 10);
+  const number = dailyNumber(date);
+  if (number < 1) return null;
+  let kept = botReplays.get(date) as { date: string; number: number; view: SoloView } | undefined;
+  if (!kept) {
+    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
+    const round = createSoloRound(idx, {
+      hub,
+      hideStart: HIDE_START,
+      random: dailyRandom(date, DAILY_SECRET),
+      daily: { date, number },
+    });
+    const played = runSeeker(stationOnly(round), idx, SEEKER_LEVELS.normal).round;
+    const end = played.result?.at ?? played.seekEnd;
+    kept = { date, number, view: soloView(played, end, idx) };
+    botReplays.clear();
+    botReplays.set(date, kept);
+  }
+  return kept;
+}
+
+/**
  * What the homepage shows before a round starts: today's daily, where it starts and the
  * stations its hider could reach (public: every seeker sees them when the round begins),
  * and yesterday's hider, now that its day is over. Never today's hider.
@@ -539,6 +573,25 @@ const httpServer = createServer((req, res) => {
     res.end(
       JSON.stringify({ ok: true, sessions: sessions.size, serviceDate: dataset.meta.serviceDate }),
     );
+    return;
+  }
+  if (req.method === "GET" && pathname === "/replay/yesterday") {
+    try {
+      const replay = yesterdayReplay();
+      if (!replay) {
+        res.writeHead(404).end();
+        return;
+      }
+      // The same for everyone all day; a CDN or browser may keep it for ten minutes.
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=600",
+      });
+      res.end(JSON.stringify(replay));
+    } catch (err) {
+      console.error("yesterday's replay failed:", err);
+      res.writeHead(500).end();
+    }
     return;
   }
   if (req.method === "GET" && pathname === "/daily") {

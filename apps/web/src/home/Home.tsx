@@ -18,8 +18,10 @@ import { GAME_NAME } from "../brand.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
 import { displayName, formatDay } from "../names.ts";
+import { REPLAY_REAL_SECONDS } from "../replay.ts";
 import { routesFor } from "../routes.ts";
 import { type StreetOff, useStreet } from "../streetMode.ts";
+import { CopyButton } from "../ui/CopyButton.tsx";
 import { FAMILY_NAME } from "../ui/family.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import { Bullets, Caption, FamilySquare } from "../ui/vocab.tsx";
@@ -39,24 +41,6 @@ import {
 import "./home.css";
 
 /** A button that copies, saying "Copied" for a moment; quiet if the clipboard says no. */
-function CopyButton({ text, label, ink }: { text: string; label: string; ink?: boolean }) {
-  const [done, setDone] = useState(false);
-  return (
-    <button
-      type="button"
-      className={ink ? "sc-btn ink" : "sc-btn"}
-      onClick={() =>
-        navigator.clipboard?.writeText(text).then(() => {
-          setDone(true);
-          setTimeout(() => setDone(false), 1600);
-        })
-      }
-    >
-      {done ? "Copied" : label}
-    </button>
-  );
-}
-
 const foundLine = (r: DailyResult) =>
   r.found ? `found in ${Math.round(r.elapsedSeconds / 60)} min` : "not found";
 
@@ -159,18 +143,34 @@ export function Home() {
                   )}
                 </div>
                 {streetLine && <p className="hp-street-off hp-desk">{streetLine}</p>}
+                {/* Phones watch and read here, and play on a computer (DESIGN.md, Phones). */}
                 <div className="hp-phone hp-phone-note">
-                  <b>Play on a computer</b>
-                  {GAME_NAME} is played on a computer. The map, Street View and the board need room
-                  side by side. Copy the link for later, or try the desktop layout here; controls
-                  may be cramped or cut off.
+                  <b>On a phone: watch now, play on a computer</b>A round needs a computer: the map,
+                  the departure boards and the questions sit side by side. Here you can watch a
+                  whole round in {REPLAY_REAL_SECONDS} seconds, and see which stations are hardest
+                  to find.
                   <div className="row">
-                    <CopyButton text={`${location.origin}/`} label="Copy link" ink />
+                    {facts?.yesterday && (
+                      <a className="sc-btn ink" href="/play?replay=yesterday">
+                        Watch yesterday's daily
+                      </a>
+                    )}
+                    {watch && (
+                      <a className="sc-btn" href={watch}>
+                        Watch your replay
+                      </a>
+                    )}
+                    <a className="sc-btn" href="/hardest">
+                      Hardest stations
+                    </a>
+                  </div>
+                  <div className="row">
+                    <CopyButton text={`${location.origin}/`} label="Copy link for later" />
                     <a
                       className="hp-alt"
                       href={done ? "/play?practice&tryAnyway=1" : "/play?daily&tryAnyway=1"}
                     >
-                      Try anyway
+                      Try a round anyway
                     </a>
                   </div>
                 </div>
@@ -576,10 +576,20 @@ function Yesterday({
               </a>
             )}
             <CopyButton text={result.share} label="Copy result" />
+            <a className="hp-alt" href="/play?replay=yesterday">
+              Watch the bot play it
+            </a>
           </div>
         </>
       ) : (
-        <p className="hp-first">You didn't play it.</p>
+        <>
+          <p className="hp-first">You didn't play it.</p>
+          <div className="acts">
+            <a className="sc-btn" href="/play?replay=yesterday">
+              Watch the bot play it
+            </a>
+          </div>
+        </>
       )}
     </div>
   );

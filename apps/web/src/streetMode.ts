@@ -18,7 +18,9 @@ export type StreetOff =
   /** Google refused this browser earlier today (a quota or the key). */
   | "refusedToday"
   /** Google refused the map or Street View on this page. */
-  | "refused";
+  | "refused"
+  /** A replay: the map alone, no round, so the free map saves a billed map load. */
+  | "replay";
 
 const REFUSED_KEY = storageKey("google-refused-until");
 
@@ -52,6 +54,9 @@ function refusedUntil(): number {
 
 function initial(): StreetOff | null {
   if (!googleBuilt()) return "demo";
+  // Replays draw only the map (no Street View positions are kept), on any screen.
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("replay"))
+    return "replay";
   // Dev only: ?map=maplibre forces the free map for a headless check.
   if (
     import.meta.env.DEV &&
@@ -93,7 +98,7 @@ export function refuseGoogle(reason: string): void {
 /** The one line the page shows about it, or null while the street endgame is on. */
 export function streetOffLine(off: StreetOff | null): string | null {
   if (off === null) return null;
-  return off === "demo"
+  return off === "demo" || off === "replay"
     ? "This round ends when you reach the hider's station. The full game then searches the street in Street View."
     : "Google's map isn't available right now, so this round ends at the station, on the free map.";
 }

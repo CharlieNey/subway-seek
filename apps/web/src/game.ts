@@ -98,6 +98,8 @@ interface GameStore {
   alreadyPlayed: boolean;
   /** Showing the last daily's replay from this browser, with no round or server. */
   replayOnly: boolean;
+  /** The replay is yesterday's daily as the bot played it (the server's /replay/yesterday). */
+  botReplay: { date: string; number: number } | null;
   results: Record<string, DailyResult>;
   /** A refused action, in the notice row until dismissed. */
   notice: string | null;
@@ -155,6 +157,7 @@ export const useGame = create<GameStore>((set) => ({
   tab: "travel",
   alreadyPlayed: false,
   replayOnly: false,
+  botReplay: null,
   results: loadResults(),
   notice: null,
   busy: false,
@@ -596,8 +599,38 @@ export async function startGame() {
   if (started) return;
   started = true;
   if (!(await loadWorld())) return;
-  if (door.kind === "replay") showStoredReplay();
+  if (door.kind === "replay" && door.yesterday) void showBotReplay();
+  else if (door.kind === "replay") showStoredReplay();
   else connect();
+}
+
+/**
+ * Yesterday's daily as the bot played it, from the server (DESIGN.md, Phones): something
+ * to watch for anyone who can't play a round here, a phone first of all. Its day is over,
+ * so the answer is public.
+ */
+async function showBotReplay() {
+  const { world } = useGame.getState();
+  if (!world) return;
+  try {
+    const res = await fetch(serverHttpUrl("/replay/yesterday"));
+    if (!res.ok) throw new Error(`${res.status}`);
+    const { date, number, view } = (await res.json()) as {
+      date: string;
+      number: number;
+      view: SoloView;
+    };
+    showReplay(world, view, { date, number });
+  } catch (err) {
+    console.warn("yesterday's replay didn't load:", err);
+    useGame.setState({
+      status: "error",
+      boot: {
+        ...useGame.getState().boot,
+        failed: "Yesterday's replay didn't load from the server.",
+      },
+    });
+  }
 }
 
 /**
@@ -613,12 +646,17 @@ function showStoredReplay() {
     return;
   }
   // Kept without Google's coordinates (history.ts, keptView): no street search to measure.
-  const view = kept.view;
+  showReplay(world, kept.view, null);
+}
+
+/** A finished round's replay with no round or server behind it. */
+function showReplay(world: World, view: SoloView, bot: GameStore["botReplay"]) {
   useGame.setState({
     status: "ready",
     link: { kind: "open" },
     everOpen: true,
     replayOnly: true,
+    botReplay: bot,
     view,
     sync: { gameTime: view.result?.at ?? 0, speed: 6, serverNow: Date.now(), paused: true },
     results: loadResults(),

@@ -37,6 +37,8 @@ export function App() {
   const view = useGame((s) => s.view);
   const world = useGame((s) => s.world);
   const everOpen = useGame((s) => s.everOpen);
+  // A replay with no round: on a phone the map stacks over the log (playLayout.css).
+  const replayOnly = useGame((s) => s.replayOnly);
   const veiled = useVeiled(everOpen);
   // On the street, Street View takes the top of the screen and the map shrinks below it.
   // The top of the tree re-renders only when these change, not with the clock.
@@ -47,8 +49,13 @@ export function App() {
   const credits = useAttributionClearance(mapBox);
 
   return (
-    <main className="flex h-screen w-screen overflow-hidden bg-glaze text-ink">
-      <div className="flex min-w-0 flex-1 flex-col">
+    <main
+      className={cn(
+        "flex h-screen w-screen overflow-hidden bg-glaze text-ink",
+        replayOnly && "sc-play-stack",
+      )}
+    >
+      <div className="sc-play-map flex min-w-0 flex-1 flex-col">
         {/* Kept mounted once created: one Street View panorama per page keeps billing down. */}
         <div className={cn("relative min-h-0", street ? "flex-[3]" : "hidden")}>
           <ErrorBoundary

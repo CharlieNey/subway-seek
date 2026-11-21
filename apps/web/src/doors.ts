@@ -9,8 +9,11 @@ export type Door =
   | { kind: "daily" }
   | { kind: "practice"; difficulty?: Difficulty }
   | { kind: "hide"; difficulty?: Difficulty }
-  /** The last daily's replay, kept in this browser: no round, no server. */
-  | { kind: "replay"; hideId?: string }
+  /**
+   * A replay, with no round: the last daily's or a You hide kept in this browser, or
+   * yesterday's daily as the bot played it (from the server; phones can watch it).
+   */
+  | { kind: "replay"; hideId?: string; yesterday?: true }
   /** No door: carry on with this browser's round, or start the daily. */
   | { kind: "resume" };
 
@@ -18,10 +21,11 @@ const DOOR_PARAMS = ["daily", "practice", "hide", "difficulty", "replay"];
 
 export function doorOf(search: string): Door {
   const p = new URLSearchParams(search);
-  if (p.has("replay"))
-    return p.get("replay")
-      ? { kind: "replay", hideId: p.get("replay") as string }
-      : { kind: "replay" };
+  if (p.has("replay")) {
+    const which = p.get("replay");
+    if (which === "yesterday") return { kind: "replay", yesterday: true };
+    return which ? { kind: "replay", hideId: which } : { kind: "replay" };
+  }
   if (p.has("practice") || p.has("hide")) {
     const kind = p.has("hide") ? "hide" : "practice";
     const d = p.get("difficulty");

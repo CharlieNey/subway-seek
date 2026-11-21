@@ -12,8 +12,10 @@ export function PlayPage() {
   const [tryAnyway, setTryAnyway] = useState(() =>
     new URLSearchParams(location.search).has("tryAnyway"),
   );
-  const [started, setStarted] = useState(wide || tryAnyway);
-  const allowed = wide || tryAnyway;
+  // A replay is only the map and its log: it works on a phone, stacked (playLayout.css).
+  const [replay] = useState(() => new URLSearchParams(location.search).has("replay"));
+  const [started, setStarted] = useState(wide || tryAnyway || replay);
+  const allowed = wide || tryAnyway || replay;
 
   useEffect(() => {
     const media = matchMedia(COMPUTER_WIDTH);

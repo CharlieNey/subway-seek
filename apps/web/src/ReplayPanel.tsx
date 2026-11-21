@@ -13,7 +13,9 @@ import { displayName } from "./names.ts";
 import { Numbers, shareFor, useNewRound } from "./Result.tsx";
 import { REPLAY_REAL_SECONDS, useReplay } from "./replay.ts";
 import { currentEvent, type LogEvent } from "./replayLog.ts";
+import { CopyButton } from "./ui/CopyButton.tsx";
 import { NameTablet } from "./ui/NameTablet.tsx";
+import { useNarrow } from "./ui/useNarrow.ts";
 import { Button, FamilySquare, Wainscot } from "./ui/vocab.tsx";
 
 function Mark({ e }: { e: LogEvent }) {
@@ -31,13 +33,15 @@ function Mark({ e }: { e: LogEvent }) {
 }
 
 export function ReplayPanel({ world, roundLine }: { world: World; roundLine: string }) {
-  const { view, results, alreadyPlayed, busy, replayOnly } = useGamePick(
+  const { view, results, alreadyPlayed, busy, replayOnly, botReplay } = useGamePick(
     "view",
     "results",
     "alreadyPlayed",
     "busy",
     "replayOnly",
+    "botReplay",
   );
+  const narrow = useNarrow();
   const newRound = useNewRound();
   const { log, t, seek } = useReplay();
   const box = useRef<HTMLDivElement>(null);
@@ -64,9 +68,11 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
       <header className="flex items-start justify-between gap-2.5 px-4 pt-3 pb-2.5">
         <div className="min-w-0">
           <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
-            Replay
+            {botReplay ? `Yesterday's daily · #${botReplay.number}` : "Replay"}
           </div>
-          <div className="text-[12px] text-ink-2">{roundLine}</div>
+          <div className="text-[12px] text-ink-2">
+            {botReplay ? "Played by the bot, to the station" : roundLine}
+          </div>
         </div>
         <small className="pt-0.5 text-[11.5px] text-ink-2">
           Plays the round in {REPLAY_REAL_SECONDS} s
@@ -121,26 +127,45 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
           </button>
         ))}
       </div>
-      <Wainscot>
-        <Button
-          kind="ink"
-          disabled={busy}
-          onClick={() => {
-            // From the homepage's replay there's no round to replace: open one.
-            if (replayOnly)
-              location.assign(
-                hiding ? `/play?hide&difficulty=${view.difficulty}` : "/play?practice",
-              );
-            else {
-              useReplay.getState().close();
-              newRound(hiding ? "hide" : "practice", view.difficulty);
-            }
-          }}
-        >
-          {view.daily ? "Practice round" : "Play again"}
-        </Button>
-        {!incomplete && <Button onClick={share}>Share result</Button>}
-      </Wainscot>
+      {narrow && replayOnly ? (
+        // A phone can watch but not play: the round needs a computer (DESIGN.md, Phones).
+        <Wainscot>
+          <CopyButton text={`${location.origin}/`} label="Copy link for a computer" ink />
+          <a className="sc-btn" href="/hardest">
+            Hardest stations
+          </a>
+        </Wainscot>
+      ) : botReplay ? (
+        <Wainscot>
+          <Button kind="ink" onClick={() => location.assign("/play?daily")}>
+            Play today's daily
+          </Button>
+          <a className="sc-btn" href="/">
+            Home
+          </a>
+        </Wainscot>
+      ) : (
+        <Wainscot>
+          <Button
+            kind="ink"
+            disabled={busy}
+            onClick={() => {
+              // From the homepage's replay there's no round to replace: open one.
+              if (replayOnly)
+                location.assign(
+                  hiding ? `/play?hide&difficulty=${view.difficulty}` : "/play?practice",
+                );
+              else {
+                useReplay.getState().close();
+                newRound(hiding ? "hide" : "practice", view.difficulty);
+              }
+            }}
+          >
+            {view.daily ? "Practice round" : "Play again"}
+          </Button>
+          {!incomplete && <Button onClick={share}>Share result</Button>}
+        </Wainscot>
+      )}
     </>
   );
 }

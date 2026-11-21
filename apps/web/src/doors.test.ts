@@ -10,6 +10,8 @@ describe("doors", () => {
     expect(doorOf("?practice&difficulty=hard")).toEqual({ kind: "practice", difficulty: "hard" });
     expect(doorOf("?practice&difficulty=silly")).toEqual({ kind: "practice" });
     expect(doorOf("?replay&map=maplibre")).toEqual({ kind: "replay" });
+    expect(doorOf("?replay=yesterday")).toEqual({ kind: "replay", yesterday: true });
+    expect(doorOf("?replay=abc-123")).toEqual({ kind: "replay", hideId: "abc-123" });
   });
 
   it("drops the door and keeps the dev overrides", () => {
