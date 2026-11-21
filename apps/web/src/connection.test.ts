@@ -1,3 +1,4 @@
+import { CLOSE_TOO_MANY_MESSAGES } from "@stand-clear/engine";
 import { describe, expect, it } from "vitest";
 import {
   attemptFailed,
@@ -106,5 +107,17 @@ describe("a connection the server turned away", () => {
     if (next.kind !== "waiting") throw new Error(next.kind);
     expect(next.wait).toBe(60_000);
     expect(next.lastClose).toEqual(close);
+  });
+
+  it("after a flood close, waits out the server's message window before trying again", () => {
+    const drop = attemptFailed({ kind: "open" }, { code: 1006, opened: true }, 1000, true);
+    expect(drop.kind === "waiting" && drop.until).toBe(1000);
+    const flood = attemptFailed(
+      { kind: "open" },
+      { code: CLOSE_TOO_MANY_MESSAGES, opened: true },
+      1000,
+      true,
+    );
+    expect(flood.kind === "waiting" && flood.until).toBe(11_000);
   });
 });

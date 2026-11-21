@@ -141,13 +141,37 @@ export const RECONNECT_GRACE_MS = 3 * 60 * 1000;
  * the tab, think, come back). Two-player rounds will pause, for fairness.
  */
 export const SOLO_PAUSES_ON_DROP = false;
-/** The query parameter on the WebSocket URL that carries the session token. */
-export const SESSION_PARAM = "session";
+/** The WebSocket subprotocol the game speaks; the server picks it in the handshake. */
+export const WS_PROTOCOL = "game.v1";
+/**
+ * The session token travels as a second subprotocol, `session.<token>`, in the
+ * `Sec-WebSocket-Protocol` header rather than the URL, so access logs that record URLs
+ * (a proxy's, a host's) never hold it. Tokens are UUIDs, which are valid header tokens.
+ */
+export const SESSION_PROTOCOL_PREFIX = "session.";
+
+/** The subprotocols a client offers: the game's, and its session token if it has one. */
+export function clientProtocols(token: string | null): string[] {
+  return token ? [WS_PROTOCOL, `${SESSION_PROTOCOL_PREFIX}${token}`] : [WS_PROTOCOL];
+}
+
+/** The session token in a `Sec-WebSocket-Protocol` header, or null. */
+export function sessionFromProtocols(header: string | string[] | undefined): string | null {
+  const value = Array.isArray(header) ? header.join(",") : (header ?? "");
+  for (const p of value.split(",")) {
+    const v = p.trim();
+    if (v.startsWith(SESSION_PROTOCOL_PREFIX) && v.length > SESSION_PROTOCOL_PREFIX.length)
+      return v.slice(SESSION_PROTOCOL_PREFIX.length);
+  }
+  return null;
+}
 /** Close code for a connection whose session was opened somewhere else (another tab). */
 export const CLOSE_TAKEN_OVER = 4001;
 /** Close codes for a new connection turned away: too many new rounds from its address, or a full server. */
 export const CLOSE_TOO_MANY_ROUNDS = 4002;
 export const CLOSE_FULL = 4003;
+/** Close code for a connection sending messages faster than any player could (limits.ts). */
+export const CLOSE_TOO_MANY_MESSAGES = 4004;
 
 export type ServerMessage =
   | {

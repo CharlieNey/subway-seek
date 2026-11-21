@@ -24,6 +24,7 @@ import {
   buildIndex,
   CLOSE_FULL,
   CLOSE_TAKEN_OVER,
+  CLOSE_TOO_MANY_MESSAGES,
   CLOSE_TOO_MANY_ROUNDS,
   type ClockSync,
   clientMessageSchema,
@@ -50,16 +51,17 @@ import {
   type RoundMode,
   realMsUntil,
   resumeClock,
-  SESSION_PARAM,
   type SeekerDriver,
   type ServerMessage,
   SOLO_PAUSES_ON_DROP,
   type SoloIntent,
   type SoloRound,
   type SoloView,
+  sessionFromProtocols,
   skipSolo,
   soloView,
   startClock,
+  WS_PROTOCOL,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
 import { restoreHideRound } from "./hidePersistence.ts";
@@ -67,7 +69,11 @@ import { exitSpot, prepareHiderExit, seekerStreetTarget, verifyHideSpot } from "
 import {
   clientAddress,
   MAX_SESSIONS,
+  MESSAGE_WINDOW_MS,
+  MESSAGES_PER_WINDOW,
   NEW_ROUNDS_PER_HOUR,
+  originAllowed,
+  parseOrigins,
   RateLimiter,
   WALKS_PER_MINUTE,
 } from "./limits.ts";
@@ -92,6 +98,13 @@ const DAILY_SECRET = process.env.DAILY_SECRET || "dev-only-daily-secret";
 if (!process.env.DAILY_SECRET) console.warn("DAILY_SECRET not set — using a dev secret");
 // The one forwarding header the proxy in front sets (limits.ts); unset, the socket address.
 const CLIENT_IP_HEADER = process.env.CLIENT_IP_HEADER;
+// The pages that may open rounds (limits.ts, originAllowed). Production must name them:
+// otherwise any site could open rounds from its visitors' browsers.
+const ALLOWED_ORIGINS = parseOrigins(process.env.ALLOWED_ORIGINS);
+if (!ALLOWED_ORIGINS && process.env.NODE_ENV === "production") {
+  console.error("ALLOWED_ORIGINS is required in production (docs/DEPLOY-PLAN.md)");
+  process.exit(1);
+}
 /** Client messages are a few hundred bytes; anything near this is not the game's client. */
 const MAX_MESSAGE_BYTES = 16 * 1024;
 
@@ -361,11 +374,13 @@ async function restoreSession(s: SavedSession) {
 // Rate limits (limits.ts): new rounds per address, street walks per session, sessions kept.
 const newRounds = new RateLimiter(NEW_ROUNDS_PER_HOUR, 60 * 60 * 1000);
 const walks = new RateLimiter(WALKS_PER_MINUTE, 60 * 1000);
+const messages = new RateLimiter(MESSAGES_PER_WINDOW, MESSAGE_WINDOW_MS);
 setInterval(
   () => {
     const now = Date.now();
     newRounds.sweep(now);
     walks.sweep(now);
+    messages.sweep(now);
   },
   10 * 60 * 1000,
 );
@@ -516,7 +531,14 @@ const httpServer = createServer((req, res) => {
   }
   res.writeHead(404).end();
 });
-const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_MESSAGE_BYTES });
+const wss = new WebSocketServer({
+  server: httpServer,
+  maxPayload: MAX_MESSAGE_BYTES,
+  // Only pages the deploy names may open rounds; scripts send no Origin (limits.ts).
+  verifyClient: ({ origin }: { origin?: string }) => originAllowed(origin, ALLOWED_ORIGINS),
+  // The game's subprotocol; the session token rides beside it (protocol.ts).
+  handleProtocols: (protocols: Set<string>) => (protocols.has(WS_PROTOCOL) ? WS_PROTOCOL : false),
+});
 httpServer.listen(PORT);
 
 const tickPending = new WeakSet<Session<Game>>();
@@ -556,7 +578,8 @@ wss.on("connection", async (socket, req) => {
   alive.set(socket, true);
   socket.on("pong", () => alive.set(socket, true));
   const params = new URL(req.url ?? "/", "http://localhost").searchParams;
-  const token = params.get(SESSION_PARAM);
+  // In the Sec-WebSocket-Protocol header, not the URL (protocol.ts, SESSION_PROTOCOL_PREFIX).
+  const token = sessionFromProtocols(req.headers["sec-websocket-protocol"]);
   const address = clientAddress(req.headers, req.socket.remoteAddress, CLIENT_IP_HEADER);
   let session = sessions.get(token);
   if (!session && token && pendingRestores.has(token)) {
@@ -627,6 +650,11 @@ wss.on("connection", async (socket, req) => {
   // One message at a time per session, in order: a walk waits on a Street View lookup and
   // a new round on several, and nothing may overtake them.
   socket.on("message", (raw) => {
+    // Faster than any player: close before queueing, so a flood can't pile up in memory.
+    if (!messages.allow(s.token, Date.now())) {
+      socket.close(CLOSE_TOO_MANY_MESSAGES, "Too many messages at once. Reconnecting…");
+      return;
+    }
     const queued = (queues.get(s) ?? Promise.resolve()).then(() => handleMessage(s, socket, raw));
     queues.set(
       s,

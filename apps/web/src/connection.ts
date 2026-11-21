@@ -4,7 +4,7 @@
  * feeds it events and real times; the screens read what to show from it.
  */
 
-import { CLOSE_FULL, CLOSE_TOO_MANY_ROUNDS } from "@stand-clear/engine";
+import { CLOSE_FULL, CLOSE_TOO_MANY_MESSAGES, CLOSE_TOO_MANY_ROUNDS } from "@stand-clear/engine";
 
 /** An attempt slower than this says so on the board ("Still connecting"). */
 export const SLOW_MS = 8000;
@@ -53,6 +53,8 @@ export interface CloseInfo {
 export const refused = (close: CloseInfo | null | undefined): boolean =>
   close?.code === CLOSE_TOO_MANY_ROUNDS || close?.code === CLOSE_FULL;
 const REFUSED_WAIT_MS = 60_000;
+/** After CLOSE_TOO_MANY_MESSAGES: the server's message window (limits.ts) is 10 s. */
+const FLOOD_WAIT_MS = 10_000;
 
 /**
  * How long to wait before the next attempt, after `tries` failures. Mid-round the first
@@ -79,8 +81,17 @@ export function startAttempt(link: Link, now: number): Link {
 /** An attempt failed, or an open link dropped: wait, then try again. */
 export function attemptFailed(link: Link, close: CloseInfo, now: number, midRound: boolean): Link {
   if (link.kind === "open" || link.kind === "idle" || link.kind === "takenOver") {
-    // A drop: the streak starts now, and the first try goes straight away.
-    return { kind: "waiting", until: now, wait: 0, tries: 0, firstTryAt: now, lastClose: close };
+    // A drop: the streak starts now, and the first try goes straight away, unless the
+    // server closed it for sending too fast: then give its window time to clear.
+    const wait = close.code === CLOSE_TOO_MANY_MESSAGES ? FLOOD_WAIT_MS : 0;
+    return {
+      kind: "waiting",
+      until: now + wait,
+      wait,
+      tries: 0,
+      firstTryAt: now,
+      lastClose: close,
+    };
   }
   const tries = link.tries + 1;
   const wait = refused(close) ? REFUSED_WAIT_MS : retryDelayMs(tries, midRound);

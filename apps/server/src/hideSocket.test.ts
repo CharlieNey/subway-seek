@@ -8,6 +8,7 @@ import { loadDataset } from "@stand-clear/data/node";
 import {
   buildIndex,
   type ClientIntent,
+  clientProtocols,
   departures,
   type HiderView,
   type ServerMessage,
@@ -46,8 +47,9 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
       child?.once("exit", (code) => reject(new Error(`server exited ${code}: ${output}`)));
     });
   }
-  async function connect(query: string) {
-    socket = new WebSocket(`ws://127.0.0.1:${port}/?${query}`);
+  async function connect(query: string, token: string | null = null) {
+    // The token goes in the subprotocol header, never the URL (protocol.ts).
+    socket = new WebSocket(`ws://127.0.0.1:${port}/?${query}`, clientProtocols(token));
     return JSON.parse(String((await once(socket, "message"))[0])) as Extract<
       ServerMessage,
       { type: "hello" }
@@ -105,7 +107,8 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
     socket?.close();
     await stop();
     await boot();
-    const back = await connect(`session=${hello.session}`);
+    const back = await connect("", hello.session);
+    expect(socket?.protocol).toBe("game.v1");
     expect(back.resumed).toBe(true);
     expect(back.seq).toBe(6);
     expect((back.view as HiderView).roundId).toBe(view.roundId);

@@ -42,6 +42,52 @@ export const NEW_ROUNDS_PER_HOUR = 30;
 export const WALKS_PER_MINUTE = 40;
 /** Live sessions the server keeps at once (connected or in their grace period). */
 export const MAX_SESSIONS = 500;
+/**
+ * Messages per session in any 10 s: a player clicks a few a second at most, and a resend
+ * after a reconnect is a handful. Past it the connection is closed (CLOSE_TOO_MANY_MESSAGES)
+ * before the message is queued, so a flood can't pile up in memory.
+ */
+export const MESSAGES_PER_WINDOW = 40;
+export const MESSAGE_WINDOW_MS = 10_000;
+
+/**
+ * Whether a WebSocket upgrade from `origin` may open a round. Browsers always send Origin
+ * on a WebSocket; without this check any page could open rounds from its visitors'
+ * browsers, counted against their addresses. No Origin means a script, not a browser,
+ * and it could send any Origin anyway, so it isn't refused here (the rate limits cover it).
+ * `allowed` is ALLOWED_ORIGINS split on commas. Unset outside production, local and
+ * private-network pages may connect (a phone on the same Wi-Fi, a container).
+ */
+export function originAllowed(
+  origin: string | undefined,
+  allowed: readonly string[] | null,
+): boolean {
+  if (!origin) return true;
+  if (allowed) return allowed.includes(origin.replace(/\/$/, ""));
+  let host: string;
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
+  return (
+    host === "localhost" ||
+    host === "[::1]" ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  );
+}
+
+/** ALLOWED_ORIGINS as a list ("https://a.example, https://b.example"), or null when unset. */
+export function parseOrigins(value: string | undefined): string[] | null {
+  const list = (value ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  return list.length ? list : null;
+}
 
 /**
  * The client's address, for the per-address limit. A forwarding header is whatever the

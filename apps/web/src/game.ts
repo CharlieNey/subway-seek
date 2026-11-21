@@ -3,7 +3,8 @@
  * seeker's view of the round. The server is authoritative (and alone knows where the
  * hider is); the client derives positions and boards from the shared clock + timetable.
  *
- * The connection carries a session token, kept in localStorage: a reconnect (a dropped
+ * The connection carries a session token (as a WebSocket subprotocol, never in the URL),
+ * kept in localStorage: a reconnect (a dropped
  * link, a refresh) brings it back and picks the same round up again, its clock paused on
  * the server while the player was away (DESIGN.md, Disconnects).
  */
@@ -15,11 +16,11 @@ import {
   CLOSE_TAKEN_OVER,
   type ClientIntent,
   type ClockSync,
+  clientProtocols,
   Geometry,
   type HiderView,
   type Question,
   receivedSync,
-  SESSION_PARAM,
   type ServerMessage,
   SOLO_PAUSES_ON_DROP,
   type SoloView,
@@ -423,8 +424,8 @@ function connect() {
   clearTimeout(retryTimer);
   dropSocket();
   const url = new URL(SERVER_URL);
+  // The token rides as a subprotocol, not in the URL, so access logs never record it.
   const token = sessionToken ?? tokenFor(door, loadSession());
-  if (token) url.searchParams.set(SESSION_PARAM, token);
   const stored = loadSession();
   const opening =
     door.kind === "resume" && stored?.mode
@@ -434,7 +435,7 @@ function connect() {
     url.searchParams.set("mode", opening.kind);
     if (opening.difficulty) url.searchParams.set("difficulty", opening.difficulty);
   }
-  const ws = new WebSocket(url);
+  const ws = new WebSocket(url, clientProtocols(token));
   socket = ws;
   let opened = false;
   useGame.setState((s) => ({ link: startAttempt(s.link, Date.now()) }));

@@ -1,6 +1,7 @@
 /**
  * A client can't take the server down by breaking the protocol: an oversized message or a
- * malformed frame closes that connection, and everyone else's rounds carry on.
+ * malformed frame closes that connection, and everyone else's rounds carry on. A page on
+ * another site can't open rounds, and a flood of messages closes its connection.
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
@@ -9,6 +10,7 @@ import { createServer, request } from "node:http";
 import { connect as tcp } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CLOSE_TOO_MANY_MESSAGES, clientProtocols } from "@stand-clear/engine";
 import { expect, it } from "vitest";
 import WebSocket from "ws";
 
@@ -23,7 +25,7 @@ function health(port: number): Promise<number> {
   });
 }
 
-it("survives an oversized message and a malformed frame", async () => {
+it("survives an oversized message, a malformed frame, a foreign page and a flood", async () => {
   const dir = mkdtempSync(join(tmpdir(), "stand-clear-socket-"));
   const listener = createServer().listen(0, "127.0.0.1");
   await once(listener, "listening");
@@ -71,6 +73,26 @@ it("survives an oversized message and a malformed frame", async () => {
     await once(raw, "data");
     raw.write(Buffer.from([0x83, 0x00]));
     await once(raw, "close");
+
+    // Another site's page: refused at the handshake. A local page is let in (no ALLOWED_ORIGINS).
+    const foreign = new WebSocket(`ws://127.0.0.1:${port}/?mode=practice`, clientProtocols(null), {
+      origin: "https://evil.example",
+    });
+    const [, refusal] = await once(foreign, "unexpected-response");
+    expect((refusal as { statusCode: number }).statusCode).toBe(401);
+    foreign.on("error", () => {});
+    foreign.terminate();
+    const local = new WebSocket(`ws://127.0.0.1:${port}/?mode=practice`, clientProtocols(null), {
+      origin: "http://localhost:5173",
+    });
+    await once(local, "message");
+    expect(local.protocol).toBe("game.v1");
+
+    // A flood: closed with CLOSE_TOO_MANY_MESSAGES, before the server queues it all.
+    for (let seq = 0; seq < 60; seq++)
+      local.send(JSON.stringify({ type: "intent", seq, intent: { type: "giveUp" } }));
+    const [floodCode] = await once(local, "close");
+    expect(floodCode).toBe(CLOSE_TOO_MANY_MESSAGES);
 
     await new Promise((r) => setTimeout(r, 200));
     expect(child.exitCode).toBeNull();
