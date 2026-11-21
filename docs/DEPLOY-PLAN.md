@@ -149,9 +149,9 @@ Headers and caching come from `apps/web/public/_headers`. Unknown paths fall bac
 Before or right after the repo goes public:
 - **GitHub repository secrets:** `gh secret delete AWS_ROLE_ARN`, `gh secret delete AWS_REGION`, `gh secret delete ECR_REPOSITORY` (and `INSTANCE_ID` if present).
 - **In the other AWS account**, ask its administrator to delete:
-  - the `stand-clear-server-github` role, which trusts this repo's `main` branch through GitHub OIDC;
-  - the `stand-clear-server` ECR repository and its images;
-  - the `stand-clear-server-instance` role and profile;
+  - the `stand-clear-server-github` role, which trusts this repo's `main` branch through GitHub OIDC; <!-- keep-name -->
+  - the `stand-clear-server` ECR repository and its images; <!-- keep-name -->
+  - the `stand-clear-server-instance` role and profile; <!-- keep-name -->
   - the security group;
   - the IAM user's access key if it was created for this.
 
