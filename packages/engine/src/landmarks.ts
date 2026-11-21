@@ -15,13 +15,14 @@ export const LANDMARK_KINDS: readonly LandmarkKind[] = [
   "airport",
 ];
 
-export const LANDMARK_WORDS: Record<LandmarkKind, { one: string; many: string }> = {
-  park: { one: "big park", many: "big parks" },
-  museum: { one: "museum", many: "museums" },
-  library: { one: "library", many: "libraries" },
-  hospital: { one: "hospital", many: "hospitals" },
-  zoo: { one: "zoo or aquarium", many: "zoos and aquariums" },
-  airport: { one: "airport", many: "airports" },
+/** `a` is `one` with its article: "a museum", "an airport". */
+export const LANDMARK_WORDS: Record<LandmarkKind, { one: string; a: string; many: string }> = {
+  park: { one: "big park", a: "a big park", many: "big parks" },
+  museum: { one: "museum", a: "a museum", many: "museums" },
+  library: { one: "library", a: "a library", many: "libraries" },
+  hospital: { one: "hospital", a: "a hospital", many: "hospitals" },
+  zoo: { one: "zoo or aquarium", a: "a zoo or aquarium", many: "zoos and aquariums" },
+  airport: { one: "airport", a: "an airport", many: "airports" },
 };
 
 /** Tentacles: "Of the ___ within this many miles of me…". Only kinds with enough pins. */

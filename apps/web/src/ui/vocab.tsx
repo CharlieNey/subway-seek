@@ -577,19 +577,22 @@ export function CountdownRow({
 
 // --- Route bullets ------------------------------------------------------------------
 
-/** An MTA route bullet: a circle (trains are circles), or a diamond for express variants. */
+/**
+ * A route tile: a hexagon in the route's colour with its letter, flat for a local and on
+ * end for an express variant (mosaic.css, .sc-rb). The game's own mark, not the MTA's.
+ */
 export function RouteBullet({ route, size = 22 }: { route: Route; size?: number }) {
   return (
     <span
-      className={cn("sc-rb", route.diamond && "diamond")}
+      className={cn("sc-rb", route.diamond && "express")}
       style={
         {
           "--b": `${size}px`,
-          backgroundColor: `#${route.color}`,
+          "--rb-c": `#${route.color}`,
           color: `#${route.textColor}`,
         } as CSSProperties
       }
-      title={route.name}
+      title={route.diamond ? `${route.name} (express)` : route.name}
     >
       <span>{route.display}</span>
     </span>

@@ -353,7 +353,7 @@ export function Sheet() {
           <Row
             role={[
               "Family square",
-              "Six families, one square each; hollow when vetoed. Squares are game information. Circles are trains.",
+              "Six families, one square each; hollow when vetoed. Squares are game information, hexagons are routes (flat for locals, on end for express), circles are trains.",
             ]}
           >
             {FAMILIES.map((f) => (

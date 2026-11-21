@@ -939,26 +939,38 @@
 }
 
 /* ---------- Route bullets: MTA circles (trains), diamonds for express variants ---------- */
+/*
+ * Route tiles: the game's own mark for a route, not the MTA's bullet (DESIGN.md, Look).
+ * A hexagon, the floor tile of the old stations, in the route's GTFS colour with a glaze
+ * rim, and the letter in Josefin Sans. Locals lie flat; express variants stand on end.
+ * Circles stay for trains, squares for game data.
+ */
 .sc-rb {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
   width: var(--b, 22px);
   height: var(--b, 22px);
-  border-radius: 50%;
-  font:
-    700 calc(var(--b, 22px) * 0.52) / 1 "Helvetica Neue",
-    Helvetica,
-    Arial,
-    sans-serif;
+  background: var(--color-glaze-hi);
+  clip-path: polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0 50%);
+  font: 700 calc(var(--b, 22px) * 0.5) / 1 var(--font-display);
 }
-.sc-rb.diamond {
-  border-radius: 0;
-  transform: rotate(45deg) scale(0.78);
+.sc-rb::before {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  background: var(--rb-c);
+  clip-path: inherit;
 }
-.sc-rb.diamond > span {
-  transform: rotate(-45deg);
+.sc-rb > span {
+  position: relative;
+  /* Josefin's capitals sit high: the same nudge the buttons' padding gives them. */
+  padding-top: 0.12em;
+}
+.sc-rb.express {
+  clip-path: polygon(50% 0, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
 }
 .sc-rbs {
   display: inline-flex;

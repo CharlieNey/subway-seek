@@ -414,7 +414,7 @@ export function shortQuestion(q: Question): string {
     case "matching":
       return `Nearest ${LANDMARK_WORDS[q.landmark].one} the same?`;
     case "measuring":
-      return `Closer to a ${LANDMARK_WORDS[q.landmark].one}?`;
+      return `Closer to ${LANDMARK_WORDS[q.landmark].a}?`;
     case "tentacles":
       return `Which ${LANDMARK_WORDS[q.landmark].one} is nearest?`;
     case "photo":

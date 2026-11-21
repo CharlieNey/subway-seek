@@ -56,7 +56,7 @@ const TIMES_SQ: LonLat = [-73.9873, 40.7553];
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
-/** A station's name and bullets, on hover. Bullets are circles: trains. */
+/** A station's name and route tiles, on hover (the hexagons of ui/vocab.tsx, inline). */
 function stationTooltip({ ds }: World, complex: number): string {
   const c = ds.complexes[complex];
   if (!c) return "";
@@ -65,7 +65,7 @@ function stationTooltip({ ds }: World, complex: number): string {
     .filter((r) => r !== undefined)
     .map(
       (r) =>
-        `<span style="display:inline-flex;width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;font:700 10px 'Helvetica Neue',Arial,sans-serif;background:#${r.color};color:#${r.textColor};margin-right:2px">${escapeHtml(r.display)}</span>`,
+        `<span style="display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);font:700 9px/1 'Josefin Sans',sans-serif;padding-top:1px;box-sizing:border-box;background:#${r.color};color:#${r.textColor};margin-right:2px">${escapeHtml(r.display)}</span>`,
     )
     .join("");
   return `<div style="font:600 12.5px 'Libre Franklin',sans-serif;margin-bottom:5px;color:#24201B">${escapeHtml(displayName(c.name))}</div><div>${bullets}</div>`;
