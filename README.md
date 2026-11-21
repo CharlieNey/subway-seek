@@ -26,9 +26,9 @@ Open http://localhost:5173 and play today's daily or a practice round. With no G
 |---|---|
 | The daily, practice at Easy, Normal and Hard: ride, ask, find the station | The street endgame: Street View, walking, the 40 m sighting and the catch |
 | Replays, share text, the daily record, `/hardest`, `/changelog` | Photo questions |
-| You hide, through the 20-minute hide and the bot's questions | You hide after 10:20: coming up at an exit and choosing a spot |
+| You hide: the 20-minute hide and the bot's questions, staying below at your station | You hide after 10:20: coming up at an exit and choosing a spot |
 
-Without a key a bot round ends when you reach the hider's station. Keys and other settings are under [Configuration](#configuration).
+Without keys every round ends at the station: reaching the hider's station is the find, and the result says so. The same happens on the free map with keys (`VITE_MAP_PROVIDER=maplibre`), since Google's terms keep Street View off a non-Google map, and when Google refuses the map or a panorama mid-round. Keys and other settings are under [Configuration](#configuration).
 
 ## What's in it
 
@@ -53,7 +53,7 @@ Without a key a bot round ends when you reach the hider's station. Keys and othe
 - `apps/server`: an authoritative WebSocket server. It holds the whole round, and every message a player gets passes through one visibility filter, so the seeker learns the hider's station only through answers.
 - `apps/web`: Vite and React. The client holds the same timetable and a clock sync, and derives every train's position itself; the server sends changes, not ticks.
 
-Strict TypeScript, Biome, Vitest (305 tests). CI runs lint, typecheck, tests, a timetable-freshness check and the web build. More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Strict TypeScript, Biome, Vitest (331 tests). CI runs lint, typecheck, tests, a timetable-freshness check and the web build on every branch push, and the simulations when the engine or the timetable changes. More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What was hard
 
@@ -70,14 +70,15 @@ Strict TypeScript, Biome, Vitest (305 tests). CI runs lint, typecheck, tests, a 
 | `pnpm sim` | Questions needed to find the hider's station, and which kinds a strong seeker uses (`docs/question-balance.md`) |
 | `pnpm sim:endgame` | How long the street search takes, with and without on-foot questions (`docs/endgame-balance.md`) |
 | `pnpm sim:match` | Whole rounds, bot seeker against bot hider, per difficulty: station time, endgame share, score, cards and curse costs (`docs/match-balance.md`) |
-| `pnpm sim:hide` | Paced You hide scenarios against the bot seeker, including platform waiting and never locking a spot |
+| `pnpm sim:hide` | Paced You hide scenarios against the bot seeker, including platform waiting and never locking a spot (`-- --station-only` for rounds without Street View) |
 | `pnpm metrics` | Playtest numbers from the server's match logs, in the shape `sim:match` prints |
 | `pnpm data:build` | Rebuild the dataset from cached MTA downloads (`--refresh` re-downloads, `--date=YYYY-MM-DD` re-pins) |
 | `pnpm data:check` | How far away the pinned service day is |
 | `pnpm data:hardness` | Rebuild the `/hardest` table; run after a re-pin |
+| `pnpm rename "<New Name>"` | Rename the game in one step: the name constant, package scope, storage keys (with a one-time migration), docs and the link-preview image, then a list of what's left outside the repo. `--dry-run` lists the changes. The daily's seed doesn't change |
 | `pnpm --filter @stand-clear/data build-landmarks` | Rebuild the landmarks from OpenStreetMap and NYC Open Data |
 
-The game is at `/play`: `/play?daily`, `/play?practice&difficulty=easy|normal|hard`, `/play?hide&difficulty=…`, and `/play?replay` for the last daily's replay in this browser. A round survives a refresh, a dropped connection and a server restart: the browser keeps a session token and the server holds the round for 3 minutes, with its clock running.
+The game is at `/play`: `/play?daily`, `/play?practice&difficulty=easy|normal|hard`, `/play?hide&difficulty=…`, `/play?replay` for the last daily's replay in this browser, and `/play?replay=yesterday` for yesterday's daily played by the bot (it works on a phone). A round survives a refresh, a dropped connection and a server restart: the browser keeps a session token and the server holds the round for 3 minutes, with its clock running.
 
 ## Configuration
 
@@ -86,8 +87,10 @@ Server (`apps/server/.env.local` locally, gitignored; the host's secrets in prod
 | Variable | |
 |---|---|
 | `DAILY_SECRET` | Mixed into the daily's seed so nobody can compute the answer from the source. Optional locally; **required** when `NODE_ENV=production`, where the server refuses to start without it. |
+| `ALLOWED_ORIGINS` | The site's origins, comma-separated. Sockets from any other page are refused. Unset locally, so local and private-network pages may connect (a phone on the same Wi-Fi); **required** in production. |
 | `GOOGLE_STREETVIEW_SERVER_KEY` | Street View metadata (free) for hiding spots, exits and walks. Without it, bot rounds end at the station and a You hide hider can't come up. |
 | `GOOGLE_MAPS_BROWSER_KEY`, `STREETVIEW_SIGNING_SECRET` | Sign Street View Static photo URLs, so the unsigned quota can be zero. |
+| `STREET_ENDGAME=off` | End every round at the station even with keys: the switch for a day Google's quota runs out. |
 | `CLIENT_IP_HEADER` | The one forwarding header the proxy in front sets (`x-forwarded-for` behind Caddy, `fly-client-ip` on Fly). Unset, the per-address limits use the socket's address and ignore headers a client could forge. |
 | `PORT`, `SESSION_DB`, `MATCH_LOG_DIR` | Listening port (8787), the SQLite file for live sessions, and the match-log directory. |
 
@@ -96,7 +99,7 @@ Client (`apps/web/.env.local`, or the static host's settings):
 | Variable | |
 |---|---|
 | `VITE_GOOGLE_MAPS_API_KEY` | Browser key for the Google map and Street View. Unset, the client uses MapLibre. |
-| `VITE_MAP_PROVIDER=maplibre` | Force the free map even with a key, e.g. while working on the UI. |
+| `VITE_MAP_PROVIDER=maplibre` | Force the free map even with a key, e.g. while working on the UI. Rounds then end at the station. |
 | `VITE_SERVER_URL` | The server's `wss://` URL in production. |
 | `VITE_SITE_URL` | The site's origin, for the link-preview tags. |
 

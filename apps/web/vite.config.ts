@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
-import brand from "./src/brand.json";
+import brand from "./src/brand.json" with { type: "json" };
 
 /**
  * MapLibre's worker (imported with `?url` in MapView.tsx) is an ES module that imports

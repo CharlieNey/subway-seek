@@ -56,7 +56,7 @@ Build variables, for production and preview:
 | `VITE_SITE_URL` | the site's origin, no trailing slash. It becomes the absolute `og:url` and `og:image` in `index.html`, so link previews can fetch `/og.png`. Unset, the build uses `http://localhost:5173` |
 | `NODE_VERSION` | `22` |
 
-The dataset (5 MB) is imported with a content hash into `assets/`, so browsers cache it for a year and fetch it again only when it changes, compressed to about 600 KB. `apps/web/public/terms.html` is served as-is at `/terms.html`, and so are the favicon, `apple-touch-icon.png` and `og.png` (the link-preview card; `apps/web/scripts/og/README.md` says how to regenerate it). Every link gets the same card, since the SPA serves one `index.html` for all of them.
+The dataset (5 MB) is imported with a content hash into `assets/`, so browsers cache it for a year and fetch it again only when it changes, compressed to about 600 KB. `apps/web/terms.html` is built as a second Vite page and served at `/terms.html`; `public/` holds the favicon, `apple-touch-icon.png` and `og.png` (the link-preview card; `apps/web/scripts/og/README.md` says how to regenerate it). Every link gets the same card, since the SPA serves one `index.html` for all of them.
 
 `pnpm --filter @stand-clear/web build` locally produces `apps/web/dist` for a check before pushing.
 

@@ -1,6 +1,6 @@
 # Proposal 1: a public demo that needs no Google keys
 
-*Proposed 2026-11-20, for Charlie's review. Nothing built.*
+*Proposed 2026-11-20, for Charlie's review. **Built 2026-11-21** (brief W25), with option (a) for You hide. It grew one step: the same station-only round is the automatic fallback when Google refuses mid-round or the day's quota is spent, so it isn't only a demo mode. What was built, and why, is in DESIGN.md (Phase 3, Fallback; decision log, 2026-11-21). The bot's station-by-station hunt and its `sim:hide --station-only` result are in `docs/hider-bot.md`.*
 
 ## The idea
 

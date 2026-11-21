@@ -1,6 +1,6 @@
 # Launch checklist
 
-The blocking items from the launch-prep review of 2026-10-06, what's done, and what still needs a hand. Tick as you go.
+The blocking items from the launch-prep review of 2026-10-06, what's done, and what still needs a hand. Tick as you go. The ordered path, with an undo for each step, is [`GO-PUBLIC.md`](GO-PUBLIC.md); launch-post material is in [`launch/`](launch/).
 
 ## Hosting
 
@@ -8,7 +8,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] `apps/web/public/_headers` for Cloudflare Pages; `vercel.json` for Vercel (build, SPA rewrite, immutable hashed assets, security headers).
 - [x] `docs/DEPLOY-PLAN.md` (hosts compared, costs, secrets, key restrictions, quotas, ordered steps) and `docs/DEPLOY.md` (runbook: deploys, re-pin routine, smoke test, rollback). 2026-11-20.
 - [ ] Fly: account, app, volume, secrets, first deploy (`DEPLOY-PLAN.md`, steps 1–3).
-- [ ] Cloudflare Pages: connect the repo; set `VITE_SERVER_URL`, `VITE_GOOGLE_MAPS_API_KEY`, `VITE_SITE_URL`, `NODE_VERSION`.
+- [ ] Cloudflare Pages: connect the repo; set `VITE_SERVER_URL`, `VITE_SITE_URL`, `NODE_VERSION`, and `VITE_GOOGLE_MAPS_API_KEY` unless the site goes up keyless. `ALLOWED_ORIGINS` on the server must match the site's origin.
 - [ ] Retire the earlier AWS setup: the repository's AWS secrets, and the role, ECR repository and instance profile in that account (`DEPLOY-PLAN.md`, Retire the old setup).
 - [ ] Optional: a domain, and the server's `wss://` URL behind it.
 
@@ -23,7 +23,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 
 ## Terms, attribution and privacy
 
-- [x] `apps/web/public/terms.html`: what the game is, data and attribution (MTA, Google with the required links, OpenStreetMap, NYC Parks), privacy (browser storage, server match logs, Google's own requests, no analytics or cookies), sharing, fair play.
+- [x] `apps/web/terms.html` (a Vite page since 2026-11-21, fonts self-hosted): what the game is, data and attribution (MTA, Google with the required links, OpenStreetMap, NYC Parks), privacy (browser storage, server match logs, Google's own requests, no analytics or cookies), sharing, fair play.
 - [ ] **Put a contact address in** (search the file for `CONTACT-ADDRESS`).
 - [x] Linked from the homepage footer.
 - [ ] If the game is ever monetised or gets accounts, have a lawyer read the page first.
@@ -38,7 +38,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] S4 bot-vs-bot balance run; deck mix and curse prices set from it (2026-10-07, `docs/match-balance.md`).
 - [x] The share text ends with a link carrying the daily's number and the sharer's minutes, for the "a friend found…" band (2026-10-06).
 - [x] Open Graph title, description and card image, favicon and touch icon; `VITE_SITE_URL` makes the URLs absolute (2026-10-07).
-- [ ] Name check: trademark and app-store search for "Stand Clear" before buying the domain.
+- [ ] Name check: trademark and app-store search for the name before buying the domain, by hand (`GO-PUBLIC.md`, step 1.2, which says why "Subway" needs care).
 - [x] Limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; a refused connection shows the server's reason (2026-10-07).
 - [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the instance's volume.
 - [ ] Play a full daily, practice seeking and You hide on the deployed site, on Chrome, Safari and Firefox.

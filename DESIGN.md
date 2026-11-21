@@ -17,6 +17,7 @@ Two layers of deduction make it work online:
 
 - **v1: 1v1.** One hider, one seeker, then swap. Longest hide wins. **Ties stand in v1**; an overtime round is in the parking lot.
 - **Platform:** desktop browser first (map + Street View + board side by side); responsive phone layout later. Below 860 px, `/play` shows a computer notice before loading or connecting the game: 380 px for the board plus at least 480 px for the map. Back to the homepage is the main action; a quiet Try anyway opens the desktop layout, preserving the chosen mode and the escape on refresh. The homepage gives the same warning and escape. Resizing an open round keeps its game mounted and its clock running.
+  - **Phones today** (2026-11-21): replays open below 860 px, the map stacked over the log, and the homepage's phone block offers yesterday's daily replayed by the bot (25 s), the hardest stations, and a link to copy for a computer. A round still shows the notice. What a playable phone round needs: Phones (proposed), under Look and motion.
 - Build around **two sides (hider / seekers), each with 1+ players**. Every later format is then a config change:
   - 1 hider vs 2 seekers: the show's format; one seeker rides while the other studies photos
   - 2v2 duos: pairs take turns hiding
@@ -58,7 +59,7 @@ Two layers of deduction make it work online:
 - **Searching:** the map frames the 400 m around the station the seeker came up at, never the hider's real zone, and shades where the hider could still be. Everywhere you walk or stand counts as searched. Two **on-foot questions** about the exact spot (street radar 50 / 100 / 200 m, walking hotter or colder) cost +3 min each on a 5-min cooldown. Rules and tuning: `docs/endgame-balance.md`.
 - The **hider** gets an alert, "Seeker is in your zone." The **seeker gets nothing**, and nothing in the seeker's UI changes when the hider freezes, so it can't leak.
 - **Seeing and catching:** a walk that passes within **40 m** of the hider stops there and shows their marker. The **catch** is within **25 m**, by clicking the marker while standing still. The target is distance **along the street/panorama graph** (no catching through a wall or across an elevated track); the solo game measures straight-line until the curated zones exist. The marker is only sent to the seeker's client within 40 m.
-- **Fallback:** if Street View fails to load, the round falls back to the map-pin endgame (M3).
+- **Fallback:** without Street View the round **ends at the station**, on the free map: reaching the hider's station is the find. That covers a build with no key, a server with no key or `STREET_ENDGAME=off` (the launch-day switch), and Google refusing mid-round (an auth failure, the quota spent, the library failing to load). *Built 2026-11-21 (`docs/proposals/1-demo-without-google.md`).* In such a round there's no spot, photos are refused, and Tourist and Fog, which act on the street, can't be played; a You-hide hider stays below at their station. The map-pin endgame (M3) is not built.
 
 **Scoring.**
 - Seeking ends at **2 game-hours elapsed**, or at the catch.
@@ -873,7 +874,7 @@ What the game shows while it gets ready, and when something breaks. Mocks: the D
   - **Connection lost mid-round:** the round pauses on the server. The clock tile reads "Paused", trains stop, and the panel dims under an ink express band, "Connection lost · reconnecting · Try 2 of 5". Built 2026-10-06 on the session token (Disconnects). *Solo today:* the clock runs on and trains keep moving, and the band says "The clock keeps running, and the server keeps your round for 3 minutes."
   - **The other player dropped:** the clock pauses for both players. The 3-minute grace period is an 18-tile timer, one tile per 10 s, and the panel says what happens when it runs out: "If they don't come back in time, you win the round."
   - **The map didn't load:** the map pane becomes a plain tile field with the plaque. The round carries on, because the departure boards and questions don't need the map. The "Following you" caption reads "No map".
-  - **Street View didn't load:** the pane keeps its place, with a dark tile field and Try again. The walk still counted. If it keeps failing, the round falls back to the map-pin endgame, which isn't designed yet. *Solo today: the plaque leaves out the fallback line, since there's no map-pin endgame to fall back to.*
+  - **Street View didn't load:** the pane keeps its place, with a dark tile field and Try again. The walk still counted. If it keeps failing, the round falls back to the map-pin endgame, which isn't designed yet. *Solo today (2026-11-21): a seeker's plaque offers "End at the station", which switches the round to station-only on the free map (Phase 3, Fallback).*
   - **Something in the page breaks** (a thrown error, such as Google's script failing inside Street View). *Built 2026-10-06:* Street View and the map each catch their own and show the plaques above, with Try again and Reload the map, and the round carries on. Anything else shows a whole-page plaque, "This page stopped working", whose safe line says the round is kept on the server, with Reload.
 - **Under the clock is nothing** here too (Interaction): the mocks' "clock starts soon" and "at 10:36" are left out. The blank tile and "Paused" say it.
 - **Proposed 2026-10-06, from building the states** (for Charlie's review; built this way meanwhile):
@@ -967,6 +968,18 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 - [x] **Veto needs a window, and the window must not leak the hand.** Decided 2026-10-06: every station question gets the same 1 game-min (10 s real) answer window, whether or not the hider can use it, and in solo rounds too. The answer goes out when the window ends. The hider screens and the seeker's "Asked" panel are mocked this way. Built 2026-10-06.
 - [ ] **Replay pace.** Uniform compression keeps rule 1, but squeezing a 2-hour round into 25 s runs trains at about 290× real-world speed. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
 - [x] **Does the seeker see the hider's hand size?** No, decided 2026-10-06. It would leak the same way as the veto window. The seeker sees only card plays that affect them. The solo client's "The hider holds N cards · played M" row is gone from both the view the server sends and the panel (2026-10-06).
+### Phones (proposed)
+
+*Built 2026-11-21 (brief W25): the replay on a phone.* Below 860 px a replay with no round behind it (yesterday's daily, or your own kept one) stacks the map (44% of the height) over the panel. The bar drops Close, since the foot has Home, so the scrubber keeps its phase labels; the foot reads "Copy link for a computer" and Home. `GET /replay/yesterday` plays yesterday's daily with the bot as the seeker, at the station only, once per date; its log, legend and map label say Seeker, not You. `/hardest` was checked at 390 px and needed nothing.
+
+*Proposed, not built: a round on a phone.* What it would take, in order of size:
+- **Stacked live layout:** the map on top and the panel under it, as the replay does, with the clock and the three numbers pinned in a strip between them.
+- **Board and Ask as bottom sheets** over the map's lower half, one at a time, with the tab row as the sheet's handle. The departure board's rows are already whole-row buttons; they need 44 px rows.
+- **Touch on the map:** tap a station for its tooltip and route tiles, tap again to travel there; the map's hover states (question shapes on hover) become press-and-hold.
+- **Street View:** none below 860 px, or a full-screen toggle that hides the map, since Google's terms keep Street View beside a Google map only. Until then a phone round ends at the station, which the fallback already supports.
+- **Length:** a round's seek is up to two game-hours, 20 real minutes at 6×; the daily played on 2026-11-21 took 56 game-min, about 9 real minutes. Phone sessions are short and get interrupted; the 3-minute grace covers a lock screen but not a call. Either keep a solo round on the server until midnight (Open questions, "A drop pauses the daily") or offer a 12× phone clock with the same game-time scores.
+- **Sound and the keyboard:** the printed keys go; the three sounds stay.
+
 
 ## Open questions & risks
 
@@ -981,6 +994,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 - [ ] **Naming / IP:** don't use "Jet Lag" or MTA logos. Attribute OSM and MTA data.
 - [ ] **Can seekers split up?** Only matters for 1v2+. Strong in the endgame — maybe require them to ask questions together.
 - [ ] **Playtesters** — Charlie is sorting this out.
+- [ ] **Seeker levels when the round ends at the station** (2026-11-21). The bot's Easy, Normal and Hard differ only in when the street sweep starts, so in a station-only round they play the same (`pnpm sim:hide -- --station-only`: 52 of 52 caught at each level). A level that means something without Street View would need another knob, such as the minimum information a question must carry.
 
 ## Parking lot
 
@@ -1051,6 +1065,22 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-21 | The game's new name is **Subway Seek**, applied with `pnpm rename "Subway Seek"` <!-- keep-name --> | Charlie chose it (1 am, 2026-11-21); another site already uses the old name. "Stand clear of the closing doors" stays where it is the announcement <!-- keep-name --> |
+| 2026-11-21 | The name lives in `apps/web/src/brand.json` (`name`, `slug`, `formerSlugs`); pages read it through `brand.ts` and `%VITE_GAME_NAME%`; `pnpm rename` (`scripts/rename.ts`) rewrites it with the package scope, the Fly app, the docs and the link preview, and prints the steps outside the repo | Brief W25: renaming should be one step. Tested on throwaway copies as "Hidden Stop", then "Step Lively" on top: lint, typecheck and 331 tests passed after each |
+| 2026-11-21 | Browser storage keys move to `<slug>:<name>`, with a one-time migration of the four old `standClear.*` keys and any key under a former slug; a key already under the new name wins | Brief W25 ("yes, with a one-time migration"). Nobody loses a streak across a rename |
+| 2026-11-21 | The daily seed stays `stand-clear-daily\|` through any rename | Changing it changes every day's station; it's invisible to players |
+| 2026-11-21 | The terms page is a Vite page with its fonts bundled from `@fontsource`; it loads nothing from Google | Its own privacy text said so; the old page fetched Google Fonts (w9 review) |
+| 2026-11-21 | The WebSocket upgrade checks Origin against `ALLOWED_ORIGINS` (production won't start without it; dev allows local and private-network origins; no Origin header is allowed, the rate limits cover scripts); a refusal is a 401 | w9 review: another site's page could open rounds |
+| 2026-11-21 | 40 messages per session in any 10 s; past that the server closes with 4004 and the client waits 10 s | w9 review: no general message limit |
+| 2026-11-21 | The session token travels as a second WebSocket subprotocol, `session.<token>`, not in the URL | w9 review: URLs end up in logs |
+| 2026-11-21 | Without Street View a round ends at the station (`SoloRound.stationOnly`): at creation when the server has no key or `STREET_ENDGAME=off`, when the client asks (`street=off`), or mid-round by `streetOff` when Google refuses. No spot, no photos, no Tourist or Fog | Proposal 1; the market research names the Google quota as the launch-day risk |
+| 2026-11-21 | You hide without Google: the hider freezes at their station (option a) and the seeker finds them by standing in it; switching is allowed only while still underground | Proposal 1's simplest option; no exit choice to make without panoramas |
+| 2026-11-21 | The bot hunts station by station when there's no spot, remembering stations it stood in without the round ending | Without it the bot caught 26 of 52; with it 52 of 52 at each level (`pnpm sim:hide -- --station-only --rounds 52`) |
+| 2026-11-21 | The client turns the street off for a keyless or MapLibre build, a refusal remembered until Google's midnight-Pacific reset, a refusal on the page (`gm_authFailure`, Google's error box, the library failing), and replays; the map is rebuilt as MapLibre and photos are hidden | Google's terms: no Street View images beside a non-Google map |
+| 2026-11-21 | Replays use the free map on every screen | Saves a billed map load per replay; replays keep no Street View positions |
+| 2026-11-21 | Phones get yesterday's daily replayed by the bot (`GET /replay/yesterday`, `/play?replay=yesterday`) and replays stacked below 860 px; rounds keep the computer notice. A playable phone round is a proposal (Phones) | Most launch traffic will be on phones (brief W25); W14 named the 25-second replay |
+| 2026-11-21 | Route tiles: hexagons in the route's colour with a Josefin Sans letter, flat for locals and on end for express, in place of the MTA's circle-and-diamond bullets (Look) | Brief W25: the route marks should be clearly the game's own; the MTA licenses its route indicators |
+| 2026-11-21 | CI runs on pushes to every branch; a second workflow runs the four simulations when the engine or timetable changes, and keeps their output | w9 review |
 | 2026-11-20 | *Proposed:* host the server on one Fly.io machine (`ewr`, 512 MB, 1 GB volume) and the client on Cloudflare Pages; the deploy workflow targets Fly and runs only by hand | The EC2 plan of 2026-10-07 used an AWS account someone else administers, and EC2 was blocked there. Fly is about $4 a month (waived under $5), doesn't cut idle WebSockets and has volumes; Pages has no bandwidth cap. Comparison and sources: `docs/DEPLOY-PLAN.md` |
 | 2026-11-20 | Re-pinned to Wednesday 2027-03-03 from the same fall 2026 feed (valid to 2027-05-15) | The 2026-12-02 pin was 12 days out. The weekday schedule is byte-identical, so only the date moved and no balance number can change |
 | 2026-11-12 | Easy ranking badges use Matching's deep green trim with glaze text | The 12 px caption had 3.64:1 contrast on the family green; the existing deep green keeps the palette and raises it to 7.03:1 |

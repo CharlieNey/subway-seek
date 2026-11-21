@@ -1,6 +1,6 @@
 # Deploy plan: personal accounts, about $4 a month
 
-*Written 2026-11-20. Prices were read from each vendor's own pricing or docs page that day; sources at the end. Nothing here has been run yet. The runbook for day-to-day operation is [`DEPLOY.md`](DEPLOY.md).*
+*Written 2026-11-20, updated 2026-11-21 (keyless deploys, `ALLOWED_ORIGINS`). Prices were read from each vendor's own pricing or docs page on the 20th; sources at the end. Nothing here has been run yet. The ordered go-public checklist, with an undo for each step, is [`GO-PUBLIC.md`](GO-PUBLIC.md). The runbook for day-to-day operation is [`DEPLOY.md`](DEPLOY.md).*
 
 ## The recommendation
 
@@ -54,12 +54,14 @@ For the client:
 | Where | Name | Value | Secret? |
 |---|---|---|---|
 | Fly (`fly secrets set`) | `DAILY_SECRET` | 32+ random bytes (`openssl rand -hex 32`). The server refuses to start in production without it. Changing it changes every future daily | Yes |
-| Fly | `GOOGLE_STREETVIEW_SERVER_KEY` | Server key (below) | Yes |
-| Fly | `GOOGLE_MAPS_BROWSER_KEY` | The browser key, used to sign photo URLs | Not secret (it ships to browsers), but set it with the signing secret |
-| Fly | `STREETVIEW_SIGNING_SECRET` | The project's URL signing secret | Yes |
+| Fly | `ALLOWED_ORIGINS` | The site's origin(s), comma-separated: `https://<project>.pages.dev`, your domain. The server refuses to start in production without it and closes sockets from any other page | No |
+| Fly | `GOOGLE_STREETVIEW_SERVER_KEY` | Server key (below). **Optional:** without it every round ends at the station (Phase 3, Fallback) | Yes |
+| Fly | `GOOGLE_MAPS_BROWSER_KEY` | The browser key, used to sign photo URLs. Optional, as above | Not secret (it ships to browsers), but set it with the signing secret |
+| Fly | `STREETVIEW_SIGNING_SECRET` | The project's URL signing secret. Optional, as above | Yes |
+| Fly (optional) | `STREET_ENDGAME` | `off` ends every round at the station even with keys: the switch for a day Google's quota runs out. Unset otherwise | No |
 | Fly (`fly.toml [env]`, already set) | `PORT`, `SESSION_DB`, `MATCH_LOG_DIR`, `CLIENT_IP_HEADER=fly-client-ip`, `NODE_OPTIONS` | As committed | No |
 | Cloudflare Pages (build env) | `VITE_SERVER_URL` | `wss://<fly app>.fly.dev` or your API host | No |
-| Cloudflare Pages | `VITE_GOOGLE_MAPS_API_KEY` | The browser key | No (referrer-restricted) |
+| Cloudflare Pages | `VITE_GOOGLE_MAPS_API_KEY` | The browser key. **Optional:** without it the site draws the free map (OpenFreeMap) and rounds end at the station | No (referrer-restricted) |
 | Cloudflare Pages | `VITE_SITE_URL` | `https://<project>.pages.dev` or your domain, no trailing slash | No |
 | Cloudflare Pages | `NODE_VERSION` | `22` | No |
 | GitHub (optional, for deploys from Actions) | `FLY_API_TOKEN` | `fly tokens create deploy` | Yes |
@@ -88,7 +90,7 @@ Google budgets only alert; they don't stop billing. What caps spend is a per-day
 | Street View Static API (images) | 10,000 | $7 | **300 images** | 0–2 photo questions |
 | Street View metadata | Unlimited, free | — | — | A few per round, server-side |
 
-At those quotas Google refuses further loads for the rest of the day instead of billing. The client handles a refused map: the round carries on without it (`DESIGN.md`, Loading, connecting and errors). A refused panorama is worse. Street View shows Try again and no fallback endgame exists, so the street search stalls until the quota resets. Raise the quotas as players turn up (past the free caps they cost money), and keep a $5 budget alert as a second signal.
+At those quotas Google refuses further loads for the rest of the day instead of billing. The client handles a refused map: the round carries on without it (`DESIGN.md`, Loading, connecting and errors). A refused panorama shows Try again and, since 2026-11-21, "End at the station", which finishes the round on the free map. If the quota runs out early in a day, `fly secrets set STREET_ENDGAME=off` ends every round at the station until you unset it (`fly secrets unset STREET_ENDGAME`). Raise the quotas as players turn up (past the free caps they cost money), and keep a $5 budget alert as a second signal.
 
 - **Fly:** cost is bounded by size. Keep one machine (`fly scale count 1`, never `--ha`), no autoscaling.
 - **Cloudflare:** the free plan has no overage billing.
@@ -98,8 +100,8 @@ At those quotas Google refuses further loads for the rest of the day instead of 
 From a laptop, in the repo root on `main`, after the branch is merged.
 
 **0. Before anything public**
-- Set `DAILY_SECRET`. Without it production won't boot.
-- Replace `CONTACT-ADDRESS` in `apps/web/public/terms.html` with a real address.
+- Set `DAILY_SECRET` and `ALLOWED_ORIGINS`. Without them production won't boot.
+- Replace `CONTACT-ADDRESS` in `apps/web/terms.html` with a real address.
 - Choose a license (`docs/proposals/license.md`).
 
 **1. Fly account and app**
@@ -114,9 +116,14 @@ fly volumes create match_logs --app stand-clear-server --region ewr --size 1
 ```sh
 fly secrets set --app stand-clear-server --stage \
   DAILY_SECRET="$(openssl rand -hex 32)" \
+  ALLOWED_ORIGINS="https://<project>.pages.dev"
+# Later, for the Street View endgame (step 5 first):
+fly secrets set --app stand-clear-server \
   GOOGLE_STREETVIEW_SERVER_KEY=… GOOGLE_MAPS_BROWSER_KEY=… STREETVIEW_SIGNING_SECRET=…
 ```
 Keep a copy of `DAILY_SECRET` in a password manager. Losing it changes every future daily.
+
+**A keyless first deploy works.** Without the three Google values the server logs that Street View is off and every round ends at the station; without `VITE_GOOGLE_MAPS_API_KEY` the site draws the free map. That is a complete game, and nothing on Google can bill. Add the keys once the quotas in step 5 are set.
 
 **3. First deploy**, one machine, built from the repo root:
 ```sh
@@ -130,7 +137,7 @@ curl https://stand-clear-server.fly.dev/daily       # today's start and reachabl
 **4. Cloudflare Pages**
 - In the dashboard: Workers & Pages, Create, Pages, Connect to Git, choose the repo.
 - Build command `pnpm --filter @stand-clear/web build`, output directory `apps/web/dist`, root directory empty (the repo root).
-- Add the four build variables above.
+- Add the four build variables above (three for a keyless site: leave out `VITE_GOOGLE_MAPS_API_KEY`).
 - Deploy, and open `https://<project>.pages.dev`.
 - If the Git build fails on pnpm, build locally and upload instead: `pnpm --filter @stand-clear/web build && npx wrangler pages deploy apps/web/dist --project-name <project>`.
 
@@ -142,7 +149,7 @@ Headers and caching come from `apps/web/public/_headers`. Unknown paths fall bac
 
 **7. Optional: deploys from GitHub.** Add the `FLY_API_TOKEN` secret (`gh secret set FLY_API_TOKEN`). `.github/workflows/deploy-server.yml` runs the checks and deploys when started by hand (Actions, Deploy server, Run workflow). To deploy on every push to `main`, uncomment the `push:` block in it.
 
-**8. Optional: a domain.** `fly certs add play-api.<domain>` with a CNAME to the app, a Pages custom domain for the site, then update `VITE_SERVER_URL`, `VITE_SITE_URL` and the browser key's referrers.
+**8. Optional: a domain.** `fly certs add play-api.<domain>` with a CNAME to the app, a Pages custom domain for the site, then update `VITE_SERVER_URL`, `VITE_SITE_URL`, `ALLOWED_ORIGINS` and the browser key's referrers.
 
 ## Retire the old setup
 

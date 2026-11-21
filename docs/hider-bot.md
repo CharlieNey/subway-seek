@@ -136,3 +136,30 @@ The S3 seeker never asks photos and has no visual perception: Fog and Signal los
 not slow it, and it never locates a hider from a photo panorama ID. Human photo screens
 are fixture-tested. M3 still needs human-seeker playtests of photos and visual curses.
 Move, Signal problems and Local only remain outside this deck (M6).
+
+## Rounds that end at the station (2026-11-21)
+
+Without Street View (no key, `STREET_ENDGAME=off`, the free map, or Google refusing
+mid-round) a round is `stationOnly` (DESIGN.md, Phase 3, Fallback). The bot hider still
+picks its station by the difficulty band and never comes up: there's no spot, photo
+questions are refused, and Tourist and Fog can't be played. A human hider stays below
+at their station (option (a) of `docs/proposals/1-demo-without-google.md`).
+
+The bot seeker has no street sweep to cross over to, so it hunts station by station:
+it asks whenever a question is ready, rides toward the candidates, and remembers each
+candidate it stood in without the round ending. Without that memory it caught 26 of
+the same 52 hides (DESIGN.md, decision log, 2026-11-21).
+
+`pnpm sim:hide -- --station-only --rounds 52`, seed 1, the 52 paced You-hide scenarios:
+
+| Seeker level | Crossover | Caught | Median seeking | Hider score |
+|---|---|---|---|---|
+| Easy | 4 | 52/52 | 34.5 min | 136 |
+| Normal | 3 | 52/52 | 34.5 min | 136 |
+| Hard | 2 | 52/52 | 34.5 min | 136 |
+
+Seeking time ran 4.5 to 66.5 game-min (quartiles 16 and 49.5): about 11 real minutes at
+the longest, at 6×, so a station-only round fits a phone sitting (DESIGN.md, Phones). The three levels
+play the same because they differ only in when the street sweep starts; that is an open
+question in DESIGN.md. 23 of the 52 had a train refused for too little time to change
+platforms, which the bot retries; none stalled a round.
