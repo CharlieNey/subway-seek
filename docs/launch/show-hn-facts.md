@@ -55,7 +55,7 @@ Plain, no "vibe coded", no name needed:
 
 - Charlie designed the rules, the balance method and the look (`DESIGN.md`, with a dated decision log). Claude Code wrote most of the code under Charlie's direction. The tests and the simulations are the check.
 - Strict TypeScript; Biome; Vitest. The engine is pure functions of (state, intent, time), so the server, the bots, the simulations and the tests run the same code.
-- Fill in on the day: the test count from `pnpm test` (331 on 2026-11-21).
+- Fill in on the day: the test count from `pnpm test` (333 on 2026-11-21).
 
 ## What's missing (say it before a commenter does)
 

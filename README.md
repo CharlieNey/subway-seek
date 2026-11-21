@@ -53,7 +53,7 @@ Without keys every round ends at the station: reaching the hider's station is th
 - `apps/server`: an authoritative WebSocket server. It holds the whole round, and every message a player gets passes through one visibility filter, so the seeker learns the hider's station only through answers.
 - `apps/web`: Vite and React. The client holds the same timetable and a clock sync, and derives every train's position itself; the server sends changes, not ticks.
 
-Strict TypeScript, Biome, Vitest (331 tests). CI runs lint, typecheck, tests, a timetable-freshness check and the web build on every branch push, and the simulations when the engine or the timetable changes. More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Strict TypeScript, Biome, Vitest (333 tests). CI runs lint, typecheck, tests, a timetable-freshness check and the web build on every branch push, and the simulations when the engine or the timetable changes. More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What was hard
 
