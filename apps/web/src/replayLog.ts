@@ -174,11 +174,24 @@ export function questionName(q: Question): string {
  * The whole log, in time order. `spotsLeft` says what share of the search circle an
  * on-foot answer left (0–1), when the caller can work it out.
  */
+/** "You board the F" as someone else's move: "Seeker boards the F". */
+function asSeeker(text: string): string {
+  return text
+    .replace(/^You board/, "Seeker boards")
+    .replace(/^You change/, "Seeker changes")
+    .replace(/^You get/, "Seeker gets")
+    .replace(/^You walk/, "Seeker walks")
+    .replace(/^You come/, "Seeker comes")
+    .replace(/^You go/, "Seeker goes");
+}
+
 export function replayLog(
   ds: Dataset,
   idx: Parameters<typeof answerWord>[2],
   view: SoloView,
   spotsLeft?: (answerAt: number) => number | null,
+  /** The seeker was the bot (yesterday's daily on a phone): its moves aren't "You". */
+  botSeeker = false,
 ): LogEvent[] {
   if (!view.replay || !view.result) return [];
   const end = view.result.at;
@@ -187,6 +200,8 @@ export function replayLog(
     ...movesOf(ds, view.replay.hider, "hider", end),
     ...movesOf(ds, view.replay.seeker, "you", end),
   ];
+  if (botSeeker && !hiding)
+    for (const e of out) if (e.mark.kind === "you") e.text = asSeeker(e.text);
   if (hiding) {
     for (const e of out) {
       if (e.mark.kind === "hider") {
@@ -201,13 +216,7 @@ export function replayLog(
           .replace(/^Hider reaches their/, "You reach your");
       } else if (e.mark.kind === "you") {
         e.mark = { kind: "hider" };
-        e.text = e.text
-          .replace(/^You board/, "Seeker boards")
-          .replace(/^You change/, "Seeker changes")
-          .replace(/^You get/, "Seeker gets")
-          .replace(/^You walk/, "Seeker walks")
-          .replace(/^You come/, "Seeker comes")
-          .replace(/^You go/, "Seeker goes");
+        e.text = asSeeker(e.text);
       }
     }
     if (view.lock)

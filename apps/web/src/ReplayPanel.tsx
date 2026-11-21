@@ -131,8 +131,8 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
         // A phone can watch but not play: the round needs a computer (DESIGN.md, Phones).
         <Wainscot>
           <CopyButton text={`${location.origin}/`} label="Copy link for a computer" ink />
-          <a className="sc-btn" href="/hardest">
-            Hardest stations
+          <a className="sc-btn" href="/">
+            Home
           </a>
         </Wainscot>
       ) : botReplay ? (

@@ -661,5 +661,5 @@ function showReplay(world: World, view: SoloView, bot: GameStore["botReplay"]) {
     sync: { gameTime: view.result?.at ?? 0, speed: 6, serverNow: Date.now(), paused: true },
     results: loadResults(),
   });
-  useReplay.getState().open(world, view, { street: false });
+  useReplay.getState().open(world, view, { street: false, botSeeker: bot !== null });
 }

@@ -70,6 +70,8 @@ function questionTitle(q: Question): string {
 
 /** The replay's key: the two players, and the questions as family squares. */
 function ReplayKey() {
+  // Terra is the other player, ink is you (map/layers.ts); yesterday's bot is neither.
+  const { humanHider, botSeeker } = useReplay();
   const dot = (bg: string) => (
     <i
       className="inline-block h-2.5 w-2.5 flex-none rounded-full"
@@ -81,8 +83,12 @@ function ReplayKey() {
   );
   return (
     <div className="pointer-events-auto absolute top-3 left-3 z-10 flex flex-col gap-1 bg-glaze-hi px-2.5 py-[7px] text-[12px] text-ink-2 shadow-[inset_0_0_0_1px_var(--color-grout)] [&>span]:flex [&>span]:items-center [&>span]:gap-[7px]">
-      <span>{dot("var(--color-terra)")} Hider</span>
-      <span>{dot("var(--color-ink)")} You</span>
+      <span>
+        {dot("var(--color-terra)")} {humanHider ? "Seeker" : "Hider"}
+      </span>
+      <span>
+        {dot("var(--color-ink)")} {botSeeker ? "Seeker" : "You"}
+      </span>
       <span>
         <FamilySquare family="radar" size={10} /> Questions, by family
       </span>

@@ -34,11 +34,13 @@ interface ReplayStore {
   /** When the hider reached their spot, for the zone ring (null if they never did). */
   settled: number | null;
   humanHider: boolean;
+  /** The seeker was the bot, not you (yesterday's daily): the map and log say "Seeker". */
+  botSeeker: boolean;
   /**
    * `street: false` for a round kept without its street positions (history.ts, keptView):
    * the on-foot answers' shares of the circle can't be worked out again.
    */
-  open: (world: World, view: SoloView, opts?: { street?: boolean }) => void;
+  open: (world: World, view: SoloView, opts?: { street?: boolean; botSeeker?: boolean }) => void;
   close: () => void;
   toggle: () => void;
   seek: (t: number) => void;
@@ -57,7 +59,8 @@ export const useReplay = create<ReplayStore>((set, get) => ({
   footStart: null,
   settled: null,
   humanHider: false,
-  open: (world, view, { street = true } = {}) => {
+  botSeeker: false,
+  open: (world, view, { street = true, botSeeker = false } = {}) => {
     if (!view.replay || !view.result) return;
     const start = view.hideStart;
     const end = view.result.at;
@@ -78,7 +81,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       );
       return left.length / Math.max(1, searchGrid(c).length);
     };
-    const log = replayLog(world.ds, world.idx, view, street ? spotsLeft : undefined);
+    const log = replayLog(world.ds, world.idx, view, street ? spotsLeft : undefined, botSeeker);
     const reached = log.find((e) => e.text === "Hider reaches their spot");
     set({
       active: true,
@@ -93,6 +96,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       footStart: view.stationFoundAt,
       settled: isHider(view) ? (view.lock?.at ?? null) : (reached?.t ?? null),
       humanHider: isHider(view),
+      botSeeker,
     });
   },
   close: () => set({ active: false, playing: false, hider: [], seeker: [], log: [] }),

@@ -128,4 +128,27 @@ describe("replay log", () => {
     expect(currentEvent(log, 2999)).toBe(1);
     expect(currentEvent(log, 0)).toBe(-1);
   });
+
+  it("says the bot's moves as the seeker's, not yours", () => {
+    const { trip, tr, platform } = ride();
+    const seeker: TrailEntry[] = [
+      { t: platform.since, state: platform },
+      {
+        t: platform.since + 10,
+        state: { kind: "train", trip, from: 0, to: 3, boardedFrom: platform },
+      },
+    ];
+    const end = (tr.arr[3] as number) + 60;
+    const view = {
+      result: { kind: "found", at: end },
+      replay: { hider: [], seeker },
+      asked: [],
+      cardEvents: [],
+    } as unknown as SoloView;
+    const yours = replayLog(ds, { ds } as TimetableIndex, view).map((e) => e.text);
+    const bots = replayLog(ds, { ds } as TimetableIndex, view, undefined, true).map((e) => e.text);
+    expect(yours[0]).toMatch(/^You board the /);
+    expect(bots[0]).toMatch(/^Seeker boards the /);
+    expect(bots[1]).toMatch(/^Seeker gets off at /);
+  });
 });

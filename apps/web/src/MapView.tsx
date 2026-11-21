@@ -362,7 +362,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       if (replay.active) {
         replayScene = replaySceneAt(world, replay, t, now);
         const head = (replay.humanHider ? replayScene.hiderPath : replayScene.seekerPath).at(-1);
-        me = head ? { position: head, label: "You" } : null;
+        me = head ? { position: head, label: replay.botSeeker ? "Seeker" : "You" } : null;
       } else {
         const { view, follow: following } = useGame.getState();
         if (view) {

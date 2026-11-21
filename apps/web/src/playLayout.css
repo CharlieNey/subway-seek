@@ -47,7 +47,16 @@
     height: 100dvh;
   }
   .sc-play-stack > .sc-play-map {
-    flex: 0 0 52%;
+    flex: 0 0 44%;
+  }
+  /* Close goes home, and the panel's foot has Home: give the scrubber the room. */
+  .sc-play-stack .sc-rp-bar {
+    left: 8px;
+    right: 52px;
+    gap: 8px;
+  }
+  .sc-play-stack .sc-rp-bar > .sc-btn {
+    display: none;
   }
   .sc-play-stack > aside {
     width: 100%;
