@@ -38,11 +38,13 @@ import {
   createSoloRound,
   firstWithin,
   type HidingSpot,
+  needsStreet,
   type SoloResult,
   type SoloRound,
   type SoloView,
   SPOT_PHOTOS_OPEN_SECONDS,
   soloView,
+  stationOnly,
 } from "./solo.ts";
 import type { TimetableIndex } from "./timetable.ts";
 import type { TrailEntry } from "./trail.ts";
@@ -56,6 +58,9 @@ import {
 } from "./transit.ts";
 
 export const KEEP_SECONDS = 60;
+/** What a hider hears trying to come up in a round that ends at the station. */
+export const STAY_BELOW =
+  "This round ends at the station, so you stay below. The seeker finds you by reaching it.";
 export type LockCause = "hideHere" | "photo" | "zone" | "latestExit";
 export interface DrawChoice {
   cards: CardId[];
@@ -90,7 +95,8 @@ export type HiderIntent =
   | { type: "keepCards"; revision: number; keep: number[]; discard: number[] }
   | { type: "playCard"; revision: number; card: number; payment: number[] }
   | { type: "redraw"; revision: number; card: number; payment: number[] }
-  | { type: "leaveHide" };
+  | { type: "leaveHide" }
+  | { type: "streetOff" };
 
 export function createHideRound(
   idx: TimetableIndex,
@@ -401,7 +407,8 @@ export function advanceHider(round: SoloRound, t: number, idx: TimetableIndex): 
       ? stairs.end
       : null;
   if (exitFreezeAt !== null && exitFreezeAt <= t) moments.add(exitFreezeAt);
-  if (!h.lock && latest <= t && hiderUnderground(round, latest, idx)) moments.add(latest);
+  if (!h.lock && !round.stationOnly && latest <= t && hiderUnderground(round, latest, idx))
+    moments.add(latest);
   for (const p of h.pending) {
     const at = round.asked[p.index]?.answerAt;
     if (at !== undefined && at <= t) moments.add(at);
@@ -475,6 +482,12 @@ export function applyHiderIntent(
   if (!h) return fail("This round has no human hider.");
   if (round.result) return fail("This round is over.");
   const ok = (r: SoloRound): SoloResult => ({ ok: true, round: r });
+  if (intent.type === "streetOff") {
+    if (round.stationOnly) return ok(round);
+    if (h.lock || !hiderUnderground(round, t, idx))
+      return fail("You're already on the street, so this round carries on.");
+    return ok(stationOnly(round));
+  }
   if (intent.type === "leaveHide")
     return ok(
       finishHider({
@@ -569,6 +582,8 @@ export function applyHiderIntent(
     )
       return fail("Choose the cards to pay for this play.");
     if (intent.type === "playCard") {
+      if (round.stationOnly && needsStreet(card))
+        return fail("That card needs the street, and this round ends at the station.");
       if (t < round.seekStart || round.curses.length || t < round.lastCurseAt + CURSE_GAP_SECONDS)
         return fail("Wait until another curse is ready.");
       const activated = activateCurse(round, card as CurseId, t, idx);
@@ -584,6 +599,10 @@ export function applyHiderIntent(
     };
     return ok(intent.type === "redraw" ? drawCards(round, 3, 3, t) : round);
   }
+  // At the station only, the hider stays below: nothing to come up to (DESIGN.md, Playable
+  // without Google).
+  if (round.stationOnly && (intent.type === "hideHere" || intent.type === "exit"))
+    return fail(STAY_BELOW);
   if (intent.type === "hideHere") {
     const s = resolve(h.transit, t, idx);
     const point = hiderPoint(round, t, idx);

@@ -25,6 +25,7 @@ import {
   advanceHider,
   finishHider,
   type HumanHider,
+  hiderUnderground,
   hideStatus,
   humanAnswer,
   queueHumanQuestion,
@@ -195,6 +196,14 @@ export interface SoloRound {
   cardEvents: CardEvent[];
   /** When the last curse was played, so they come spaced out. */
   lastCurseAt: number;
+  /**
+   * The round ends at the station: no Street View endgame and no photos. Set when the
+   * round starts without Google (no key, the free map, the server's switch), or by
+   * streetOff when Google refuses mid-round (DESIGN.md, Playable without Google). A
+   * seeker round has no spot then; in You hide the hider stays below and is found when
+   * the seeker stands in their station. Absent in rounds saved before 2026-11-21.
+   */
+  stationOnly?: boolean;
 }
 
 export type SoloIntent =
@@ -203,7 +212,8 @@ export type SoloIntent =
   | { type: "startThermometer" }
   | { type: "startFootThermometer" }
   | { type: "giveUp" }
-  | { type: "catch" };
+  | { type: "catch" }
+  | { type: "streetOff" };
 
 export function createSoloRound(
   idx: TimetableIndex,
@@ -349,6 +359,9 @@ export function advanceSolo(round: SoloRound, t: number, idx: TimetableIndex): S
     const at = Math.min(here.since, round.seekEnd);
     if (!round.spot && !round.human)
       return { ...round, stationFoundAt: at, result: { kind: "found", at } };
+    // You hide at the station only: the hider is below, so standing there finds them.
+    if (round.human && round.stationOnly && at >= round.seekStart)
+      return finishHider({ ...round, stationFoundAt: at, result: { kind: "found", at } });
     round = { ...round, stationFoundAt: at };
   }
   if (t >= round.seekEnd)
@@ -457,7 +470,8 @@ function hiderCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRoun
     hider: round.hider,
     spot: round.spot,
     candidates: candidates(round, idx, t).length,
-    hand: round.hand,
+    // At the station only there's no street to walk or blur: Tourist and Fog stay in hand.
+    hand: round.stationOnly ? round.hand.filter((c) => !needsStreet(c)) : round.hand,
     difficulty: round.difficulty,
   });
   if (!card) return round;
@@ -470,6 +484,11 @@ function hiderCurses(round: SoloRound, t: number, idx: TimetableIndex): SoloRoun
   };
 }
 
+/** Curses that act on the street (a walk, the Street View pane): off at the station only. */
+export function needsStreet(card: CardId): boolean {
+  return card === "tourist" || card === "fog";
+}
+
 /** Shared effect only: human and bot controllers choose and pay for their own cards. */
 export function activateCurse(
   round: SoloRound,
@@ -477,6 +496,7 @@ export function activateCurse(
   t: number,
   idx: TimetableIndex,
 ): SoloRound | null {
+  if (round.stationOnly && needsStreet(card)) return null;
   const seeker = resolve(round.seeker, t, idx);
   let curse: ActiveCurse;
   let next = round;
@@ -767,6 +787,8 @@ export function applySoloIntent(
           ? humanAnswer(round, { q, ctx, answer: false }, t, idx)
           : evaluateSpot(q, round.spot as HidingSpot, ctx);
       } else if (q.kind === "photo") {
+        if (round.stationOnly)
+          return { ok: false, error: "Photos are off this round: it ends at the station." };
         const pano = q.from === "exit" ? round.photoExit : round.spot?.pano;
         if (!pano && !round.human)
           return { ok: false, error: "No photo available for this round." };
@@ -795,6 +817,8 @@ export function applySoloIntent(
     }
     case "giveUp":
       return { ok: true, round: { ...round, result: { kind: "gaveUp", at: t } } };
+    case "streetOff":
+      return streetOff(round, t, idx);
     case "catch": {
       const d = metersToSpot(round, t, idx);
       if (d === null) return { ok: false, error: "There's no one to catch here." };
@@ -828,6 +852,32 @@ export function applySoloIntent(
       return { ok: true, round: advanceSolo({ ...round, seeker, seekerTrail }, t, idx) };
     }
   }
+}
+
+/**
+ * The round as one that ends at the station, from the start (the server, before the
+ * first view) or mid-round: Google refused the map or Street View, so there's no street
+ * search to play (DESIGN.md, Playable without Google). A seeker round loses its spot; one
+ * already at the hider's station ends now, found, its time counting to this moment.
+ */
+export function stationOnly(round: SoloRound): SoloRound {
+  if (round.stationOnly) return round;
+  return round.human
+    ? { ...round, stationOnly: true }
+    : { ...round, stationOnly: true, spot: null, footThermometer: null };
+}
+
+function streetOff(round: SoloRound, t: number, idx: TimetableIndex): SoloResult {
+  if (round.stationOnly) return { ok: true, round };
+  if (round.human) {
+    if (round.human.lock || !hiderUnderground(round, t, idx))
+      return { ok: false, error: "You're already on the street, so this round carries on." };
+    return { ok: true, round: stationOnly(round) };
+  }
+  const off = stationOnly(round);
+  if (off.stationFoundAt !== null)
+    return { ok: true, round: { ...off, result: { kind: "found", at: t } } };
+  return { ok: true, round: advanceSolo(off, t, idx) };
 }
 
 /** The stations still possible from the answers that have landed by t. */
@@ -906,6 +956,8 @@ export interface SoloView {
   replay: { hider: TrailEntry[]; seeker: TrailEntry[] } | null;
   /** Whether this round has a Street View endgame (a hiding spot to catch). */
   hasSpot: boolean;
+  /** The round ends at the station: Street View and photos are off (SoloRound.stationOnly). */
+  stationOnly: boolean;
   /** Exit-photo capability only; never exposes the exit panorama or a human's movement. */
   hasExitPhoto: boolean;
   /**
@@ -1021,8 +1073,9 @@ export function soloView(round: SoloRound, t: number, idx: TimetableIndex): Solo
     result: round.result,
     hider: revealed ? round.hider : null,
     replay: over ? { hider: revealed ? round.hiderTrail : [], seeker: round.seekerTrail } : null,
-    hasSpot: round.human ? true : round.spot !== null,
-    hasExitPhoto: round.human ? true : round.photoExit !== null,
+    hasSpot: round.human ? !round.stationOnly : round.spot !== null,
+    hasExitPhoto: round.human ? !round.stationOnly : round.photoExit !== null,
+    stationOnly: !!round.stationOnly,
     ...(round.human
       ? {
           mobileHider: true,

@@ -45,8 +45,16 @@ export const questionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("spotThermometer") }),
 ]);
 
-/** `difficulty` applies to practice rounds; the daily always plays Normal. */
-export type NewRoundIntent = { type: "newRound"; mode: RoundMode; difficulty?: Difficulty };
+/**
+ * `difficulty` applies to practice rounds; the daily always plays Normal. `street: false`
+ * asks for a round that ends at the station (the free map; SoloRound.stationOnly).
+ */
+export type NewRoundIntent = {
+  type: "newRound";
+  mode: RoundMode;
+  difficulty?: Difficulty;
+  street?: boolean;
+};
 /** Solo-only clock controls, handled by the server's session rather than the round. */
 export type ClockIntent =
   | { type: "pause" }
@@ -86,6 +94,8 @@ export const hiderIntentSchema = z.discriminatedUnion("type", [
     payment: z.array(index).max(6),
   }),
   z.object({ type: z.literal("leaveHide") }),
+  // Google refused the map or Street View: finish this round at the station.
+  z.object({ type: z.literal("streetOff") }),
 ]);
 
 export const clientIntentSchema = z.discriminatedUnion("type", [
@@ -99,6 +109,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
     type: z.literal("newRound"),
     mode: z.enum(["daily", "practice", "hide"]),
     difficulty: z.enum(["easy", "normal", "hard"]).optional(),
+    street: z.boolean().optional(),
   }),
   z.object({ type: z.literal("pause") }),
   z.object({ type: z.literal("resume") }),

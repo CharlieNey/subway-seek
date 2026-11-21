@@ -61,6 +61,7 @@ import {
   skipSolo,
   soloView,
   startClock,
+  stationOnly,
   WS_PROTOCOL,
 } from "@stand-clear/engine";
 import { type WebSocket, WebSocketServer } from "ws";
@@ -199,11 +200,31 @@ async function buildDaily(date: string): Promise<DailySetup> {
 async function newRound(
   mode: RoundMode,
   difficulty: Difficulty = "normal",
+  streetAsked = true,
 ): Promise<{ round: SoloRound; clock: GameClock; log: MatchLog }> {
   let round: SoloRound;
   // The exact hiding spot for the Street View endgame (same spot all day for the daily).
   let spot: HidingSpot | null;
-  if (mode === "daily") {
+  // A round on the free map ends at the station: asked by the client (no Google there),
+  // or forced by this server (no key, or STREET_ENDGAME=off on a heavy day).
+  const street = streetAsked && STREET_ENDGAME;
+  if (!street) {
+    if (mode === "daily") round = (await dailySetup(nyDate(new Date()))).round;
+    else if (mode === "hide") {
+      const hub = stationIndex(pickHubId(Math.random));
+      round = createHideRound(idx, {
+        hub,
+        hideStart: HIDE_START,
+        difficulty,
+        roundId: randomUUID(),
+      });
+    } else {
+      const hub = stationIndex(pickHubId(Math.random));
+      round = createSoloRound(idx, { hub, hideStart: HIDE_START, difficulty });
+    }
+    round = stationOnly(round);
+    spot = null;
+  } else if (mode === "daily") {
     const date = nyDate(new Date());
     let setup = await dailySetup(date);
     if (setup.spotPano === null && process.env.GOOGLE_STREETVIEW_SERVER_KEY) {
@@ -249,6 +270,7 @@ async function newRound(
     // The panorama ID, never its coordinates: Google's terms allow storing IDs, not their places.
     spot: spot?.pano ?? null,
     photoExit: round.photoExit !== null,
+    stationOnly: !!round.stationOnly,
     reachable: round.reachable.length,
     seekStart: round.seekStart,
   });
@@ -296,9 +318,9 @@ function logEnd(game: Game) {
 }
 
 /** A fresh game for a session: a new round with its own log, nothing sent yet. */
-async function newGame(mode: RoundMode, difficulty?: Difficulty) {
+async function newGame(mode: RoundMode, difficulty?: Difficulty, street = true) {
   return {
-    ...(await newRound(mode, difficulty)),
+    ...(await newRound(mode, difficulty, street)),
     cardsLogged: 0,
     stationLogged: false,
     shown: "",
@@ -401,15 +423,17 @@ if (!PHOTO_SIGNING)
 
 /**
  * Street steps are checked against Street View metadata (spot.ts, hideSpots.ts). Without
- * the server key, bot rounds are "find the station" only and a human hider can't come up.
+ * the server key, or with STREET_ENDGAME=off (the switch for a day when Google's quota
+ * runs low), every round ends at the station: SoloRound.stationOnly.
  */
 const STREET_VIEW = Boolean(process.env.GOOGLE_STREETVIEW_SERVER_KEY);
-if (!STREET_VIEW)
+const STREET_ENDGAME = STREET_VIEW && process.env.STREET_ENDGAME !== "off";
+if (!STREET_ENDGAME)
   console.warn(
-    "GOOGLE_STREETVIEW_SERVER_KEY not set — no street endgame, and in You hide the hider can't come up",
+    STREET_VIEW
+      ? "STREET_ENDGAME=off — every round ends at the station"
+      : "GOOGLE_STREETVIEW_SERVER_KEY not set — every round ends at the station",
   );
-const NO_STREET_VIEW =
-  "This server has no Street View key, so you can't come up. Stay below: the seeker can still find your station.";
 
 /** The seeker's view right now (the hider's marker shows only when they're close). */
 const viewNow = (game: Game, now: number) =>
@@ -428,7 +452,8 @@ function remember(session: Session<Game>, now: number): SoloView | HiderView {
   if (Number.isFinite(ms)) {
     game.answerTimer = setTimeout(() => queueTick(session), ms + 10);
   }
-  return withPhotoUrls(v, PHOTO_SIGNING);
+  // Off the Google map there are no Street View images on screen (Google's terms).
+  return withPhotoUrls(v, game.round.stationOnly ? null : PHOTO_SIGNING);
 }
 
 function sendState(session: Session<Game>, seq: number, now: number) {
@@ -611,8 +636,10 @@ wss.on("connection", async (socket, req) => {
           : "daily";
     const d = params.get("difficulty");
     const difficulty = d === "easy" || d === "normal" || d === "hard" ? d : undefined;
+    // The free map: the page has no Google, so the round ends at the station.
+    const street = params.get("street") !== "off";
     const game: Game = {
-      ...(await newGame(mode, difficulty)),
+      ...(await newGame(mode, difficulty, street)),
       lastSeq: -1,
       answerTimer: undefined,
     };
@@ -718,7 +745,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     }
     let fresh: Awaited<ReturnType<typeof newGame>>;
     try {
-      fresh = await newGame(intent.mode, intent.difficulty);
+      fresh = await newGame(intent.mode, intent.difficulty, intent.street !== false);
     } catch (err) {
       console.error("new round failed:", err);
       s.game.lastSeq = seq;
@@ -748,11 +775,9 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
   // Street View lookup, so walks are limited per session (limits.ts).
   let offStreet = false;
   let tooManyWalks = false;
-  const streetStep =
-    intent.type === "walkTo" || intent.type === "hideHere" || intent.type === "exit";
-  // Nothing to look up against: say so, rather than "try again" for ever.
-  const noStreetView = !STREET_VIEW && Boolean(s.game.round.human) && streetStep;
-  if (!noStreetView && (intent.type === "walkTo" || intent.type === "hideHere")) {
+  // At the station only, nothing to look up: the engine refuses a hider's street steps.
+  const atStation = Boolean(s.game.round.stationOnly);
+  if (!atStation && (intent.type === "walkTo" || intent.type === "hideHere")) {
     tooManyWalks = !walks.allow(s.token, Date.now());
     if (!tooManyWalks) {
       if (s.game.round.human) {
@@ -767,7 +792,7 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
   }
 
   if (
-    !noStreetView &&
+    !atStation &&
     intent.type === "exit" &&
     s.game.round.human &&
     s.game.clock.pausedAt === null
@@ -797,7 +822,6 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
       view: remember(s, now),
     });
   };
-  if (noStreetView) return reject(NO_STREET_VIEW);
   if (tooManyWalks) return reject("That's a lot of walking at once. Give it a moment.");
   if (offStreet)
     return reject(

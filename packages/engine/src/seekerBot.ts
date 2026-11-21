@@ -107,6 +107,11 @@ export interface SeekerMemory {
   closer: boolean;
   /** The station being left for the others, so a re-plan on the way doesn't turn back. */
   leaving: number | null;
+  /**
+   * With no street search (the round ends at the station), candidates stood in without
+   * the round ending: the hider isn't there.
+   */
+  visited: number[];
 }
 
 export function newSeekerMemory(): SeekerMemory {
@@ -117,6 +122,7 @@ export function newSeekerMemory(): SeekerMemory {
     backoffUntil: Number.NEGATIVE_INFINITY,
     closer: false,
     leaving: null,
+    visited: [],
   };
 }
 
@@ -702,9 +708,17 @@ export function seekerStep(
     }
   }
 
-  const cands = view.candidates;
   const here = s.kind === "walking" ? null : complexOf(ds, s);
-  if (cands.length > opts.endgameAt) {
+  // No street search (SoloRound.stationOnly): standing in the hider's station ends the
+  // round, so a candidate stood in is ruled out, and the hunt goes on station by station.
+  const stationHunt = !view.hasSpot;
+  if (stationHunt && here !== null && s.kind !== "train" && !mem.visited.includes(here))
+    mem.visited.push(here);
+  const unvisited = stationHunt
+    ? view.candidates.filter((c) => !mem.visited.includes(c))
+    : view.candidates;
+  const cands = unvisited.length > 0 ? unvisited : view.candidates;
+  if (stationHunt || cands.length > opts.endgameAt) {
     // The hunt: ask whenever something is ready (a walk doesn't stop you: questions are
     // asked from where it set off), ride toward the candidates between answers.
     mem.beliefs.clear();

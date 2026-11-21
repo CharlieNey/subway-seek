@@ -100,9 +100,10 @@ it("plays a hide through the socket, deduplicates intents and restores its role,
     );
     const skipped = await send(4, { type: "skip", to: "end" });
     expect(skipped.clock.gameTime).toBeLessThanOrEqual(view.seekStart);
-    // No Street View key here: a street step says so instead of "try again".
+    // No Street View key here, so the round ends at the station: the hider stays below.
+    expect(view.stationOnly).toBe(true);
     const exit = await send(5, { type: "exit", exit: 0 });
-    expect(exit.type === "rejected" && exit.error).toMatch(/no Street View key/);
+    expect(exit.type === "rejected" && exit.error).toMatch(/stay below/);
     const last = await send(6, { type: "pause" });
     socket?.close();
     await stop();

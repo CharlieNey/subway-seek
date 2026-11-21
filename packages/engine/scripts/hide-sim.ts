@@ -3,6 +3,10 @@
  * virtual server ticks at 6×, and the production three-real-second action floor.
  * Synthetic panoramas and straight streets: no Google calls or imagery perception.
  * This is an automated playcheck, not thirty real-time manual browser playtests.
+ *
+ * --station-only plays the round without Street View (SoloRound.stationOnly): the hider
+ * stays below at their station and the seeker's street walks are refused, as on a server
+ * with no key (DESIGN.md, Playable without Google).
  */
 import { writeFileSync } from "node:fs";
 import { loadDataset } from "@stand-clear/data/node";
@@ -34,6 +38,7 @@ import {
   seededRandom,
   setHiderExit,
   soloView,
+  stationOnly,
 } from "../src/index.ts";
 
 const arg = (name: string) => {
@@ -43,6 +48,7 @@ const arg = (name: string) => {
 const COUNT = Number(arg("--rounds") ?? 10);
 const SEED = Number(arg("--seed") ?? 1);
 const CROSSOVER = arg("--endgame-at");
+const STATION_ONLY = process.argv.includes("--station-only");
 const ds = loadDataset();
 const idx = buildIndex(ds);
 const geo = new Geometry(idx);
@@ -81,6 +87,7 @@ function play(n: number, difficulty: Difficulty): Run {
     random,
     roundId: `sim-${n}-${difficulty}`,
   });
+  if (STATION_ONLY) round = stationOnly(round);
   let driver = createSeekerDriver();
   const scenario = n % names.length;
   const angle = random() * 2 * Math.PI;
@@ -133,7 +140,7 @@ function play(n: number, difficulty: Difficulty): Run {
     const h = hiderView(round, t, idx);
     if (t >= hiderActAt + 18 && !h.draw) {
       const own = resolve(h.self, t, idx);
-      if (!exited && scenario !== 1 && own.kind === "platform") {
+      if (!exited && scenario !== 1 && !STATION_ONLY && own.kind === "platform") {
         human({ type: "exit", exit: defaultHiderExit(round, idx) }, t);
         exited = true;
       } else if (own.kind === "street" && !h.lock && h.zone && !walked) {
@@ -204,7 +211,11 @@ function play(n: number, difficulty: Difficulty): Run {
       if (Number.isFinite(lastBotAt)) minGap = Math.min(minGap, (t - lastBotAt) / 6);
       lastBotAt = t;
       actions++;
-      const out = applySoloIntent(round, step.intent, t, idx);
+      // Without Street View the server finds no panorama for a street walk.
+      const out =
+        STATION_ONLY && step.intent.type === "walkTo"
+          ? ({ ok: false, error: "No street panorama" } as const)
+          : applySoloIntent(round, step.intent, t, idx);
       if (out.ok) round = out.round;
       else {
         rejections[out.error] = (rejections[out.error] ?? 0) + 1;
@@ -222,7 +233,7 @@ function play(n: number, difficulty: Difficulty): Run {
   return {
     n,
     hub: hubId,
-    strategy: names[scenario] as string,
+    strategy: STATION_ONLY ? "station-only" : (names[scenario] as string),
     difficulty,
     crossover: opts.endgameAt,
     station: ds.complexes[round.hider]?.name ?? "?",
@@ -250,7 +261,7 @@ for (const d of levels)
   }
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
 console.log(
-  `Paced human-hide scenarios: ${COUNT} per level; seed ${SEED}; virtual 6× clock; synthetic panoramas.`,
+  `Paced human-hide scenarios: ${COUNT} per level; seed ${SEED}; virtual 6× clock; ${STATION_ONLY ? "station only (no Street View)" : "synthetic panoramas"}.`,
 );
 for (const d of levels) {
   const rs = runs.filter((r) => r.difficulty === d);

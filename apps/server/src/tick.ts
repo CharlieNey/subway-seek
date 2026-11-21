@@ -52,7 +52,12 @@ export async function tick<G extends TickGame>(
   game.round = advanceSolo(game.round, gameTime(game.clock, now), idx);
   if (game.round.human && game.round.human.station !== null && !game.round.result) {
     const exit = defaultHiderExit(game.round, idx);
-    if (!game.round.human.exits[exit] && now >= (game.exitRetryAt ?? 0)) {
+    // At the station only, the hider never comes up: no exit to look up.
+    if (
+      !game.round.stationOnly &&
+      !game.round.human.exits[exit] &&
+      now >= (game.exitRetryAt ?? 0)
+    ) {
       const spot = await deps.exitSpot(idx.ds, game.round.hider, exit);
       game.exitRetryAt = wallTime() + 10_000;
       if (spot) game.round = setHiderExit(game.round, exit, spot);
