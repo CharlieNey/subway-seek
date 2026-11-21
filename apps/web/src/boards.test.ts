@@ -1,5 +1,5 @@
-import { loadDataset } from "@stand-clear/data/node";
-import { buildIndex, departures, type TimetableIndex } from "@stand-clear/engine";
+import { loadDataset } from "@subway-seek/data/node";
+import { buildIndex, departures, type TimetableIndex } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { connectionsBoard, platformBoard } from "./boards.ts";
 

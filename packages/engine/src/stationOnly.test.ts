@@ -2,8 +2,8 @@
  * Rounds that end at the station (DESIGN.md, Playable without Google): no Street View,
  * no photos, and in You hide the hider stays below until the seeker reaches the station.
  */
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { seededRandom } from "./daily.ts";
 import {

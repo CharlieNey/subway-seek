@@ -1,6 +1,6 @@
 /** The compass on the street: "Facing N", the walk tiles, "Walking north". */
-import type { LatLon } from "@stand-clear/data";
-import { localMeters } from "@stand-clear/engine";
+import type { LatLon } from "@subway-seek/data";
+import { localMeters } from "@subway-seek/engine";
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
 const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"] as const;

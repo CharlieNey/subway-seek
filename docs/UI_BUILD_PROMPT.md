@@ -1,8 +1,8 @@
 *What this is: a prompt given to a coding agent (Claude Code) to build the player UI. It is kept as a record of how this was built.*
 
-# Prompt: build the Stand Clear UI
+# Prompt: build the Subway Seek UI
 
-You're building the player-facing UI of Stand Clear, an online hide-and-seek game on the real NYC subway timetable with a Google Street View endgame. The design is finished and decided; your job is to build it faithfully, in the order below, without inventing anything the design doesn't say. Where the design is silent, stop and ask Charlie rather than guess.
+You're building the player-facing UI of Subway Seek, an online hide-and-seek game on the real NYC subway timetable with a Google Street View endgame. The design is finished and decided; your job is to build it faithfully, in the order below, without inventing anything the design doesn't say. Where the design is silent, stop and ask Charlie rather than guess.
 
 ## Read first, in this order
 

@@ -11,7 +11,7 @@ import {
   type SeenQuestion,
   type SoloView,
   syncedGameTime,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useId, useRef, useState } from "react";
 import { type ChipState, hhmm, LOOK_WORD } from "./ask.ts";
 import { reducedMotion } from "./clearings.ts";

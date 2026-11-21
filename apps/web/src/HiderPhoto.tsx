@@ -1,5 +1,5 @@
 /** Hider-only photo preview. A decision keeps the original answer deadline. */
-import { type HiderView, photoCamera } from "@stand-clear/engine";
+import { type HiderView, photoCamera } from "@subway-seek/engine";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useGamePick } from "./game.ts";

@@ -1,6 +1,6 @@
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
-import type { SoloView, TimetableIndex, TrailEntry } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
+import type { SoloView, TimetableIndex, TrailEntry } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { displayName } from "./names.ts";
 import { currentEvent, movesOf, replayLog } from "./replayLog.ts";

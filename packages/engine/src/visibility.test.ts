@@ -5,8 +5,8 @@
  * seeker sees across whole rounds from every hub at every difficulty, the way the server
  * builds them, not on hand-picked states.
  */
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { hashString, seededRandom } from "./daily.ts";
 import { distanceMeters, offsetMeters } from "./geo.ts";

@@ -7,7 +7,7 @@
  * first is closed.
  */
 import { randomUUID } from "node:crypto";
-import { type GameClock, pauseClock, resumeClock } from "@stand-clear/engine";
+import { type GameClock, pauseClock, resumeClock } from "@subway-seek/engine";
 
 /** The part of a socket a session needs. */
 export interface Conn {

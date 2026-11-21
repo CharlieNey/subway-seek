@@ -8,7 +8,7 @@ import {
   resolve,
   type SoloView,
   ZONE_RADIUS_M,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import type { World } from "./game.ts";
 // Only the type from the layers module: importing its code would pull deck.gl into the
 // homepage, which shares this module through the live map.

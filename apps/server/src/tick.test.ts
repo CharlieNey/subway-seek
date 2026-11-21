@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   buildIndex,
   createHideRound,
@@ -10,7 +10,7 @@ import {
   setHiderExit,
   startClock,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { beforeAll, expect, it, vi } from "vitest";
 import { storeHideRound } from "./hidePersistence.ts";
 import { SessionStore } from "./sessions.ts";

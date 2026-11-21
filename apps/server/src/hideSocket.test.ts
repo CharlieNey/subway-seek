@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   buildIndex,
   type ClientIntent,
@@ -12,12 +12,12 @@ import {
   departures,
   type HiderView,
   type ServerMessage,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { expect, it } from "vitest";
 import { WebSocket } from "ws";
 
 it("plays a hide through the socket, deduplicates intents and restores its role, clock and seq", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "stand-clear-hide-socket-"));
+  const dir = mkdtempSync(join(tmpdir(), "subway-seek-hide-socket-"));
   const listener = createServer().listen(0, "127.0.0.1");
   await once(listener, "listening");
   const port = (listener.address() as { port: number }).port;

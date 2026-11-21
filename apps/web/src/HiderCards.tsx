@@ -6,7 +6,7 @@ import {
   resolve,
   type SoloView,
   TOURIST_WALK_M,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import type { World } from "./game.ts";
 import { isHider } from "./hide.ts";
 import { useLanded } from "./landing.ts";

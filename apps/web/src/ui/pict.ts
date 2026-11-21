@@ -1,4 +1,4 @@
-import type { LandmarkKind } from "@stand-clear/data";
+import type { LandmarkKind } from "@subway-seek/data";
 
 /** The six landmark kinds as 9 × 9 tile pictograms (DESIGN.md, Questions: landmarks are plaques). */
 const PICT: Record<LandmarkKind, string[]> = {

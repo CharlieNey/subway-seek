@@ -2,7 +2,7 @@
  * Daily challenge results, kept in this browser only (per-viewer convenience; nothing
  * else depends on it). Every access is guarded: storage can be blocked or cleared.
  */
-import type { Dataset, LatLon } from "@stand-clear/data";
+import type { Dataset, LatLon } from "@subway-seek/data";
 import type {
   Answer,
   Difficulty,
@@ -12,7 +12,7 @@ import type {
   SoloView,
   TrailEntry,
   Transit,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { isHider } from "./hide.ts";
 import { storageKey } from "./storage.ts";
 import { type Family, familyOf } from "./ui/family.ts";

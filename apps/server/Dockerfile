@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/server/package.json apps/server/
 COPY packages/data/package.json packages/data/
 COPY packages/engine/package.json packages/engine/
-RUN pnpm install --frozen-lockfile --filter @stand-clear/server...
+RUN pnpm install --frozen-lockfile --filter @subway-seek/server...
 
 COPY apps/server apps/server
 COPY packages/data packages/data
@@ -31,4 +31,4 @@ EXPOSE 8787
 RUN mkdir -p /data/logs && chown -R node:node /data
 VOLUME /data
 USER node
-CMD ["pnpm", "--filter", "@stand-clear/server", "start"]
+CMD ["pnpm", "--filter", "@subway-seek/server", "start"]

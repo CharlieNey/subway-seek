@@ -1,5 +1,5 @@
 /** Verified panorama boundaries for human hides and the view-only seeker's walk targets. */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import {
   distanceMeters,
   type HidingSpot,
@@ -12,7 +12,7 @@ import {
   streetPoint,
   type TimetableIndex,
   ZONE_RADIUS_M,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { nearestPano, officialSpot } from "./spot.ts";
 
 /** Reuse only this active round's verified exit; invalid intents do no external work. */

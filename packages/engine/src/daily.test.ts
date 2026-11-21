@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import { describe, expect, it } from "vitest";
 import { dailyNumber, dailyRandom, hashString, nyDate, seededRandom } from "./daily.ts";
 import { createSoloRound } from "./solo.ts";

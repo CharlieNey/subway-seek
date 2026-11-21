@@ -2,7 +2,7 @@
  * The Mosaic vocabulary as React components (DESIGN.md, Interaction; the Deck page, part
  * thirteen). One shape per role. Styles live in mosaic.css.
  */
-import type { LandmarkKind, Route } from "@stand-clear/data";
+import type { LandmarkKind, Route } from "@subway-seek/data";
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { cn } from "../cn.ts";
 import type { Family } from "./family.ts";

@@ -5,7 +5,7 @@
  * what's safe, and what to do.
  */
 
-import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@stand-clear/engine";
+import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { GAME_NAME } from "./brand.ts";
 import { type LinkScreen, LOST_TRIES, linkScreen, refused } from "./connection.ts";

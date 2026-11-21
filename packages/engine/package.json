@@ -1,5 +1,5 @@
 {
-  "name": "@stand-clear/engine",
+  "name": "@subway-seek/engine",
   "version": "0.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
@@ -15,7 +15,7 @@
     "sim:hide": "tsx scripts/hide-sim.ts"
   },
   "dependencies": {
-    "@stand-clear/data": "workspace:*",
+    "@subway-seek/data": "workspace:*",
     "zod": "^4.6.5"
   }
 }

@@ -3,7 +3,7 @@
  * at real size, laid out like the Deck page's part thirteen so the two can be compared by
  * screenshot.
  */
-import type { Route } from "@stand-clear/data";
+import type { Route } from "@subway-seek/data";
 import type { ReactNode } from "react";
 import { FAMILIES } from "./ui/family.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";

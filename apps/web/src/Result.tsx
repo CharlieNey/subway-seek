@@ -9,7 +9,7 @@ import {
   type Difficulty,
   questionBonusSeconds,
   type SoloView,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm, type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";

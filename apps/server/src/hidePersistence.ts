@@ -1,6 +1,6 @@
 /** Persist S3 by panorama IDs and interpolation recipes, never Google coordinates. */
-import type { Dataset } from "@stand-clear/data";
-import type { HidingSpot, SoloRound } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import type { HidingSpot, SoloRound } from "@subway-seek/engine";
 
 type Point = { lat: number; lon: number };
 type End = { pano: string } | Point;

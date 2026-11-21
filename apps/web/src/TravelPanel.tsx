@@ -16,7 +16,7 @@ import {
   streetPoint,
   type Walking,
   walkSeconds,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";

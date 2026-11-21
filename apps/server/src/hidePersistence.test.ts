@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   advanceSolo,
   applySoloIntent,
@@ -9,7 +9,7 @@ import {
   offsetMeters,
   type SoloRound,
   startClock,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { expect, it } from "vitest";
 import { restoreHideRound, storeHideRound } from "./hidePersistence.ts";
 import { deserializeGame, serializeGame } from "./store.ts";

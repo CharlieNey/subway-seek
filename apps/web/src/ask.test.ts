@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   ANSWER_WINDOW_SECONDS,
   applySoloIntent,
@@ -9,7 +9,7 @@ import {
   SPOT_PHOTOS_OPEN_SECONDS,
   soloView,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   askBlocker,

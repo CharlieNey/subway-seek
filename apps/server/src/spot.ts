@@ -7,8 +7,8 @@
  * Google's coordinates); panorama IDs may be stored, so the daily keeps those and looks
  * the coordinates up again for each round (spotFromPano).
  */
-import type { Dataset } from "@stand-clear/data";
-import { distanceMeters, type HidingSpot, offsetMeters, ZONE_RADIUS_M } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import { distanceMeters, type HidingSpot, offsetMeters, ZONE_RADIUS_M } from "@subway-seek/engine";
 
 const KEY = process.env.GOOGLE_STREETVIEW_SERVER_KEY;
 const ATTEMPTS = 8;

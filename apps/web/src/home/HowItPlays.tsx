@@ -3,8 +3,8 @@
  * drawn with the game's own lines, stations and shapes. The example round is the
  * design's: from Times Sq–42 St, the hider rides down to 14 St–Union Sq.
  */
-import type { LonLat } from "@stand-clear/engine";
-import { milesToMeters } from "@stand-clear/engine";
+import type { LonLat } from "@subway-seek/engine";
+import { milesToMeters } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { useGame, type World } from "../game.ts";
 import { ring } from "../map/shapes.ts";

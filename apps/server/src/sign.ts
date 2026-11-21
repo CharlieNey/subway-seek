@@ -12,7 +12,7 @@
  * Cloud console can go to 0 (docs/LAUNCH.md).
  */
 import { createHmac } from "node:crypto";
-import type { HiderView, Photo, SoloView } from "@stand-clear/engine";
+import type { HiderView, Photo, SoloView } from "@subway-seek/engine";
 
 /** Google's URL signing: the secret is URL-safe base64; so is the signature. */
 export function signUrl(url: string, secret: string): string {

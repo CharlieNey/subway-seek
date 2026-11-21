@@ -1,4 +1,4 @@
-import { syncedGameTime } from "@stand-clear/engine";
+import { syncedGameTime } from "@subway-seek/engine";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useGame } from "./game.ts";
 

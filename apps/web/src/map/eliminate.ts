@@ -7,7 +7,7 @@
  * 600–900 ms by count, so the whole thing is under 2 s. Motion is presentation: the view
  * has already changed, this only catches the screen up.
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import {
   type Answer,
   type AskContext,
@@ -18,7 +18,7 @@ import {
   nearestLandmark,
   type Question,
   TENTACLE_MILES,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { sideOfBisector } from "./shapes.ts";
 
 /** A square lifting from ink to outline. */

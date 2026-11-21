@@ -1,6 +1,6 @@
-import type { Dataset, LatLon } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
-import type { SoloView } from "@stand-clear/engine";
+import type { Dataset, LatLon } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
+import type { SoloView } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type DailyResult, dailyStats, keptView } from "./history.ts";
 

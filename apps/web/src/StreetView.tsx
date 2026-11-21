@@ -4,7 +4,7 @@ import {
   resolve,
   streetPoint,
   type Walking,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn.ts";
 import {

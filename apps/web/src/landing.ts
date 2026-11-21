@@ -5,7 +5,7 @@
  * rule 7): a second play queues behind the first. Only plays seen as they happen land; a
  * refresh shows the chip and the effect in place.
  */
-import { CARDS, type CardEvent, type SoloView, syncedGameTime } from "@stand-clear/engine";
+import { CARDS, type CardEvent, type SoloView, syncedGameTime } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { reducedMotion } from "./clearings.ts";

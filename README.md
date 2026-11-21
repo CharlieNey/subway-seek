@@ -1,4 +1,4 @@
-# Stand Clear
+# Subway Seek
 
 Hide and seek on the real New York subway timetable. A hider goes underground at 10:00 and gets off somewhere. You ride the real weekday timetable at 6× speed, ask questions that rule stations out, then come up and find them on the street in Google Street View. Or you hide, and a bot hunts you.
 
@@ -76,7 +76,7 @@ Strict TypeScript, Biome, Vitest (331 tests). CI runs lint, typecheck, tests, a 
 | `pnpm data:check` | How far away the pinned service day is |
 | `pnpm data:hardness` | Rebuild the `/hardest` table; run after a re-pin |
 | `pnpm rename "<New Name>"` | Rename the game in one step: the name constant, package scope, storage keys (with a one-time migration), docs and the link-preview image, then a list of what's left outside the repo. `--dry-run` lists the changes. The daily's seed doesn't change |
-| `pnpm --filter @stand-clear/data build-landmarks` | Rebuild the landmarks from OpenStreetMap and NYC Open Data |
+| `pnpm --filter @subway-seek/data build-landmarks` | Rebuild the landmarks from OpenStreetMap and NYC Open Data |
 
 The game is at `/play`: `/play?daily`, `/play?practice&difficulty=easy|normal|hard`, `/play?hide&difficulty=…`, `/play?replay` for the last daily's replay in this browser, and `/play?replay=yesterday` for yesterday's daily played by the bot (it works on a phone). A round survives a refresh, a dropped connection and a server restart: the browser keeps a session token and the server holds the round for 3 minutes, with its clock running.
 
@@ -111,8 +111,8 @@ Charlie designed the game, its rules, balance and look, and made the decisions r
 
 ## Credits
 
-- **Inspiration.** The format comes from the Hide + Seek seasons of [Jet Lag: The Game](https://en.wikipedia.org/wiki/Jet_Lag:_The_Game), the travel competition series by Wendover Productions. The question families, drawing cards on answers, Veto and Randomize, and curses paid for with cards follow its published home-game rules. The card text, curse names, art and look here are original, and Stand Clear is a fan project, not affiliated with or endorsed by Wendover Productions or Nebula.
-- **Timetable and stations:** the MTA's [subway GTFS feed](https://www.mta.info/developers), used under the [MTA data feed terms](https://www.mta.info/developers/terms-and-conditions), and the *MTA Subway Stations* and *MTA Subway Entrances and Exits* datasets on [data.ny.gov](https://data.ny.gov). Stand Clear is not licensed or endorsed by the MTA and uses no MTA logos.
+- **Inspiration.** The format comes from the Hide + Seek seasons of [Jet Lag: The Game](https://en.wikipedia.org/wiki/Jet_Lag:_The_Game), the travel competition series by Wendover Productions. The question families, drawing cards on answers, Veto and Randomize, and curses paid for with cards follow its published home-game rules. The card text, curse names, art and look here are original, and Subway Seek is a fan project, not affiliated with or endorsed by Wendover Productions or Nebula.
+- **Timetable and stations:** the MTA's [subway GTFS feed](https://www.mta.info/developers), used under the [MTA data feed terms](https://www.mta.info/developers/terms-and-conditions), and the *MTA Subway Stations* and *MTA Subway Entrances and Exits* datasets on [data.ny.gov](https://data.ny.gov). Subway Seek is not licensed or endorsed by the MTA and uses no MTA logos.
 - **Landmarks:** © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL) and NYC Parks open data.
 - **Maps:** Google Maps Platform in production; [OpenFreeMap](https://openfreemap.org) tiles, map data © OpenStreetMap contributors, in development.
 

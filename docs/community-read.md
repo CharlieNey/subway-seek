@@ -11,7 +11,7 @@ What the subreddit says about fan apps, online Hide and Seek and the rules, read
 - **"I built a free map companion"** (`1up530g`, 2026-07-06, ▲659): the best-received tool post. Free PWA, no accounts, 4-letter join code, OpenStreetMap data. Still got "is this vibe coded" ▲18 and "Another one 😭" ▲5.
 - **Worldboard's launch** (`1rffh7n`, 2026-02-26, ▲1126, 110 comments): "So, we built an online version of Hide & Seek" drew huge enthusiasm (335 "do you have a link???"), plus "The UI is so obviously made with Anthropic's Claude… you have an ethical responsibility to disclose that this is AI slop" ▲8 and "when Wendover wants to assert IP rights" ▲49. Their Early Access post (`1t0ux8t`, 2026-05-01) got ▲70; their 72-hour playtest had 650 players and 1,000 games. A commenter explains Street View's cost as the reason for the price.
 
-## The conversation Stand Clear belongs to
+## The conversation Subway Seek belongs to
 
 - **Season 20 is Hide and Seek Italy** (`1wjpp17`, 2026-09-18, ▲2721, 300 comments). ▲209: "I hope they've changed some of the rules - Hide and Seek UK was a bit of a flop because they've become so good at the format they've kinda broken the game." ▲339: "Wonder what they've done in terms of rules changes."
 - **"The game of Hide + Seek is fine, it's just that the seekers have gotten too good"** (`1qersrm`, 2026-01-16, ▲673, 129 comments): hider strategy "can't evolve much due to it being mostly down to luck"; the seekers' optimal strategy is found; the team said they'd revamp the question menu. Replies: a new meta will form whatever the menu (▲173); "every run is the same. Chop the map in halves… then look at Google maps for 1 hour" (▲15); time bonuses crowd out curses worth playing (▲21).

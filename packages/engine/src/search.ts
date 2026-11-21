@@ -4,7 +4,7 @@
  * of it that could still hold the hider: inside some possible station's zone, true to
  * every on-foot answer, and out of sight of everywhere they've walked.
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import { distanceMeters, localMeters, offsetMeters } from "./geo.ts";
 import {
   type Answer,

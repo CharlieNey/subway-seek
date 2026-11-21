@@ -18,7 +18,7 @@
  * Balance goals: no category is more than ~35% of either moving seeker's questions,
  * every category gets used, and pinning a station costs the hider ~60–80 bonus minutes.
  */
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   type AskContext,
   buildIndex,

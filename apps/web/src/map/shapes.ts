@@ -6,7 +6,7 @@
  * line to each landmark inside it. The shapes say what a question does, never how many
  * stations either answer would leave.
  */
-import type { Dataset, LandmarkKind } from "@stand-clear/data";
+import type { Dataset, LandmarkKind } from "@subway-seek/data";
 import {
   type Answer,
   type AskContext,
@@ -18,7 +18,7 @@ import {
   offsetMeters,
   type Question,
   TENTACLE_MILES,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { Delaunay } from "d3-delaunay";
 import { type Family, familyOf } from "../ui/family.ts";
 

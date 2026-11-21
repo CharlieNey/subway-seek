@@ -21,7 +21,7 @@
  * difficulty set to Easy after the hider is placed, which is the only thing Easy changes
  * at play time), and the difference in the seeker's time is the curse's measured cost.
  */
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   bonusSeconds,
   buildIndex,

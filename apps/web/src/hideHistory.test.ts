@@ -1,5 +1,5 @@
-import { loadDataset } from "@stand-clear/data/node";
-import { buildIndex, type HiderView, hiderView, type Transit } from "@stand-clear/engine";
+import { loadDataset } from "@subway-seek/data/node";
+import { buildIndex, type HiderView, hiderView, type Transit } from "@subway-seek/engine";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { GAME_NAME } from "./brand.ts";
 import { hideFixture } from "./hideFixtures.ts";

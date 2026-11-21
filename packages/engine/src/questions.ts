@@ -12,7 +12,7 @@
  * these is nearest you?") and photos. Each category has its own price and cooldown
  * (see QUESTION_RULES in solo.ts), so no single kind of question can carry a round.
  */
-import type { Dataset, LandmarkKind } from "@stand-clear/data";
+import type { Dataset, LandmarkKind } from "@subway-seek/data";
 import { distanceMeters, METERS_PER_MILE } from "./geo.ts";
 import {
   complexNearest,

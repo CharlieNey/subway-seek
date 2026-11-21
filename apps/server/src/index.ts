@@ -14,8 +14,8 @@ import { existsSync, mkdirSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatServiceTime } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
+import { formatServiceTime } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   advanceSolo,
   applyHiderIntent,
@@ -65,7 +65,7 @@ import {
   startClock,
   stationOnly,
   WS_PROTOCOL,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { type WebSocket, WebSocketServer } from "ws";
 import { restoreHideRound } from "./hidePersistence.ts";
 import { exitSpot, prepareHiderExit, seekerStreetTarget, verifyHideSpot } from "./hideSpots.ts";

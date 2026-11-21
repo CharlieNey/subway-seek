@@ -3,7 +3,7 @@
  * (DESIGN.md, Homepage): the tile wall, the stats, the hero's one door, and the clock to
  * the next daily. Kept pure, so they're tested without a page.
  */
-import { DAILY_EPOCH } from "@stand-clear/engine";
+import { DAILY_EPOCH } from "@subway-seek/engine";
 import { resumable, type StoredSession } from "../doors.ts";
 import type { DailyResult } from "../history.ts";
 import type { Family } from "../ui/family.ts";

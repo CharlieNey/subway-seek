@@ -2,7 +2,7 @@
  * The timing of a card landing on the seeker and of its effect (DESIGN.md, Motion › Curse
  * lands), as pure functions: the landing store and the components use them.
  */
-import type { CardEvent, CardId } from "@stand-clear/engine";
+import type { CardEvent, CardId } from "@subway-seek/engine";
 
 export const RISE_MS = 280;
 export const HOLD_MS = 1600;

@@ -1,4 +1,4 @@
-import { CLOSE_TOO_MANY_MESSAGES } from "@stand-clear/engine";
+import { CLOSE_TOO_MANY_MESSAGES } from "@subway-seek/engine";
 import { describe, expect, it } from "vitest";
 import {
   attemptFailed,
@@ -99,7 +99,7 @@ describe("the link to the server", () => {
 
 describe("a connection the server turned away", () => {
   it("waits a full minute and keeps the server's reason, instead of retrying like a blip", async () => {
-    const { CLOSE_FULL } = await import("@stand-clear/engine");
+    const { CLOSE_FULL } = await import("@subway-seek/engine");
     const first = attemptFailed({ kind: "idle" }, { code: CLOSE_FULL, opened: false }, 0, false);
     expect(first.kind).toBe("waiting");
     const close = { code: CLOSE_FULL, opened: false, reason: "The server is full right now." };

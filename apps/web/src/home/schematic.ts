@@ -3,7 +3,7 @@
  * from the timetable (no map tiles, so no map loads to pay for). A view is a box of
  * lon/lat that covers the canvas, like the mock's schematic.
  */
-import type { LonLat } from "@stand-clear/engine";
+import type { LonLat } from "@subway-seek/engine";
 import type { World } from "../game.ts";
 
 export interface View {

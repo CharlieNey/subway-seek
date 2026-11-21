@@ -1,4 +1,4 @@
-# Stand Clear — NYC Subway Hide & Seek
+# Subway Seek — NYC Subway Hide & Seek
 
 *Working title. Design + build plan, as of 2026-10-06. Revised after the Fable and Astra reviews — see the decision log at the end. Rules the game already enforces are documented in `docs/` (question prices, endgame, the bot's cards); this file is the design and the plan.*
 
@@ -11,7 +11,7 @@ Two layers of deduction make it work online:
 - **Map questions find the station.** They're answered automatically by the server, so they're instant and can't be lied about.
 - **Photos and Street View find the spot.** This is the human, GeoGuessr-like part, and it gives the show's endgame search an online equivalent.
 
-**Where it stands apart.** "Online Jet Lag Hide & Seek" already exists: Worldboard sells it on real timetables with a Street View endgame, for Europe, Japan and Taiwan, in 1–3 hour games (no US coverage as of 2026-10-06; see Prior art). Stand Clear's room is one city known deeply, a match that fits in 40 minutes, a daily everyone plays and shares, and craft: the Mosaic look, motion that follows the timetable, a bot that plays cards. Those are the things to protect when scope is tight.
+**Where it stands apart.** "Online Jet Lag Hide & Seek" already exists: Worldboard sells it on real timetables with a Street View endgame, for Europe, Japan and Taiwan, in 1–3 hour games (no US coverage as of 2026-10-06; see Prior art). Subway Seek's room is one city known deeply, a match that fits in 40 minutes, a daily everyone plays and shares, and craft: the Mosaic look, motion that follows the timetable, a bot that plays cards. Those are the things to protect when scope is tight.
 
 ## Format
 
@@ -324,7 +324,7 @@ Charlie is holding off on live playtests, so these come before M3. They make sol
 
 | # | Item | Done when |
 |---|---|---|
-| S1 ✅ | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result ("Stand Clear #12 · from Times Sq–42 St 🚇 / Found it in 41 min · 3 questions / 📡🗽🐙 / Hider score: 1 h 11 min"); practice rounds stay random; results history kept in the browser. *Done 2026-10-05: Daily #1 verified identical across connections; share text, stats and history unit-tested.* |
+| S1 ✅ | **Daily challenge** | Everyone gets the same bot-hidden station each day (seeded by date), same start and timetable; a shareable result ("Subway Seek #12 · from Times Sq–42 St 🚇 / Found it in 41 min · 3 questions / 📡🗽🐙 / Hider score: 1 h 11 min"); practice rounds stay random; results history kept in the browser. *Done 2026-10-05: Daily #1 verified identical across connections; share text, stats and history unit-tested.* |
 | S2 ✅ | **End-of-round replay** | After a round, an animated map replays the bot's hidden route and your route side by side, like the show's map graphics; makes the daily share worth clicking. *Done 2026-10-05: one 10:00 → end timeline in ~25 s, trains rewind with it, question markers appear when asked, play/pause/scrub. Visual polish → design agent.* |
 | S3 ✅ | **You hide, a bot seeks** | Built 2026-10-08: played 20-min hide, paced view-only seeker, verified Street View lock/freeze, private answer and hand decisions, hider result, both replay trails and separate hide history. 30 initial + 156 expanded automated paced scenarios and live Google lock/catch checks; full manual pacing pass remains before launch. `docs/match-balance.md`. |
 | S4 ◐ | **Bot vs bot balance sim** | The S3 seeker vs a bot hider at full speed, with real travel time: distributions of station-finding time, endgame share and hider score, to tune the hide time, cooldown and prices without playtests. *Simulation built 2026-10-07: `pnpm sim:match` plays 780 rounds in ~30 s with a bot seeker (`seekerBot.ts`) that sees only its SoloView, asks the thrifty question, rides toward the candidates and sweeps the street as `sim:endgame` does. Normal: station in a median 38 game-min, endgame 36% of seeking, hider score 178, a round ~14 real min. Charlie took its recommendations on 2026-10-07: time bonuses 6/4/2 (deck 31), Wrong way costs 1 card, Sidewalk shed lasts 20 min, Veto and Wrong way hold values 10 and 6. Re-run: Normal station 38, endgame 38%, score 176. `docs/match-balance.md`.* |
@@ -406,7 +406,7 @@ Use the three existing hider conductor's lines at their decided moments; no new 
 
 **Result and replay.** Hero = elapsed **seeking** time + question bonuses (including Veto) + time bonuses still held. The hide phase is not scored; the two-hour cap limits elapsed seeking, not bonuses. Show found / not found, station, spot and catch time where applicable, held hand and the three-part tally. Live score separates held bonuses from banked question bonuses, so spending a bonus card cannot masquerade as lost elapsed time. Watch replay shows both played trails from 10:00, you ink and the seeker terra cotta, with questions, cards, lock/freeze and catch. Play again preserves the selected seeker level.
 
-Decided four-line share (question-family trail stays as today): “Stand Clear (you hide · normal) · from Times Sq–42 St” / “Found in 65 min · 9 questions” (or “Not found · 120 min · 9 questions”) / family trail / “My score: 2 h 56 min”. No daily number. A hider abandoning the round is not a successful unfound hide; leaving early is incomplete with no scored result, but its replay stays inspectable (“Leave this round? It won’t count.”).
+Decided four-line share (question-family trail stays as today): “Subway Seek (you hide · normal) · from Times Sq–42 St” / “Found in 65 min · 9 questions” (or “Not found · 120 min · 9 questions”) / family trail / “My score: 2 h 56 min”. No daily number. A hider abandoning the round is not a successful unfound hide; leaving early is incomplete with no scored result, but its replay stays inspectable (“Leave this round? It won’t count.”).
 
 Save each completed hide as a separate browser `hide` result with a round ID, time, difficulty, score and share. Rule: the homepage wall, fastest find and streak remain daily seeking only, explicitly labeled “Daily seeking record”; hide results get their own history rather than being mixed with lower-is-better seeking times. Live replay has both full trails. Stored replay follows the current no-Google-coordinates rule (IDs only for later rehydration, or the current reduced street replay). S3 server persistence stores panorama IDs and interpolation recipes, rehydrating coordinates on restore. Browser hide replays use reduced street positions at MTA exits (latest 20); completed score history remains. The older bot-hide snapshot representation is separate.
 
@@ -436,7 +436,7 @@ Save each completed hide as a separate browser `hide` result with a round ID, ti
   - Not done, on purpose: Randomize picking the weakest replacement (the card says random, and it would be a second Veto), and any card decision that looks at the real answer (it leaks).
 - **Hiding spot:** unchanged (a random panorama 60–360 m out). A later knob if the street search needs one: Easy nearer the exit, Hard further.
 - **Not an LLM.** The bot's decisions are small, exact search problems over ~100 stations that need to be deterministic for the daily, reproducible in tests, free, and pure in the engine; a model call fits none of that. Prior art agrees: the Scotland Yard hider in Nijssen & Winands ([IEEE TCIAIG 2012](https://dke.maastrichtuniversity.nl/m.winands/documents/TCAIG_ScotlandYard.pdf)) is search with two heuristics (stay far from the nearest seeker; keep the seekers' possible-location set large), and [Absurdle](https://qntm.org/absurdle), the adversarial Wordle, is the pure form of a hard hider: after every guess it keeps the largest bucket of answers. Our hardness measure is the same idea run once, since our hider has to commit to a station. Difficulty-adjustment research (Hunicke, [DDA 2005](https://dl.acm.org/doi/pdf/10.1145/1178477.1178573)) warns that mid-round rubber-banding reads as cheating; a band chosen before the round is honest and keeps the daily shared.
-- **Screens:** the result card gets a difficulty picker (Easy · Normal · Hard) under "Practice round", with a one-line hint for the chosen level; the header reads "Practice round · Hard" and the share line "Stand Clear (practice · hard)" when it isn't Normal. Under Interaction's vocabulary it is three Buttons, the chosen one ink and the others white with a rule, not a tab row. The daily has no picker.
+- **Screens:** the result card gets a difficulty picker (Easy · Normal · Hard) under "Practice round", with a one-line hint for the chosen level; the header reads "Practice round · Hard" and the share line "Subway Seek (practice · hard)" when it isn't Normal. Under Interaction's vocabulary it is three Buttons, the chosen one ink and the others white with a rule, not a tab row. The daily has no picker.
 - **Where it lives:** `hardness.ts` (the shared seeker, the table, the bands), `createSoloRound` (the pick), `hiderBot.ts` (the kill shot and the Normal hold), `protocol.ts` (practice difficulty), the server's `newRound`, the result card. `pnpm sim` now runs on the engine's seeker and reports the same numbers as before (thrifty: mean 5.4 questions, hider bonus ~64 min).
 
 ### M2 results: how many questions find the station (`pnpm sim`)
@@ -518,7 +518,7 @@ Today a vetoed question can be asked again once its category cools down. So Veto
 
 ### Card faces (proposed)
 
-Every card is a small plaque in the Mosaic look (see Look and motion). Art and layout: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) (private link).
+Every card is a small plaque in the Mosaic look (see Look and motion). Art and layout: [Subway Seek Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) (private link).
 
 - **Anatomy, the same on every card:** a tile frame naming the kind, a kind caption, the value or cost in the corner, a 28 × 28 mosaic emblem, a typeset title, the exact rule, a line in the conductor's voice, and when it can be played.
 - **The kind is told by pattern as well as color**, so it survives color blindness and the 52 px hand size:
@@ -573,9 +573,9 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
   - **What it shows:** glazed-white land, slightly darker blocks at street zoom, the lightest tile for roads with grout-colored edges, and a faint buff on highways. Water is muted grey-green and parks are faint sage, so neither can be mistaken for Radar blue or Matching green. Street, neighborhood and city names stay, in the Mosaic ink tones, because the endgame needs street names.
   - **What it hides:** points of interest and their labels, Google's transit lines and stations, rail tracks, every icon, and administrative boundaries. POI pins are circles, which the language reserves for trains, so park names go too. Parks stay as shapes.
   - **Google setup, in `stand-clear-nyc`:**
-    - **Vector Map ID `d52ea7715ab571c4cf3a43db`** ("Stand Clear Mosaic (vector)"). This is the one to use: it draws the whole design.
-    - Raster Map ID `d52ea7715ab571c4d1dc8ae7` ("Stand Clear Mosaic"). On raster maps Google applies only part of a cloud style, so land, urban areas and commercial strips keep Google's greys and creams. It's kept only for comparison.
-    - Both use the cloud style "Stand Clear Mosaic", style ID `a45edf63b9a210393eb6e2eb`, on their roadmap variant.
+    - **Vector Map ID `d52ea7715ab571c4cf3a43db`** ("Subway Seek Mosaic (vector)"). This is the one to use: it draws the whole design.
+    - Raster Map ID `d52ea7715ab571c4d1dc8ae7` ("Subway Seek Mosaic"). On raster maps Google applies only part of a cloud style, so land, urban areas and commercial strips keep Google's greys and creams. It's kept only for comparison.
+    - Both use the cloud style "Subway Seek Mosaic", style ID `a45edf63b9a210393eb6e2eb`, on their roadmap variant.
     - **Before switching the game to the vector ID:** check Safari. The game's deck.gl overlay is non-interleaved, and only the interleaved mode failed on Safari, but that's unverified on a vector map. *Until then (2026-10-06) the game's raster Google map takes `mosaicStyle.json`, the same design as a legacy style, in place of the old quiet style, and the MapLibre dev map is recolored to the Mosaic on load.*
     - **Still showing:** one-way arrows and a few bike lanes at street zoom. No style rule has removed them yet.
   - **Sources:**
@@ -583,7 +583,7 @@ The look comes from the subway's own tile, in two layers that never swap jobs:
     - `mosaicStyle.json` is the same design as a legacy style array, for a map created without a Map ID. A Map ID ignores the `styles` option.
     - Change both files together.
     - Push the cloud style with the Map Management API: PATCH `styleConfigs/a45edf63b9a210393eb6e2eb`. It takes OAuth, an `X-Goog-User-Project: stand-clear-nyc` header, and the project number `75066973119` in resource paths.
-- Rationale, palette and mocks: [Stand Clear Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC) (private link). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817) (private link). Both are private artifacts.
+- Rationale, palette and mocks: [Subway Seek Mosaic](https://claude.ai/artifact/HfQMaNv8REXrPY9qNFjakC) (private link). The four directions it was chosen from: [design directions](https://claude.ai/artifact/RezdNAD5GWRVJW2C18f817) (private link). Both are private artifacts.
 
 ### Interaction
 
@@ -657,9 +657,9 @@ Cards keep their own lines (Cards › Card faces). Everything else in the game i
 
 ### Sidebar
 
-The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private link).
+The panel reads top to bottom like a platform wall: who and when, the round, where you are, what you can do, then the main action. Mocks of every state: [Subway Seek Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W), part four (private link).
 
-- **Top bar:** "Stand Clear" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with nothing under it. In solo rounds two square buttons sit beside the clock, ▸ and ▸▸: the departure or the next stop, and your stop.
+- **Top bar:** "Subway Seek" as a small Josefin label, the round on one line ("Daily #1 · Mon, Oct 5"), and the clock as a black caption tile with nothing under it. In solo rounds two square buttons sit beside the clock, ▸ and ▸▸: the departure or the next stop, and your stop.
 - **The round:** stations possible, time left and minutes to the hider's score, as three numbers on a 2 px ink rule with grout dividers. Stations possible is the hero, set larger. Tabular figures. "Give up" is a quiet underlined link.
 - **Tabs:** Travel and Ask, square tiles with the active one in ink. "Following you" is a toggle on the map, bottom right, because it's a map state.
 - **Where you are:** the station's mosaic name tablet, with its bullets, on a tile field.
@@ -707,9 +707,9 @@ Street View takes the top three fifths of the main column and the map the bottom
 
 ### Homepage (proposed)
 
-One job: get the visitor into today's daily in one click. Shared result lines are how new players arrive, and they arrive wanting today's puzzle. Full mock, responsive: [Stand Clear Homepage](https://claude.ai/artifact/TLySzn31W8WUSPrapZN7dB) (private link).
+One job: get the visitor into today's daily in one click. Shared result lines are how new players arrive, and they arrive wanting today's puzzle. Full mock, responsive: [Subway Seek Homepage](https://claude.ai/artifact/TLySzn31W8WUSPrapZN7dB) (private link).
 
-- **Hero, on the platform wall:** the Stand Clear mosaic tablet. Below it, "Hide and seek on the real New York subway." Then "Play today's daily · #23" in ink, with "or a practice round" as a text link beside it (decided 2026-10-06: one door), and one line of facts: "Daily #23 · Tue, Oct 27 · everyone hunts the same hidden station · starts at Times Sq–42 St, 10:20".
+- **Hero, on the platform wall:** the Subway Seek mosaic tablet. Below it, "Hide and seek on the real New York subway." Then "Play today's daily · #23" in ink, with "or a practice round" as a text link beside it (decided 2026-10-06: one door), and one line of facts: "Daily #23 · Tue, Oct 27 · everyone hunts the same hidden station · starts at Times Sq–42 St, 10:20".
 - **Live map:** today's timetable at 6×, every dot a train, every square a reachable station. Ambient motion that's real data (rule 8). It never hints at today's station.
 - **Two pages off the homepage** *(built 2026-10-09; `docs/community-read.md` for why)*: **/hardest**, every station the hider could reach from each hub ranked by the questions the game's own seeker needs to pin it, with its twins and its band, from the engine's hardness table (`pnpm data:hardness` writes it; a test fails if it's older than the timetable's pin); and **/changelog**, what changed for players, newest first, headed by today's daily number and the timetable's day. Both on the homepage's wall-and-wainscot layout with a name tablet, linked from the footer. The footer also says "Daily #N, running since Mon, Oct 5": longevity a reader can check.
 - **Departures board, for the modes:**
@@ -940,7 +940,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | **Score tally** | both | The score is drawn as a bar of tiles, one tile per 5 game-min. Ink for elapsed time, the question's family color for each question bonus (+10 min = 2 tiles), gold for time-bonus cards held. Tiles set left to right at 40 ms each while the total counts up. Both rounds' bars stack, and the winner's gets an express trim. The bar shows where the score came from, not just the number. | bars appear full |
 | **Replay (S2)** | both | Game time is compressed uniformly. That is linear, never eased, per rule 1. Dots travel their real routes and leave trails of square tesserae: ink for you, terra cotta for the other player. Where both rode the same tracks, the trails run side by side. Each question sets as a family-colored square at its origin with its answer, and questions asked from one place stack. At the end, the hider's station tablet sets and the zone ring draws. | trails drawn in full; scrubber only |
 
-**Demo:** every row above plays in the [Stand Clear Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) page, part two (private link). Each row has a timeline labeled with its tokens, slow-motion playback, and its reduced-motion version. Building it produced the refinements now written into the rows for Arrive, Up to the street, Ask, Seeker is in your zone, Card draw and Curse lands.
+**Demo:** every row above plays in the [Subway Seek Deck](https://claude.ai/artifact/FtuLTd6LC7PfkBjNewoY8W) page, part two (private link). Each row has a timeline labeled with its tokens, slow-motion playback, and its reduced-motion version. Building it produced the refinements now written into the rows for Arrive, Up to the street, Ask, Seeker is in your zone, Card draw and Curse lands.
 
 **Implementation notes**
 
@@ -1157,7 +1157,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 | 2026-10-05 | Sidewalk shed (seeker walks at half speed, 10 min) replaces the Black & white curse | Charlie: Black & white didn't change play. Sidewalk shed costs real time exactly when it matters, in the street search |
 | 2026-10-05 | On foot, the map shows a 400 m circle with the outside blurred: the seeker's around their own station, the hider's around their real zone | Charlie. The seeker's circle is never the real zone, which would leak the hider's station |
 | 2026-10-05 | No "Stand clear of the closing doors" caption on departure; the tablet simply accelerates away | Charlie, reviewing the motion demo |
-| 2026-10-05 | Base map: the "Stand Clear Mosaic" cloud style on vector Map ID `d52ea7715ab571c4cf3a43db`. It's managed through the Map Management API, with the style JSON kept in the repo | Charlie asked for a proper cloud style and Map ID. A raster Map ID was tried first, but Google applies only part of a cloud style on raster maps (verified by render) |
+| 2026-10-05 | Base map: the "Subway Seek Mosaic" cloud style on vector Map ID `d52ea7715ab571c4cf3a43db`. It's managed through the Map Management API, with the style JSON kept in the repo | Charlie asked for a proper cloud style and Map ID. A raster Map ID was tried first, but Google applies only part of a cloud style on raster maps (verified by render) |
 | 2026-10-05 | Visual direction: **Mosaic**, built on the subway's own tile (IRT tile for identity, IND tile for information). Motion rules and card faces are written up under Cards and Look and motion as proposals | Charlie picked it from four directions (Wayfinding, Service Change, Night Service, Mosaic) and asked for it to be grounded in real subway design history |
 | 2026-10-05 | **B: the whole game moves to Google Maps JS.** Step 1: all game drawing is deck.gl layers over a swappable base map; step 2 (swap the base map) after billing is enabled | Google's terms forbid Street View beside a non-Google map; Mapillary's NYC coverage is too thin. Cost: one Dynamic Maps load per session, 10k free/month |
 | 2026-10-05 | Photos (solo): directional prompts (N/E/S/W/up) from one exit of the hider's station or from the hiding spot; Street View Static images loaded by the browser | A bot can't judge "tallest building"; directions are fair and still very readable. Static images straight from Google are within the terms; server relay isn't |

@@ -1,6 +1,6 @@
-# How Stand Clear is built
+# How Subway Seek is built
 
-Stand Clear is hide and seek on the real New York subway timetable. A hider rides for 20 game-minutes and gets off somewhere. The seeker rides the same timetable at 6× real time, asks questions that rule stations out, then comes up and searches the street around the station. Today every round is solo: you seek a bot (the daily, practice) or a bot seeks you (You hide).
+Subway Seek is hide and seek on the real New York subway timetable. A hider rides for 20 game-minutes and gets off somewhere. The seeker rides the same timetable at 6× real time, asks questions that rule stations out, then comes up and searches the street around the station. Today every round is solo: you seek a bot (the daily, practice) or a bot seeks you (You hide).
 
 This page is the five-minute version. The full design, with every rule and a dated decision log, is [`DESIGN.md`](../DESIGN.md) (180 KB). Balance write-ups are in [`docs/`](.).
 

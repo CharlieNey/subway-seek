@@ -5,7 +5,7 @@
  * categories are blocks with their price band; a category that's cooling down collapses to
  * one rule-row with its next time, and opens for planning. No outcome counts, ever.
  */
-import type { LandmarkKind, Route } from "@stand-clear/data";
+import type { LandmarkKind, Route } from "@subway-seek/data";
 import {
   categoryOf,
   describeQuestion,
@@ -28,7 +28,7 @@ import {
   searchGrid,
   TENTACLE_MILES,
   ZONE_RADIUS_M,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { type ReactNode, useState } from "react";
 import {
   answerWord,

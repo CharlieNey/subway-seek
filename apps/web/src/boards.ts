@@ -4,7 +4,7 @@
  * A row you can't make is dimmed with its reason. On a train, the same board shows the
  * connections at the stop you're getting off at, around your arrival.
  */
-import type { Direction, Route } from "@stand-clear/data";
+import type { Direction, Route } from "@subway-seek/data";
 import {
   type ActiveCurse,
   type BoardRow,
@@ -12,7 +12,7 @@ import {
   departureBoard,
   type OnPlatform,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { directionPhrase, displayName } from "./names.ts";
 
 export interface CountdownLine {

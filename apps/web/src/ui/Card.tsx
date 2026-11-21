@@ -3,7 +3,7 @@
  * the tile frame naming its kind, the kind's caption, the cost in the corner, the mosaic
  * emblem, the title, the exact rule, the conductor's line, and when it's played.
  */
-import { CARDS, type CardId } from "@stand-clear/engine";
+import { CARDS, type CardId } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { cardFrame, emblem } from "./cards.ts";
 import { fontsReady, paintAt } from "./tablet.ts";

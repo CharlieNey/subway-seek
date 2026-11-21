@@ -26,10 +26,10 @@ importers:
 
   apps/server:
     dependencies:
-      '@stand-clear/data':
+      '@subway-seek/data':
         specifier: workspace:*
         version: link:../../packages/data
-      '@stand-clear/engine':
+      '@subway-seek/engine':
         specifier: workspace:*
         version: link:../../packages/engine
       ws:
@@ -63,10 +63,10 @@ importers:
       '@fontsource/libre-franklin':
         specifier: ^5.3.0
         version: 5.3.0
-      '@stand-clear/data':
+      '@subway-seek/data':
         specifier: workspace:*
         version: link:../../packages/data
-      '@stand-clear/engine':
+      '@subway-seek/engine':
         specifier: workspace:*
         version: link:../../packages/engine
       d3-delaunay:
@@ -124,7 +124,7 @@ importers:
 
   packages/engine:
     dependencies:
-      '@stand-clear/data':
+      '@subway-seek/data':
         specifier: workspace:*
         version: link:../data
       zod:

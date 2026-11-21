@@ -7,7 +7,7 @@
  */
 import type { Layer } from "@deck.gl/core";
 import { MapboxOverlay } from "@deck.gl/mapbox";
-import type { LonLat } from "@stand-clear/engine";
+import type { LonLat } from "@subway-seek/engine";
 import * as maplibregl from "maplibre-gl";
 // MapLibre runs tile parsing in an ES-module worker that imports a sibling chunk
 // (see vite.config.ts for how the build keeps them together).

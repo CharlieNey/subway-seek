@@ -4,7 +4,7 @@
  * (Motion rule 8), and nothing on it hints at today's station. It runs only while on
  * screen, and with reduced motion it holds still at 10:20.
  */
-import type { LonLat } from "@stand-clear/engine";
+import type { LonLat } from "@subway-seek/engine";
 import { useEffect, useRef } from "react";
 import { hhmm } from "../ask.ts";
 import { reducedMotion } from "../clearings.ts";

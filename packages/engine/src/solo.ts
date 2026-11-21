@@ -5,7 +5,7 @@
  * The two-player round with a real hiding phase and a spot endgame is M3.
  */
 
-import type { Direction, LatLon } from "@stand-clear/data";
+import type { Direction, LatLon } from "@subway-seek/data";
 import {
   CARDS,
   type CardId,

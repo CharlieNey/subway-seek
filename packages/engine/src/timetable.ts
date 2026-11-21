@@ -1,4 +1,4 @@
-import type { Dataset, Direction, Route } from "@stand-clear/data";
+import type { Dataset, Direction, Route } from "@subway-seek/data";
 
 /** A train you could board: trip `trip` leaving its stop index `stop` at `dep`. */
 export interface Call {

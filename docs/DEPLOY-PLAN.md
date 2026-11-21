@@ -108,17 +108,17 @@ From a laptop, in the repo root on `main`, after the branch is merged.
 ```sh
 brew install flyctl
 fly auth signup        # or: fly auth login. Use a personal email and a personal card.
-fly apps create stand-clear-server         # if the name is taken, pick another and change `app` in infra/fly/fly.toml
-fly volumes create match_logs --app stand-clear-server --region ewr --size 1
+fly apps create subway-seek-server         # if the name is taken, pick another and change `app` in infra/fly/fly.toml
+fly volumes create match_logs --app subway-seek-server --region ewr --size 1
 ```
 
 **2. Server secrets**
 ```sh
-fly secrets set --app stand-clear-server --stage \
+fly secrets set --app subway-seek-server --stage \
   DAILY_SECRET="$(openssl rand -hex 32)" \
   ALLOWED_ORIGINS="https://<project>.pages.dev"
 # Later, for the Street View endgame (step 5 first):
-fly secrets set --app stand-clear-server \
+fly secrets set --app subway-seek-server \
   GOOGLE_STREETVIEW_SERVER_KEY=… GOOGLE_MAPS_BROWSER_KEY=… STREETVIEW_SIGNING_SECRET=…
 ```
 Keep a copy of `DAILY_SECRET` in a password manager. Losing it changes every future daily.
@@ -128,18 +128,18 @@ Keep a copy of `DAILY_SECRET` in a password manager. Losing it changes every fut
 **3. First deploy**, one machine, built from the repo root:
 ```sh
 fly deploy . --config infra/fly/fly.toml --dockerfile apps/server/Dockerfile --ha=false
-fly scale count 1 --app stand-clear-server
-curl https://stand-clear-server.fly.dev/health      # {"ok":true,"sessions":0,"serviceDate":"2027-03-03"}
-curl https://stand-clear-server.fly.dev/daily       # today's start and reachable stations
+fly scale count 1 --app subway-seek-server
+curl https://subway-seek-server.fly.dev/health      # {"ok":true,"sessions":0,"serviceDate":"2027-03-03"}
+curl https://subway-seek-server.fly.dev/daily       # today's start and reachable stations
 ```
 `--ha=false` matters: by default Fly creates two machines, and a volume can mount on only one.
 
 **4. Cloudflare Pages**
 - In the dashboard: Workers & Pages, Create, Pages, Connect to Git, choose the repo.
-- Build command `pnpm --filter @stand-clear/web build`, output directory `apps/web/dist`, root directory empty (the repo root).
+- Build command `pnpm --filter @subway-seek/web build`, output directory `apps/web/dist`, root directory empty (the repo root).
 - Add the four build variables above (three for a keyless site: leave out `VITE_GOOGLE_MAPS_API_KEY`).
 - Deploy, and open `https://<project>.pages.dev`.
-- If the Git build fails on pnpm, build locally and upload instead: `pnpm --filter @stand-clear/web build && npx wrangler pages deploy apps/web/dist --project-name <project>`.
+- If the Git build fails on pnpm, build locally and upload instead: `pnpm --filter @subway-seek/web build && npx wrangler pages deploy apps/web/dist --project-name <project>`.
 
 Headers and caching come from `apps/web/public/_headers`. Unknown paths fall back to `index.html` automatically.
 

@@ -7,7 +7,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   buildIndex,
   DIFFICULTY_BANDS,
@@ -16,7 +16,7 @@ import {
   HUB_STATION_IDS,
   hardnessTable,
   reachableComplexes,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 
 const HIDE_START = 10 * 3600;
 const ds = loadDataset();

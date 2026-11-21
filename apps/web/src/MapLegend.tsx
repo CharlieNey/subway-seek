@@ -11,7 +11,7 @@ import {
   type Question,
   searchGrid,
   TENTACLE_MILES,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { type ReactNode, useEffect, useState } from "react";
 import { answerWord, radarLabel } from "./ask.ts";
 import { useNow } from "./Connection.tsx";

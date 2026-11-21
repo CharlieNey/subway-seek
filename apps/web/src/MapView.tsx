@@ -21,7 +21,7 @@ import {
   streetPoint,
   walkSeconds,
   ZONE_RADIUS_M,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { liveQuestion } from "./AskPanel.tsx";
 import { askContext } from "./ask.ts";

@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   applySoloIntent,
   buildIndex,
@@ -6,7 +6,7 @@ import {
   type SoloRound,
   soloView,
   startClock,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { describe, expect, it } from "vitest";
 import { deserializeGame, restorable, type SavedGame, SessionDb, serializeGame } from "./store.ts";
 

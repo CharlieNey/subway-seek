@@ -9,7 +9,7 @@ import {
   isAnswered,
   type SeenQuestion,
   type SoloView,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { create } from "zustand";
 import { useGame, type World } from "./game.ts";
 import { type Clearing, clearingFor } from "./map/eliminate.ts";

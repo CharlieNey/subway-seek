@@ -8,9 +8,9 @@
  * link, a refresh) brings it back and picks the same round up again, its clock paused on
  * the server while the player was away (DESIGN.md, Disconnects).
  */
-import { type Dataset, type LandmarkData, type SubwayData, withLandmarks } from "@stand-clear/data";
-import datasetUrl from "@stand-clear/data/dataset.json?url";
-import landmarksUrl from "@stand-clear/data/landmarks.json?url";
+import { type Dataset, type LandmarkData, type SubwayData, withLandmarks } from "@subway-seek/data";
+import datasetUrl from "@subway-seek/data/dataset.json?url";
+import landmarksUrl from "@subway-seek/data/landmarks.json?url";
 import {
   buildIndex,
   CLOSE_TAKEN_OVER,
@@ -26,7 +26,7 @@ import {
   type SoloView,
   syncedGameTime,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { keepArmed } from "./ask.ts";

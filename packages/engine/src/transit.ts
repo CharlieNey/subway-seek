@@ -6,7 +6,7 @@
  * riding, or arrived. No timers; the server and every client derive the same answer
  * from the shared clock and the public timetable.
  */
-import type { Direction, LatLon } from "@stand-clear/data";
+import type { Direction, LatLon } from "@subway-seek/data";
 import { distanceMeters } from "./geo.ts";
 import type { TimetableIndex } from "./timetable.ts";
 

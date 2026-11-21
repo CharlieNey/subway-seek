@@ -1,4 +1,4 @@
-import type { SoloView } from "@stand-clear/engine";
+import type { SoloView } from "@subway-seek/engine";
 import { describe, expect, it } from "vitest";
 import { signUrl, staticPhotoUrl, withPhotoUrls } from "./sign.ts";
 

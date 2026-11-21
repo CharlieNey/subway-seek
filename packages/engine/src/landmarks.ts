@@ -3,7 +3,7 @@
  * "Are you closer to a hospital than me?", "Of the libraries within a mile of me, which
  * is nearest you?". Each landmark is one pin, and distances are measured to it.
  */
-import type { Dataset, LandmarkKind } from "@stand-clear/data";
+import type { Dataset, LandmarkKind } from "@subway-seek/data";
 import { distanceMeters, METERS_PER_MILE } from "./geo.ts";
 
 export const LANDMARK_KINDS: readonly LandmarkKind[] = [

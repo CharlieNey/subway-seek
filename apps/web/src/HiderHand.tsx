@@ -1,4 +1,4 @@
-import { CARDS, type CardId, HAND_LIMIT, type HiderView } from "@stand-clear/engine";
+import { CARDS, type CardId, HAND_LIMIT, type HiderView } from "@subway-seek/engine";
 import { useState } from "react";
 import { useGamePick, type World } from "./game.ts";
 import { cardBlocker } from "./hide.ts";

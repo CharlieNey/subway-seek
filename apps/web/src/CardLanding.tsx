@@ -4,7 +4,7 @@
  * into its chip in the panel; a Veto or Randomize into the question's band. It never
  * blocks a click, and nothing waits on it: the clock runs on underneath.
  */
-import { CARDS } from "@stand-clear/engine";
+import { CARDS } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { type Landing, landingPhase } from "./curseMotion.ts";
 import { useGame } from "./game.ts";

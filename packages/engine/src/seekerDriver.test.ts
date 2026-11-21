@@ -1,4 +1,4 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import { beforeAll, expect, it } from "vitest";
 import { seededRandom } from "./daily.ts";
 import {

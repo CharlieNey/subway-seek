@@ -3,7 +3,7 @@
  * /play, and the server starts a round the moment a page connects, so the link says which.
  * Once the round is up the page drops the door from its address, so a refresh carries on.
  */
-import type { Difficulty } from "@stand-clear/engine";
+import type { Difficulty } from "@subway-seek/engine";
 
 export type Door =
   | { kind: "daily" }

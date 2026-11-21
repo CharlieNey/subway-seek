@@ -4,8 +4,8 @@
  * tile pictograms. deck.gl's ScatterplotLayer only draws circles, so squares are icons that
  * hold a pixel size (DESIGN.md, Motion › Implementation notes).
  */
-import type { LandmarkKind } from "@stand-clear/data";
-import { LANDMARK_KINDS } from "@stand-clear/engine";
+import type { LandmarkKind } from "@subway-seek/data";
+import { LANDMARK_KINDS } from "@subway-seek/engine";
 import { FAMILIES, FAMILY_COLORS } from "../ui/family.ts";
 import { pictCells } from "../ui/pict.ts";
 

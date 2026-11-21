@@ -13,7 +13,7 @@
  */
 import type { Layer } from "@deck.gl/core";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
-import type { LonLat } from "@stand-clear/engine";
+import type { LonLat } from "@subway-seek/engine";
 import type { BaseMap } from "./baseMap.ts";
 import { createVeil, eastOf, fitZoom } from "./baseMap.ts";
 import { loadGoogleMaps, onGoogleAuthFailure } from "./loadGoogle.ts";

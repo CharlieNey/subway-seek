@@ -1,4 +1,4 @@
-# Stand Clear
+# Subway Seek
 
 Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. A solo hobby project by Charlie; nothing is public yet.
 

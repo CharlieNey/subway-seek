@@ -4,7 +4,7 @@
  * street radar and the walking hotter-or-colder draw Radar's ring and Thermometer's line,
  * so they take those colors at street scale.
  */
-import { categoryOf, type Question, type QuestionCategory } from "@stand-clear/engine";
+import { categoryOf, type Question, type QuestionCategory } from "@subway-seek/engine";
 
 export type Family = "radar" | "thermo" | "match" | "measure" | "tent" | "photo";
 

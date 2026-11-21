@@ -1,5 +1,5 @@
-import { loadDataset } from "@stand-clear/data/node";
-import { HUB_STATION_IDS } from "@stand-clear/engine";
+import { loadDataset } from "@subway-seek/data/node";
+import { HUB_STATION_IDS } from "@subway-seek/engine";
 import { describe, expect, it } from "vitest";
 import data from "./hardness.json";
 

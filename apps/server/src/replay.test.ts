@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createServer, get } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SoloView } from "@stand-clear/engine";
+import type { SoloView } from "@subway-seek/engine";
 import { expect, it } from "vitest";
 
 function getJson(port: number, path: string): Promise<{ status: number; body: unknown }> {
@@ -23,7 +23,7 @@ function getJson(port: number, path: string): Promise<{ status: number; body: un
 }
 
 it("serves yesterday's daily as the bot played it, at the station only", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "stand-clear-replay-"));
+  const dir = mkdtempSync(join(tmpdir(), "subway-seek-replay-"));
   const listener = createServer().listen(0, "127.0.0.1");
   await once(listener, "listening");
   const port = (listener.address() as { port: number }).port;

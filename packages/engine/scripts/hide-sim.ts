@@ -9,7 +9,7 @@
  * with no key (DESIGN.md, Playable without Google).
  */
 import { writeFileSync } from "node:fs";
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   advanceSolo,
   applyHiderIntent,

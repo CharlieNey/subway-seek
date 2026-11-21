@@ -11,7 +11,7 @@ import {
   nyDate,
   RECONNECT_GRACE_MS,
   SEEKER_LEVELS,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
 import { GAME_NAME } from "../brand.ts";

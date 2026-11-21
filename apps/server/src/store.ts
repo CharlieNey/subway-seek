@@ -11,7 +11,7 @@
  */
 
 import { DatabaseSync } from "node:sqlite";
-import type { GameClock, SoloRound } from "@stand-clear/engine";
+import type { GameClock, SoloRound } from "@subway-seek/engine";
 import type { StoredHideRound } from "./hidePersistence.ts";
 
 /** What a session needs to come back. */

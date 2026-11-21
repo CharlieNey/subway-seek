@@ -5,7 +5,7 @@
  * emblem of a real thing from the subway and the street above. Only the cards a seeker
  * sees land are here: Veto, Randomize and the five curses in the solo deck.
  */
-import type { CardId } from "@stand-clear/engine";
+import type { CardId } from "@subway-seek/engine";
 import {
   addRings,
   builder,

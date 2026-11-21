@@ -9,7 +9,7 @@
  * what the bot plays. The bot then picks uniformly from a band of that number: Easy 3–4,
  * Normal 5–6, Hard 7–8 (ties toward stations with a twin).
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import { distanceMeters } from "./geo.ts";
 import {
   type AskContext,

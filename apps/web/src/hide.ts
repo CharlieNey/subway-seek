@@ -7,7 +7,7 @@ import {
   nextStopIndex,
   resolve,
   type SoloView,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import type { World } from "./game.ts";
 
 export function isHider(view: SoloView | null | undefined): view is HiderView {

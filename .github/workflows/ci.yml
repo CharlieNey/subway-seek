@@ -28,4 +28,4 @@ jobs:
       - name: Timetable freshness
         run: pnpm data:check
       - name: Build web
-        run: pnpm --filter @stand-clear/web build
+        run: pnpm --filter @subway-seek/web build

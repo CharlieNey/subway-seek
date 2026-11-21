@@ -3,7 +3,7 @@
  * timetable's day at the top, then the entries, newest first.
  */
 
-import { DAILY_EPOCH, dailyNumber, nyDate } from "@stand-clear/engine";
+import { DAILY_EPOCH, dailyNumber, nyDate } from "@subway-seek/engine";
 import { useEffect } from "react";
 import { GAME_NAME } from "../brand.ts";
 import { formatDay } from "../names.ts";

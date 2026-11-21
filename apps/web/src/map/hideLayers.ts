@@ -1,6 +1,6 @@
 import type { Layer } from "@deck.gl/core";
 import { IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
-import { type HiderView, type LonLat, sampleTrail } from "@stand-clear/engine";
+import { type HiderView, type LonLat, sampleTrail } from "@subway-seek/engine";
 import type { World } from "../game.ts";
 import { stationAtlas } from "./icons.ts";
 import { circle, type RGBA } from "./layers.ts";

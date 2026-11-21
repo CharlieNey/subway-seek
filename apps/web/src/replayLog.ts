@@ -5,7 +5,7 @@
  * square. Derived from the round's trails once the round is over, when everything is
  * revealed.
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import {
   CARDS,
   categoryOf,
@@ -16,7 +16,7 @@ import {
   type SoloView,
   type TrailEntry,
   type Transit,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { answerWord, radarLabel } from "./ask.ts";
 import { isHider } from "./hide.ts";
 import { displayName } from "./names.ts";

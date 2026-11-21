@@ -1,5 +1,5 @@
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type CardId,

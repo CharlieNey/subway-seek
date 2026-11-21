@@ -1,6 +1,6 @@
 /** Save changed session state, encoding a human round only when that round changes. */
-import type { Dataset } from "@stand-clear/data";
-import type { GameClock, SeekerDriver, SoloRound } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import type { GameClock, SeekerDriver, SoloRound } from "@subway-seek/engine";
 import { storeHideRound } from "./hidePersistence.ts";
 import type { Session } from "./sessions.ts";
 import type { SavedGame, SavedSession } from "./store.ts";

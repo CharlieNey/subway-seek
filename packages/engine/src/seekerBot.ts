@@ -8,7 +8,7 @@
  * saving beats its price, as `pnpm sim:endgame` walks. Curses it handles by re-planning:
  * Wrong way by riding a stop the required way, Tourist by the walk the card demands.
  */
-import type { Dataset, Direction } from "@stand-clear/data";
+import type { Dataset, Direction } from "@subway-seek/data";
 import { TOURIST_WALK_M } from "./cards.ts";
 import { distanceMeters, localMeters, offsetMeters } from "./geo.ts";
 import { chooseQuestion, nearestToCentre } from "./hardness.ts";

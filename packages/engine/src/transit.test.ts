@@ -1,5 +1,5 @@
-import type { Dataset, Trip } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
+import type { Dataset, Trip } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Geometry } from "./geometry.ts";
 import { buildIndex, departureBoard, departures, type TimetableIndex } from "./timetable.ts";

@@ -14,7 +14,7 @@ import {
   SOLO_PAUSES_ON_DROP,
   type SoloView,
   searchGrid,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
 import {

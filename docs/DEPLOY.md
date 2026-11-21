@@ -1,4 +1,4 @@
-# Deploying Stand Clear
+# Deploying Subway Seek
 
 The runbook. Why these hosts, what they cost and the first-time steps are in [`DEPLOY-PLAN.md`](DEPLOY-PLAN.md).
 
@@ -16,7 +16,7 @@ fly deploy . --config infra/fly/fly.toml --dockerfile apps/server/Dockerfile --h
 
 or run the **Deploy server** workflow in GitHub Actions (`.github/workflows/deploy-server.yml`). It runs lint, typecheck, the tests and the timetable check first, so a red commit never deploys. It needs the `FLY_API_TOKEN` repository secret. It is manual until its `push:` block is uncommented.
 
-**Secrets** (`fly secrets set --app stand-clear-server NAME=value`):
+**Secrets** (`fly secrets set --app subway-seek-server NAME=value`):
 
 - `DAILY_SECRET`: required. The server exits at boot without it in production.
 - `GOOGLE_STREETVIEW_SERVER_KEY`
@@ -41,7 +41,7 @@ What to know:
 
 ## The client (Cloudflare Pages)
 
-Pages builds from the repo root with `pnpm --filter @stand-clear/web build` and serves `apps/web/dist`. `apps/web/public/_headers` sets the headers:
+Pages builds from the repo root with `pnpm --filter @subway-seek/web build` and serves `apps/web/dist`. `apps/web/public/_headers` sets the headers:
 - immutable caching for the hashed files in `assets/`;
 - `nosniff`, a referrer policy and `X-Frame-Options: DENY` everywhere.
 
@@ -58,7 +58,7 @@ Build variables, for production and preview:
 
 The dataset (5 MB) is imported with a content hash into `assets/`, so browsers cache it for a year and fetch it again only when it changes, compressed to about 600 KB. `apps/web/terms.html` is built as a second Vite page and served at `/terms.html`; `public/` holds the favicon, `apple-touch-icon.png` and `og.png` (the link-preview card; `apps/web/scripts/og/README.md` says how to regenerate it). Every link gets the same card, since the SPA serves one `index.html` for all of them.
 
-`pnpm --filter @stand-clear/web build` locally produces `apps/web/dist` for a check before pushing.
+`pnpm --filter @subway-seek/web build` locally produces `apps/web/dist` for a check before pushing.
 
 **Vercel instead:** `vercel.json` at the repo root has the same build, rewrite and headers. Import the repo with the root directory at the repo root and set the same variables. Hobby is for non-commercial use and stops serving for the month past 100 GB (`DEPLOY-PLAN.md`).
 
@@ -84,7 +84,7 @@ The game runs one pinned weekday (`meta.serviceDate` in the dataset, 2027-03-03 
 
 ```sh
 pnpm data:build --refresh --date=2027-03-03     # a plain Wednesday inside the feed's validity (feed_info.txt)
-pnpm --filter @stand-clear/data build-landmarks  # only if OSM/Parks data should refresh too
+pnpm --filter @subway-seek/data build-landmarks  # only if OSM/Parks data should refresh too
 pnpm data:hardness                               # the /hardest page's table; a test fails if it's stale
 pnpm test && pnpm sim && pnpm sim:endgame && pnpm sim:match   # the balance docs quote these; update them if the numbers move
 git add packages/data/dataset apps/web/src/home/hardness.json && git commit -m "Data: re-pin the timetable to 2027-03-03"
@@ -103,7 +103,7 @@ Without `--date`, `pnpm data:build` rebuilds the current pin. Pick a Wednesday w
 ## Rollback
 
 - **Client:** in Cloudflare Pages, open Deployments and roll back to the previous one. On Vercel, promote the previous deployment.
-- **Server:** `fly releases --app stand-clear-server` lists the images. Redeploy one with `fly deploy --config infra/fly/fly.toml --image <that image> --ha=false`.
+- **Server:** `fly releases --app subway-seek-server` lists the images. Redeploy one with `fly deploy --config infra/fly/fly.toml --image <that image> --ha=false`.
 
 Live rounds come back from the sessions database either way.
 

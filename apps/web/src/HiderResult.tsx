@@ -4,7 +4,7 @@ import {
   type HiderView,
   questionBonusSeconds,
   SEEKER_LEVELS,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { useState } from "react";
 import { hhmm, hm, tallyTiles } from "./ask.ts";
 import { useGamePick, type World } from "./game.ts";

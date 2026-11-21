@@ -1,4 +1,4 @@
-import type { Route } from "@stand-clear/data";
+import type { Route } from "@subway-seek/data";
 import type { World } from "./game.ts";
 
 /** The routes behind a station's letters, in the dataset's order, for its bullets. */

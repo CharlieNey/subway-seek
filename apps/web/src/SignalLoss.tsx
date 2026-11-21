@@ -5,7 +5,7 @@
  * departure boards in the panel still work. The map's own credits (Google's logo and its
  * Terms row) stay uncovered and clickable: the tiles leave holes for them.
  */
-import type { ActiveCurse } from "@stand-clear/engine";
+import type { ActiveCurse } from "@subway-seek/engine";
 import { useEffect, useRef } from "react";
 import { reducedMotion } from "./clearings.ts";
 import { SET_MS, SWEEP_MS, tileSet } from "./curseMotion.ts";

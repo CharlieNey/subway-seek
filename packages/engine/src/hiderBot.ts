@@ -7,7 +7,7 @@
  *
  * Curses use what a real hider sees: where the seeker is and which way they're heading.
  */
-import type { Dataset } from "@stand-clear/data";
+import type { Dataset } from "@subway-seek/data";
 import { CARD_VALUE, CARDS, type CardId, type CurseId } from "./cards.ts";
 import { distanceMeters } from "./geo.ts";
 import type { Difficulty } from "./hardness.ts";

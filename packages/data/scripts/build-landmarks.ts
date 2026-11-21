@@ -1,8 +1,8 @@
 /**
  * Landmarks for questions → packages/data/dataset/nyc-landmarks.json
  *
- *   pnpm --filter @stand-clear/data build-landmarks             # uses cached downloads in raw/
- *   pnpm --filter @stand-clear/data build-landmarks --refresh   # re-download sources first
+ *   pnpm --filter @subway-seek/data build-landmarks             # uses cached downloads in raw/
+ *   pnpm --filter @subway-seek/data build-landmarks --refresh   # re-download sources first
  *
  * Each landmark is one pin, and distances are measured to it (the show's rule: "to the
  * map icon"). Kept to places a player would recognise and that the sources list well:
@@ -107,7 +107,7 @@ async function overpass(): Promise<string> {
       try {
         const res = await fetch(url, {
           method: "POST",
-          headers: { "User-Agent": "stand-clear-dataset-build/0.1" },
+          headers: { "User-Agent": "subway-seek-dataset-build/0.1" },
           body: new URLSearchParams({ data: OVERPASS_QUERY }),
           signal: AbortSignal.timeout(150_000),
         });

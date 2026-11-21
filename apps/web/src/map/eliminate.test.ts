@@ -1,6 +1,6 @@
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
-import { type AskContext, distanceMeters, milesToMeters } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
+import { type AskContext, distanceMeters, milesToMeters } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
 import { clearingFor, LIFT_MS, liftOf, spreadMs, stillStanding } from "./eliminate.ts";
 import { bisector, landmarkCells, questionShape, sideOfBisector } from "./shapes.ts";

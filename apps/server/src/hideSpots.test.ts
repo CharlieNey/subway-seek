@@ -1,6 +1,6 @@
-import type { Dataset } from "@stand-clear/data";
-import { loadDataset } from "@stand-clear/data/node";
-import { buildIndex, createHideRound, offsetMeters, setHiderExit } from "@stand-clear/engine";
+import type { Dataset } from "@subway-seek/data";
+import { loadDataset } from "@subway-seek/data/node";
+import { buildIndex, createHideRound, offsetMeters, setHiderExit } from "@subway-seek/engine";
 import { afterEach, expect, it, vi } from "vitest";
 
 afterEach(() => {

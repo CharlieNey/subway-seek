@@ -5,7 +5,7 @@
  *
  * Pure: parse(lines) → a Round; summarize(rounds) → text. `pnpm metrics` wraps it.
  */
-import { categoryOf, isVetoed, type Question, type QuestionCategory } from "@stand-clear/engine";
+import { categoryOf, isVetoed, type Question, type QuestionCategory } from "@subway-seek/engine";
 
 /** One line of a match log. `at` is wall-clock ms, `t` game seconds. */
 interface Event {

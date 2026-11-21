@@ -4,7 +4,7 @@
  * feeds it events and real times; the screens read what to show from it.
  */
 
-import { CLOSE_FULL, CLOSE_TOO_MANY_MESSAGES, CLOSE_TOO_MANY_ROUNDS } from "@stand-clear/engine";
+import { CLOSE_FULL, CLOSE_TOO_MANY_MESSAGES, CLOSE_TOO_MANY_ROUNDS } from "@subway-seek/engine";
 
 /** An attempt slower than this says so on the board ("Still connecting"). */
 export const SLOW_MS = 8000;

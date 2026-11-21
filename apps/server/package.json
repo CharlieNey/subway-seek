@@ -1,5 +1,5 @@
 {
-  "name": "@stand-clear/server",
+  "name": "@subway-seek/server",
   "version": "0.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
@@ -11,8 +11,8 @@
     "metrics": "tsx scripts/metrics.ts"
   },
   "dependencies": {
-    "@stand-clear/data": "workspace:*",
-    "@stand-clear/engine": "workspace:*",
+    "@subway-seek/data": "workspace:*",
+    "@subway-seek/engine": "workspace:*",
     "ws": "^8.22.0"
   },
   "devDependencies": {

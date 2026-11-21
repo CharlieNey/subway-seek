@@ -30,7 +30,7 @@ function maplibreWorkerChunk(): Plugin {
  * Content-Length can't measure progress; this can (DESIGN.md, Loading: progress is real).
  */
 const datasetBytes = statSync(
-  createRequire(import.meta.url).resolve("@stand-clear/data/dataset.json"),
+  createRequire(import.meta.url).resolve("@subway-seek/data/dataset.json"),
 ).size;
 
 /**

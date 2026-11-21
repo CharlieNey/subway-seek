@@ -6,7 +6,7 @@ import {
   type HiderView,
   resolve,
   type SeenQuestion,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { type ReactNode, useState } from "react";
 import { QuestionLog } from "./AskPanel.tsx";
 import { hhmm, hm } from "./ask.ts";

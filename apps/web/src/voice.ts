@@ -4,7 +4,7 @@
  * moment that shows it keeps it. The seeker's nine are here; the hider's three come with
  * the hider's screens.
  */
-import type { SoloView } from "@stand-clear/engine";
+import type { SoloView } from "@subway-seek/engine";
 
 export const LINES = {
   hideDeadline: "This is your station. Everyone off, please.",

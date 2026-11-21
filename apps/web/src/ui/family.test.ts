@@ -1,4 +1,4 @@
-import { QUESTION_CATEGORIES, type Question } from "@stand-clear/engine";
+import { QUESTION_CATEGORIES, type Question } from "@subway-seek/engine";
 import { describe, expect, it } from "vitest";
 import { FAMILIES, FAMILY_COLORS, familyOf, familyOfCategory } from "./family.ts";
 

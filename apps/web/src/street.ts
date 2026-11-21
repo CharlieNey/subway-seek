@@ -3,7 +3,7 @@
  * displaying a panorama is billed per StreetViewPanorama created, so the game creates
  * one and reuses it (StreetView.tsx).
  */
-import { type Photo, resolve, type SoloView } from "@stand-clear/engine";
+import { type Photo, resolve, type SoloView } from "@subway-seek/engine";
 import { nowGameTime, useGame, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
 import { GOOGLE_MAPS_KEY, loadGoogleMaps } from "./map/loadGoogle.ts";

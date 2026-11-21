@@ -1,4 +1,4 @@
-import { type GameClock, gameTime, pauseClock, startClock } from "@stand-clear/engine";
+import { type GameClock, gameTime, pauseClock, startClock } from "@subway-seek/engine";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Conn, SessionStore } from "./sessions.ts";
 

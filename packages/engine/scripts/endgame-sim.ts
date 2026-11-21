@@ -20,7 +20,7 @@
  * Target: the endgame is a third to half of the seeking time. Finding the station takes
  * ~25–30 game-min, so that's roughly 13–30 game-min here.
  */
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   buildIndex,
   CATCH_METERS,

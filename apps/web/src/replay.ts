@@ -10,7 +10,7 @@ import {
   type SoloView,
   sampleTrail,
   searchGrid,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { create } from "zustand";
 import type { World } from "./game.ts";
 import { isHider } from "./hide.ts";

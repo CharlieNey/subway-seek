@@ -31,7 +31,7 @@ import {
   SPOT_PHOTOS_OPEN_SECONDS,
   TENTACLE_MILES,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { FAMILY_NAME, type Family, familyOf } from "./ui/family.ts";
 
 export const radarLabel = (m: number) => (m === 0.25 ? "¼ mi" : m === 0.5 ? "½ mi" : `${m} mi`);

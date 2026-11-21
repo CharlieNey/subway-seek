@@ -12,7 +12,7 @@ import {
   setHiderExit,
   soloView,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import type { exitSpot, seekerStreetTarget } from "./hideSpots.ts";
 import type { MatchLog } from "./matchLog.ts";
 import type { Session } from "./sessions.ts";

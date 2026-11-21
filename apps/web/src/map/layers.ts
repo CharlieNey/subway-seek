@@ -18,7 +18,7 @@ import {
   milesToMeters,
   offsetMeters,
   type SoloView,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import type { World } from "../game.ts";
 import { displayName } from "../names.ts";
 import { FAMILY_COLORS, type Family, familyOf } from "../ui/family.ts";

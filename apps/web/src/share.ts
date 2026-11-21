@@ -1,4 +1,4 @@
-import type { Question, SoloView } from "@stand-clear/engine";
+import type { Question, SoloView } from "@subway-seek/engine";
 import { GAME_NAME } from "./brand.ts";
 import { isHider } from "./hide.ts";
 

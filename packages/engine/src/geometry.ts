@@ -3,7 +3,7 @@
  * track shape between stops, so a dot slides along the real line instead of cutting
  * corners. Positions are [lon, lat] (GeoJSON order) for the map.
  */
-import type { Dataset, Trip } from "@stand-clear/data";
+import type { Dataset, Trip } from "@subway-seek/data";
 import { METERS_PER_DEGREE } from "./geo.ts";
 import type { TimetableIndex } from "./timetable.ts";
 import { resolve, streetPoint, type Transit } from "./transit.ts";

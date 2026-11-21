@@ -1,11 +1,11 @@
-import { loadDataset } from "@stand-clear/data/node";
+import { loadDataset } from "@subway-seek/data/node";
 import {
   buildIndex,
   createHideRound,
   createSeekerDriver,
   pauseClock,
   startClock,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 import { expect, it, vi } from "vitest";
 import { storeHideRound } from "./hidePersistence.ts";
 import { createSessionPersistence } from "./persistence.ts";

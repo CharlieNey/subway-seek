@@ -13,7 +13,7 @@
 
 ## Options for the code
 
-| License | What it means for Stand Clear | For someone reading the code |
+| License | What it means for Subway Seek | For someone reading the code |
 |---|---|---|
 | **MIT** | Anyone may use, host or sell it, closed or open, with a copyright notice. A competitor could add NYC from this engine and keep their changes private. | The most familiar choice. Reads as generous. |
 | **AGPL-3.0** | Anyone may use and modify it, but anyone who runs a modified version as a network service must publish their source under the AGPL too. Closed commercial reuse is effectively off the table. | A recognised, deliberate choice for a hosted game. Some companies won't use AGPL code internally, which doesn't matter for a hobby project. |

@@ -10,7 +10,7 @@ import { createServer, request } from "node:http";
 import { connect as tcp } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CLOSE_TOO_MANY_MESSAGES, clientProtocols } from "@stand-clear/engine";
+import { CLOSE_TOO_MANY_MESSAGES, clientProtocols } from "@subway-seek/engine";
 import { expect, it } from "vitest";
 import WebSocket from "ws";
 
@@ -26,7 +26,7 @@ function health(port: number): Promise<number> {
 }
 
 it("survives an oversized message, a malformed frame, a foreign page and a flood", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "stand-clear-socket-"));
+  const dir = mkdtempSync(join(tmpdir(), "subway-seek-socket-"));
   const listener = createServer().listen(0, "127.0.0.1");
   await once(listener, "listening");
   const port = (listener.address() as { port: number }).port;

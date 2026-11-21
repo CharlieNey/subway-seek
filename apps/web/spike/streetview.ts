@@ -10,8 +10,8 @@
  * Dev-only and throwaway: its MapLibre minimap beside Street View predates decision B
  * (Google's terms forbid that pairing in a real app; the game itself uses Google Maps).
  */
-import type { Dataset } from "@stand-clear/data";
-import datasetUrl from "@stand-clear/data/dataset.json?url";
+import type { Dataset } from "@subway-seek/data";
+import datasetUrl from "@subway-seek/data/dataset.json?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";

@@ -2,7 +2,7 @@
 
 # Prompt: build "You hide, a bot seeks" (S3)
 
-You're building the hider's half of Stand Clear, an online hide-and-seek game on the real NYC subway timetable with a Google Street View endgame. Today the game has one playable side: a human seeks, a bot hides. Your job is the other side, end to end: a human hides and a bot seeks, as a mode anyone can play from the homepage's "You hide" door. It's also the groundwork for the two-player match (M3): when you're done, two-player should need rooms and a swap, not new rules.
+You're building the hider's half of Subway Seek, an online hide-and-seek game on the real NYC subway timetable with a Google Street View endgame. Today the game has one playable side: a human seeks, a bot hides. Your job is the other side, end to end: a human hides and a bot seeks, as a mode anyone can play from the homepage's "You hide" door. It's also the groundwork for the two-player match (M3): when you're done, two-player should need rooms and a swap, not new rules.
 
 Build it faithfully to the design, in the order below. Where the design is silent, write the proposal into `DESIGN.md` and ask Charlie; don't guess at a rule.
 

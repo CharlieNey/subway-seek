@@ -7,7 +7,7 @@ import {
   type HumanHider,
   hiderView,
   type TimetableIndex,
-} from "@stand-clear/engine";
+} from "@subway-seek/engine";
 export const HIDE_SCENES = [
   "hiding",
   "timesUp",
