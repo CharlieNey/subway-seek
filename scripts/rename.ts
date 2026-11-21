@@ -70,6 +70,11 @@ for (const file of files) {
 console.log(`\n${total} replacements, and brand.json: ${JSON.stringify(to)}`);
 if (dry) process.exit(0);
 writeFileSync(brandPath, `${JSON.stringify(to, null, 2)}\n`);
+// Biome's own layout for the file (arrays on one line when they fit), so lint stays clean.
+spawnSync("pnpm", ["exec", "biome", "format", "--write", brandPath], {
+  cwd: root,
+  stdio: "ignore",
+});
 
 function run(cmd: string, a: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) {
   console.log(`\n$ ${cmd} ${a.join(" ")}`);
