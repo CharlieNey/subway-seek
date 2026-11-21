@@ -1,8 +1,10 @@
+# Lint, typecheck, the tests, the timetable check and the web build, on every push to any
+# branch and on pull requests. The balance simulations are slower: sims.yml.
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
 
 jobs:

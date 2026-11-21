@@ -1,0 +1,55 @@
+# The balance simulations (CLAUDE.md: simulate before pricing). They re-run whenever the
+# engine or the timetable changes, on any branch, and by hand (Actions → Simulations → Run
+# workflow). Each prints the table its doc in docs/ quotes; the outputs are kept as an
+# artifact for 30 days, so a change's numbers can be compared with the doc before merging.
+#
+# The match and hide runs use fewer rounds than the docs' full runs to stay inside the
+# time box; run them locally with the defaults to update a doc.
+name: Simulations
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - packages/engine/**
+      - packages/data/**
+      - pnpm-lock.yaml
+      - .github/workflows/sims.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sims-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sims:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: mkdir -p sim-out
+      - name: Questions (docs/question-balance.md)
+        run: pnpm sim | tee sim-out/sim.txt
+      - name: Endgame (docs/endgame-balance.md)
+        run: pnpm sim:endgame | tee sim-out/sim-endgame.txt
+      - name: Bot against bot (docs/match-balance.md)
+        run: pnpm sim:match -- --rounds 5 | tee sim-out/sim-match.txt
+      - name: You hide, the bot seeks (docs/hider-bot.md)
+        run: pnpm sim:hide -- --rounds 13 | tee sim-out/sim-hide.txt
+      - name: You hide, ending at the station (docs/proposals/1-demo-without-google.md)
+        run: pnpm sim:hide -- --station-only --rounds 13 | tee sim-out/sim-hide-station.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulations
+          path: sim-out/
+          retention-days: 30
