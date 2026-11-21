@@ -5,6 +5,7 @@
  * The choice is kept in this browser.
  */
 import { create } from "zustand";
+import { storageKey } from "./storage.ts";
 
 export type SoundId = "someone" | "chime" | "tock";
 
@@ -15,7 +16,7 @@ export const SOUNDS: { id: SoundId; label: string }[] = [
 ];
 
 const DEFAULTS: Record<SoundId, boolean> = { someone: true, chime: false, tock: false };
-const KEY = "standClear.sound";
+const KEY = storageKey("sound");
 
 function load(): Record<SoundId, boolean> {
   try {

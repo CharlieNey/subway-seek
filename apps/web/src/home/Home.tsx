@@ -4,6 +4,7 @@
  * modes are a departures board, the footer is the wainscot. It never connects to a round
  * (the server starts one the moment a page connects); its doors are links to /play.
  */
+
 import {
   DAILY_EPOCH,
   dailyNumber,
@@ -13,6 +14,7 @@ import {
 } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
+import { GAME_NAME } from "../brand.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
 import { displayName, formatDay } from "../names.ts";
@@ -77,7 +79,7 @@ export function Home() {
   const friend = friendLine(location.search, today.number);
   const next = useNextDaily();
   useEffect(() => {
-    document.title = "Stand Clear";
+    document.title = GAME_NAME;
     void loadWorld();
   }, []);
   const start = facts?.start == null ? undefined : world?.ds.complexes[facts.start];
@@ -88,9 +90,9 @@ export function Home() {
     <div className="hp">
       <header className="hp-top">
         <div className="hp-wrap">
-          <a className="hp-brand" href="/" aria-label="Stand Clear home">
+          <a className="hp-brand" href="/" aria-label={`${GAME_NAME} home`}>
             <i aria-hidden="true" />
-            Stand Clear
+            {GAME_NAME}
           </a>
           <nav aria-label="Main">
             <a href="#how">How it plays</a>
@@ -109,7 +111,7 @@ export function Home() {
           {friend && <p className="hp-friend">{friend}</p>}
           <div className="hp-wall sc-tilefield">
             <div className="hp-wall-tab">
-              <NameTablet text="Stand Clear" rows={14} maxWidth={760} />
+              <NameTablet text={GAME_NAME} rows={14} maxWidth={760} />
             </div>
             <div className="hp-hero-grid">
               <div>
@@ -147,7 +149,7 @@ export function Home() {
                 </div>
                 <div className="hp-phone hp-phone-note">
                   <b>Play on a computer</b>
-                  Stand Clear is played on a computer. The map, Street View and the board need room
+                  {GAME_NAME} is played on a computer. The map, Street View and the board need room
                   side by side. Copy the link for later, or try the desktop layout here; controls
                   may be cramped or cut off.
                   <div className="row">
@@ -219,7 +221,7 @@ export function Home() {
           <div className="hp-wrap inner">
             <p className="fine">
               Timetable and station data from the MTA. Map and Street View imagery from Google. The
-              places the questions ask about © OpenStreetMap contributors and NYC Parks. Stand Clear
+              places the questions ask about © OpenStreetMap contributors and NYC Parks. {GAME_NAME}
               is a fan-made game and isn't affiliated with the MTA. Daily{" "}
               <b className="n">#{today.number}</b>, running since {formatDay(DAILY_EPOCH)}.
             </p>

@@ -4,7 +4,9 @@
  * needs to pin it, from the engine's hardness table (the one the bot hider picks its
  * station from). Static data from scripts/hardness.ts; no timetable, no engine.
  */
+
 import { useEffect, useState } from "react";
+import { GAME_NAME } from "../brand.ts";
 import { displayName } from "../names.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import { Bullets, Caption } from "../ui/vocab.tsx";
@@ -61,7 +63,7 @@ export function Hardest() {
   const [hubId, setHubId] = useState(HUBS[0]?.id ?? "");
   const hub = HUBS.find((h) => h.id === hubId) ?? HUBS[0];
   useEffect(() => {
-    document.title = "The hardest stations to hide at · Stand Clear";
+    document.title = `The hardest stations to hide at · ${GAME_NAME}`;
   }, []);
   if (!hub) return null;
   const hardest = hub.stations.filter((s) => s.questions !== null);
@@ -70,9 +72,9 @@ export function Hardest() {
     <div className="hp">
       <header className="hp-top">
         <div className="hp-wrap">
-          <a className="hp-brand" href="/" aria-label="Stand Clear home">
+          <a className="hp-brand" href="/" aria-label={`${GAME_NAME} home`}>
             <i aria-hidden="true" />
-            Stand Clear
+            {GAME_NAME}
           </a>
           <nav aria-label="Main">
             <a href="/#how">How it plays</a>
@@ -196,7 +198,7 @@ export function Hardest() {
         <div className="sc-wains-field">
           <div className="hp-wrap inner">
             <p className="fine">
-              Timetable and station data from the MTA. Stand Clear is a fan-made game and isn't
+              Timetable and station data from the MTA. {GAME_NAME} is a fan-made game and isn't
               affiliated with the MTA.
             </p>
             <nav aria-label="Footer">

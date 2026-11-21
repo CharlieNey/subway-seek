@@ -3,6 +3,7 @@
  * bottom like a platform wall: who and when, the round, where you are, what you can do,
  * then the one main action on the wainscot.
  */
+
 import {
   type Difficulty,
   dailyNumber,
@@ -26,6 +27,7 @@ import {
   hm,
   priceText,
 } from "./ask.ts";
+import { GAME_NAME } from "./brand.ts";
 import {
   BootBoard,
   BootWainscot,
@@ -52,6 +54,7 @@ import { ResultCard } from "./Result.tsx";
 import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { SOUNDS, useSound } from "./sound.ts";
+import { storageKey } from "./storage.ts";
 import { onStreet } from "./street.ts";
 import { TravelAction, TravelPanel } from "./TravelPanel.tsx";
 import { useLeaving } from "./ui/useLeaving.ts";
@@ -157,7 +160,7 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
     <header className="flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
       <div className="min-w-0">
         <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
-          Stand Clear
+          {GAME_NAME}
         </div>
         <div className="text-[12px] text-ink-2">{roundLine(view, alreadyPlayed)}</div>
       </div>
@@ -288,7 +291,7 @@ function SoundSettings() {
 
 // --- The onboarding hints -------------------------------------------------------------
 
-const HINTS_KEY = "standClear.hints";
+const HINTS_KEY = storageKey("hints");
 
 function loadSeen(): Set<HintId> {
   try {

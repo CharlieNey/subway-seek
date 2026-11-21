@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%VITE_GAME_NAME% · Terms, data and privacy</title>
+<meta name="description" content="What %VITE_GAME_NAME% is, where its data comes from, and what it keeps about you.">
+<link rel="stylesheet" href="/src/terms.css">
+</head>
+<body>
+<header><div class="wrap"><a href="/"><i aria-hidden="true"></i>%VITE_GAME_NAME%</a></div></header>
+<main>
+  <span class="tablet">Terms · Data · Privacy</span>
+  <h1>What this is, where the data comes from, and what we keep.</h1>
+  <p class="lede">%VITE_GAME_NAME% is a fan-made game of hide and seek on the New York City subway, played in a browser against the real timetable. This page is the whole of the small print, in plain words.</p>
+
+  <h2>The game</h2>
+  <p>%VITE_GAME_NAME% is free to play and has no accounts. It is an independent project and is not affiliated with, endorsed by or connected to the Metropolitan Transportation Authority (MTA), New York City Transit, Google, or the makers of <em>Jet Lag: The Game</em>, whose Hide + Seek format inspired it. The game's cards, art and text are its own.</p>
+  <p>The timetable in the game is one pinned weekday's schedule, chosen so that everyone plays the same day. It is a simulation for play, not a travel guide: real service, planned work and delays differ. Don't plan a journey with it.</p>
+
+  <h2>Data and attribution</h2>
+  <ul>
+    <li><strong>Timetable, stations, transfers and entrances:</strong> the MTA's open data, from the subway GTFS feed and the <em>MTA Subway Stations</em> and <em>MTA Subway Entrances and Exits</em> datasets on <a href="https://data.ny.gov" rel="noopener">data.ny.gov</a>, via <a href="https://new.mta.info/developers" rel="noopener">new.mta.info/developers</a>. Route colors follow the MTA's published GTFS palette. MTA names and marks belong to the MTA and are used only to name the routes and stations the game runs on.</li>
+    <li><strong>Maps and Street View:</strong> Google Maps Platform. Your use of the map and of Street View in this game is also governed by the <a href="https://maps.google.com/help/terms_maps/" rel="noopener">Google Maps/Google Earth Additional Terms of Service</a> and the <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>. Street View imagery is © Google and its providers and is shown with Google's attribution.</li>
+    <li><strong>Landmarks</strong> (parks, museums, libraries, hospitals, zoos and airports used in questions): © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, under the Open Database License, and NYC Parks open data. Each landmark is one point; distances in the game are measured to it.</li>
+    <li><strong>The free map</strong>, used when Street View is off (in the demo without Google keys, for replays, or once the day's Google allowance runs out), uses OpenFreeMap tiles, map data © OpenStreetMap contributors. Rounds on it end when you reach the hider's station.</li>
+  </ul>
+
+  <h2>Privacy</h2>
+  <p>There are no accounts and no sign-in. What exists:</p>
+  <ul>
+    <li><strong>In your browser:</strong> your daily results and streak, your last daily's replay (your route, the hider's and the hidden station, without any Street View positions), a few preferences (such as dismissed hints and sounds), and a session token that lets you rejoin a round after a dropped connection. They are stored in this browser only, with <code>localStorage</code>. Clearing site data removes them, and so does switching browsers; there is no way for us to restore them.</li>
+    <li><strong>On the server:</strong> a log of each round's moves, questions and answers, with its game times, kept to tune the game's balance. It holds no name, email, account or IP address, and nothing you typed. Connection logs kept by the hosting providers (Fly.io for the game server, Cloudflare for the pages) may include your IP address for a short time, as with any website. The game server also counts connections and messages per address for up to an hour, in memory only, to limit automated play.</li>
+    <li><strong>Google:</strong> when the game uses Google's map and Street View, they load directly from Google in your browser, so Google receives the requests your browser makes for them, under its own privacy policy linked above. We don't send Google anything about you beyond those requests. The fonts on every page are served from this site, not from Google. On the free map (above) nothing loads from Google at all.</li>
+    <li><strong>No analytics, no advertising, no cookies</strong> set by us. If that changes, this page will say so first.</li>
+  </ul>
+
+  <h2>Sharing</h2>
+  <p>The result you copy to share names the daily's number and start station, how long you took, which kinds of questions you asked, and the hider's score, and ends with a link to the game carrying the daily's number and your time. It never names the hidden station, so it spoils nothing.</p>
+
+  <h2>Fair play</h2>
+  <p>You can look things up elsewhere while you play; the show's seekers do too. The catch still has to happen in the game, within 25 metres of the hider on the street. Automating play against the server, or probing it for the hidden station, is against the spirit of the thing and may get a connection dropped.</p>
+
+  <h2>Changes and contact</h2>
+  <p>This page may change as the game does; the date below is when it last did. Questions and corrections: <a href="mailto:CONTACT-ADDRESS">CONTACT-ADDRESS</a>.</p>
+  <p class="fine">Last changed 2026-11-21.</p>
+</main>
+<footer><div class="wrap">Timetable and station data from the MTA. Map and Street View imagery from Google. Landmarks © OpenStreetMap contributors and NYC Parks. %VITE_GAME_NAME% is a fan-made game and isn't affiliated with the MTA.</div></footer>
+</body>
+</html>

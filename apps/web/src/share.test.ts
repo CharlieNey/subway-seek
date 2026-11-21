@@ -1,5 +1,6 @@
 import type { SoloView } from "@stand-clear/engine";
 import { describe, expect, it } from "vitest";
+import { GAME_NAME } from "./brand.ts";
 import { shareLink, shareText } from "./share.ts";
 
 const view = (over: Partial<SoloView>): SoloView => ({
@@ -50,7 +51,7 @@ describe("shareText", () => {
       }),
     );
     expect(text).toBe(
-      "Stand Clear #1 🚇\nFound it in 32 min · 2 questions\n📡🗽\nHider score: 52 min",
+      `${GAME_NAME} #1 🚇\nFound it in 32 min · 2 questions\n📡🗽\nHider score: 52 min`,
     );
   });
 
@@ -59,13 +60,15 @@ describe("shareText", () => {
       view({ mode: "practice", daily: null, result: { kind: "timeout", at: 44_400 }, hider: 5 }),
     );
     expect(text).toBe(
-      "Stand Clear (practice) 🚇\nDidn't find it in 2 h 00 min · 0 questions\nHider score: 2 h 00 min",
+      `${GAME_NAME} (practice) 🚇\nDidn't find it in 2 h 00 min · 0 questions\nHider score: 2 h 00 min`,
     );
   });
 
   it("says when you gave up", () => {
     const text = shareText(view({ result: { kind: "gaveUp", at: 37_200 + 600 }, hider: 5 }));
-    expect(text).toBe("Stand Clear #1 🚇\nGave up after 10 min · 0 questions\nHider score: 10 min");
+    expect(text).toBe(
+      `${GAME_NAME} #1 🚇\nGave up after 10 min · 0 questions\nHider score: 10 min`,
+    );
   });
 
   it("names the start hub when given", () => {
@@ -73,7 +76,7 @@ describe("shareText", () => {
       view({ result: { kind: "found", at: 37_200 + 60 }, hider: 5 }),
       "Grand Central",
     );
-    expect(text.split("\n")[0]).toBe("Stand Clear #1 · from Grand Central 🚇");
+    expect(text.split("\n")[0]).toBe(`${GAME_NAME} #1 · from Grand Central 🚇`);
   });
 
   it("ends a daily with its link: the number, and the minutes on a find", () => {

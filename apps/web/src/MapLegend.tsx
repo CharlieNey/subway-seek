@@ -19,13 +19,14 @@ import { useGame, type World } from "./game.ts";
 import { shapeQuestion } from "./MapView.tsx";
 import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
+import { storageKey } from "./storage.ts";
 import { FAMILY_COLORS, type Family, familyOf } from "./ui/family.ts";
 import { Caption, FamilySquare, Pict } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
 /** How long a legend's key shows before it folds into its caption. */
 const READ_MS = 6000;
-const READ_KEY = "standClear.legendsRead";
+const READ_KEY = storageKey("legends-read");
 
 function loadRead(): Set<string> {
   try {

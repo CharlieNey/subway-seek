@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GAME_NAME } from "../brand.ts";
 import type { DailyResult } from "../history.ts";
 import {
   familiesOf,
@@ -17,7 +18,7 @@ const result = (date: string, number: number, found: boolean, min: number): Dail
   elapsedSeconds: min * 60,
   questions: 3,
   scoreSeconds: min * 60 + 600,
-  share: "Stand Clear #1\nFound it in 41 min · 3 questions\n📡🗽📏\nHider score: 51 min",
+  share: `${GAME_NAME} #1\nFound it in 41 min · 3 questions\n📡🗽📏\nHider score: 51 min`,
 });
 
 describe("the record", () => {
@@ -57,8 +58,7 @@ describe("the record", () => {
   });
 
   it("doesn't read the title's 🚇 as a question", () => {
-    const share =
-      "Stand Clear #2 · from Jackson Hts-Roosevelt Av 🚇\nDidn't find it in 2 h 00 min · 3 questions\n🟰🎯🔥\nHider score: 2 h 30 min";
+    const share = `${GAME_NAME} #2 · from Jackson Hts-Roosevelt Av 🚇\nDidn't find it in 2 h 00 min · 3 questions\n🟰🎯🔥\nHider score: 2 h 30 min`;
     expect(familiesOf({ ...result("2026-10-06", 2, false, 120), share })).toEqual([
       "match",
       "radar",

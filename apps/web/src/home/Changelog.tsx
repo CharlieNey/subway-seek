@@ -2,8 +2,10 @@
  * What changed (DESIGN.md, Homepage: the two pages off it). The daily's number and the
  * timetable's day at the top, then the entries, newest first.
  */
+
 import { DAILY_EPOCH, dailyNumber, nyDate } from "@stand-clear/engine";
 import { useEffect } from "react";
+import { GAME_NAME } from "../brand.ts";
 import { formatDay } from "../names.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import { Caption } from "../ui/vocab.tsx";
@@ -14,15 +16,15 @@ import "./home.css";
 export function Changelog() {
   const today = nyDate(new Date());
   useEffect(() => {
-    document.title = "Changelog · Stand Clear";
+    document.title = `Changelog · ${GAME_NAME}`;
   }, []);
   return (
     <div className="hp">
       <header className="hp-top">
         <div className="hp-wrap">
-          <a className="hp-brand" href="/" aria-label="Stand Clear home">
+          <a className="hp-brand" href="/" aria-label={`${GAME_NAME} home`}>
             <i aria-hidden="true" />
-            Stand Clear
+            {GAME_NAME}
           </a>
           <nav aria-label="Main">
             <a href="/#how">How it plays</a>
@@ -69,7 +71,7 @@ export function Changelog() {
         <div className="sc-wains-field">
           <div className="hp-wrap inner">
             <p className="fine">
-              Stand Clear is a fan-made game and isn't affiliated with the MTA or with Jet Lag: The
+              {GAME_NAME} is a fan-made game and isn't affiliated with the MTA or with Jet Lag: The
               Game. The deck, the look and the rules are its own; the mechanics are the show's.
             </p>
             <nav aria-label="Footer">

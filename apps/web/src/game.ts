@@ -42,6 +42,7 @@ import {
 } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
+import { storageKey } from "./storage.ts";
 
 // Dev only: ?server=ws://… points a tab at another server, for headless checks.
 const SERVER_URL =
@@ -215,7 +216,7 @@ export function hubName(world: World | null, view: SoloView | null): string | un
 
 // --- The session token ------------------------------------------------------------
 
-const SESSION_KEY = "standClear.session";
+const SESSION_KEY = storageKey("session");
 
 export function loadSession(): StoredSession | null {
   try {

@@ -4,8 +4,10 @@
  * and the express band while a dropped link reconnects. Each says what's happening,
  * what's safe, and what to do.
  */
+
 import { RECONNECT_GRACE_MS, SOLO_PAUSES_ON_DROP } from "@stand-clear/engine";
 import { useEffect, useState } from "react";
+import { GAME_NAME } from "./brand.ts";
 import { type LinkScreen, LOST_TRIES, linkScreen, refused } from "./connection.ts";
 import { openingRound, useGame } from "./game.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
@@ -84,7 +86,7 @@ export function BootBoard() {
   return (
     <div className="flex flex-col">
       <div className="sc-tilefield flex justify-center px-4 pt-3.5 pb-2">
-        <NameTablet text="Stand Clear" width={300} />
+        <NameTablet text={GAME_NAME} width={300} />
       </div>
       <div className="flex flex-col px-4 pt-1.5">
         <BootRow

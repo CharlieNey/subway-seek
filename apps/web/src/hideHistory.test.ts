@@ -1,6 +1,7 @@
 import { loadDataset } from "@stand-clear/data/node";
 import { buildIndex, type HiderView, hiderView, type Transit } from "@stand-clear/engine";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { GAME_NAME } from "./brand.ts";
 import { hideFixture } from "./hideFixtures.ts";
 import {
   keptView,
@@ -85,7 +86,7 @@ it("removes Google locations in every hider field, including an exit walk and li
 });
 it("shares the hider score once, with no daily identity, and never shares an incomplete round", () => {
   const share = shareText(view, "Times Sq");
-  expect(share).toContain("Stand Clear (you hide · normal) · from Times Sq");
+  expect(share).toContain(`${GAME_NAME} (you hide · normal) · from Times Sq`);
   expect(share).toContain("Found in 30 min");
   expect(share).toContain(`My score: 35 min`);
   expect(shareText({ ...view, incomplete: "left" } as HiderView)).toBe("");

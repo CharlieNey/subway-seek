@@ -3,6 +3,10 @@ import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ErrorBoundary, PageBroke } from "./ErrorBoundary.tsx";
+import { migrateStorage } from "./storage.ts";
+
+// Before any page reads storage: move keys saved under the game's former names (storage.ts).
+migrateStorage();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root missing");

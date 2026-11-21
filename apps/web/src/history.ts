@@ -14,9 +14,10 @@ import type {
   Transit,
 } from "@stand-clear/engine";
 import { isHider } from "./hide.ts";
+import { storageKey } from "./storage.ts";
 import { type Family, familyOf } from "./ui/family.ts";
 
-const KEY = "stand-clear:daily-results:v1";
+const KEY = storageKey("daily-results:v1");
 
 export interface DailyResult {
   date: string;
@@ -39,8 +40,8 @@ export function loadResults(): Record<string, DailyResult> {
 }
 
 /** v3 also strips station-question origins and thermometers taken on the street. */
-const REPLAY_KEY = "stand-clear:daily-replay:v3";
-const OLD_REPLAY_KEYS = ["stand-clear:daily-replay:v1", "stand-clear:daily-replay:v2"];
+const REPLAY_KEY = storageKey("daily-replay:v3");
+const OLD_REPLAY_KEYS = [storageKey("daily-replay:v1"), storageKey("daily-replay:v2")];
 
 /** The last daily's finished round as keptView left it, for the homepage's Watch replay. */
 export function loadReplay(): { date: string; view: SoloView } | null {
@@ -196,8 +197,8 @@ export function dailyStats(results: Record<string, DailyResult>): DailyStats {
   return { played: list.length, found: list.filter((r) => r.found).length, streak };
 }
 
-const HIDE_KEY = "stand-clear:hide-results:v1";
-const HIDE_REPLAY_KEY = "stand-clear:hide-replays:v2";
+const HIDE_KEY = storageKey("hide-results:v1");
+const HIDE_REPLAY_KEY = storageKey("hide-replays:v2");
 export interface HideResult {
   id: string;
   mode: "hide";
@@ -222,7 +223,7 @@ export function loadHideResults(): Record<string, HideResult> {
 }
 export function loadHideReplays(): Record<string, HideReplay> {
   try {
-    localStorage.removeItem("stand-clear:hide-replays:v1");
+    localStorage.removeItem(storageKey("hide-replays:v1"));
     return JSON.parse(localStorage.getItem(HIDE_REPLAY_KEY) ?? "{}");
   } catch {
     return {};

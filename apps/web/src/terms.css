@@ -1,0 +1,132 @@
+/*
+ * The terms page (terms.html). Its fonts are bundled from @fontsource, like the game's,
+ * so the page loads nothing from Google: its privacy section says Google only sees the
+ * map and Street View requests.
+ */
+@import "@fontsource/josefin-sans/latin-700.css";
+@import "@fontsource/libre-franklin/latin-400.css";
+@import "@fontsource/libre-franklin/latin-600.css";
+@import "@fontsource/libre-franklin/latin-700.css";
+
+:root {
+  --glaze: #f4efe3;
+  --glaze-hi: #fbf8f1;
+  --grout: #d8cfbc;
+  --buff: #c9a877;
+  --buff-deep: #a9874f;
+  --ink: #24201b;
+  --ink-2: #5e554a;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--glaze);
+  color: var(--ink);
+  font:
+    16px / 1.55 "Libre Franklin",
+    system-ui,
+    sans-serif;
+}
+header {
+  border-bottom: 1px solid var(--grout);
+}
+header .wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+}
+header a {
+  color: var(--ink);
+  text-decoration: none;
+  font:
+    700 14px "Josefin Sans",
+    sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+header a i {
+  width: 14px;
+  height: 14px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 3px #c99a3a;
+}
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 36px 20px 72px;
+}
+.tablet {
+  display: inline-block;
+  font:
+    700 clamp(20px, 4vw, 28px) "Josefin Sans",
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 14px 20px 10px;
+  background: var(--glaze-hi);
+  box-shadow:
+    inset 0 0 0 2px #24479a,
+    inset 0 0 0 6px var(--glaze-hi),
+    inset 0 0 0 8px #c9a877;
+}
+h1 {
+  font-size: 30px;
+  line-height: 1.15;
+  margin: 22px 0 8px;
+  letter-spacing: -0.02em;
+}
+.lede {
+  color: var(--ink-2);
+  font-size: 17px;
+  margin: 0 0 28px;
+}
+h2 {
+  font:
+    700 12px "Josefin Sans",
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 32px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+}
+p {
+  margin: 0 0 12px;
+}
+ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+li {
+  margin-bottom: 6px;
+}
+main a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+  text-decoration-color: var(--grout);
+}
+main a:hover {
+  text-decoration-color: var(--ink);
+}
+.fine {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+footer {
+  background: var(--buff);
+  border-top: 3px solid var(--buff-deep);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12'%3E%3Cpath d='M0 .5H48M0 6.5H48M.5 0V6M24.5 6V12' stroke='%23E4D5B4' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+}
+footer .wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 20px 28px;
+  font-size: 13.5px;
+}

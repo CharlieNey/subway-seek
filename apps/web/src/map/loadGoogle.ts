@@ -19,14 +19,14 @@ export function loadGoogleMaps(): Promise<void> {
   loading = new Promise((resolve, reject) => {
     if (!GOOGLE_MAPS_KEY) return reject(new Error("VITE_GOOGLE_MAPS_API_KEY is not set"));
     const w = window as unknown as Record<string, unknown>;
-    w.__standClearMapsReady = () => resolve();
+    w.__gameMapsReady = () => resolve();
     // Google calls this when it rejects the key (wrong referrer, API not enabled, quota…).
     w.gm_authFailure = () => {
       console.error("Google Maps rejected the API key");
       for (const cb of authFailureListeners) cb();
     };
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&v=weekly&loading=async&callback=__standClearMapsReady`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&v=weekly&loading=async&callback=__gameMapsReady`;
     script.async = true;
     script.onerror = () => {
       // Forget the failure, so "Try again" loads the script afresh.

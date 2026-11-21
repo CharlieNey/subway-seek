@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import brand from "./src/brand.json";
 
 /**
  * MapLibre's worker (imported with `?url` in MapView.tsx) is an ES module that imports
@@ -38,8 +39,13 @@ const datasetBytes = statSync(
  */
 process.env.VITE_SITE_URL ??= "http://localhost:5173";
 
+/** The game's name for the HTML pages (`%VITE_GAME_NAME%`); src/brand.ts for the rest. */
+process.env.VITE_GAME_NAME = brand.name;
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), maplibreWorkerChunk()],
   define: { "import.meta.env.VITE_DATASET_BYTES": JSON.stringify(datasetBytes) },
   server: { port: 5173 },
+  // Two pages: the app, and the terms page, built so its fonts are bundled like the app's.
+  build: { rollupOptions: { input: { main: "index.html", terms: "terms.html" } } },
 });

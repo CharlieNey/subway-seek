@@ -2,21 +2,23 @@
  * Page not found (DESIGN.md, Loading, connecting and errors): the homepage's look, a "Not
  * in service" tablet, one line, and two ways back.
  */
+
 import { useEffect } from "react";
+import { GAME_NAME } from "../brand.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import "./home.css";
 
 export function NotFound() {
   useEffect(() => {
-    document.title = "Not in service · Stand Clear";
+    document.title = `Not in service · ${GAME_NAME}`;
   }, []);
   return (
     <div className="hp">
       <header className="hp-top">
         <div className="hp-wrap">
-          <a className="hp-brand" href="/" aria-label="Stand Clear home">
+          <a className="hp-brand" href="/" aria-label={`${GAME_NAME} home`}>
             <i aria-hidden="true" />
-            Stand Clear
+            {GAME_NAME}
           </a>
         </div>
       </header>

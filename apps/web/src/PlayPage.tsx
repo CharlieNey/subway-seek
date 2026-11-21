@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { GAME_NAME } from "./brand.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import "./playLayout.css";
 
@@ -38,12 +39,12 @@ export function PlayPage() {
       {!allowed && (
         <main className="sc-computer-page">
           <div className="sc-computer-wall sc-tilefield">
-            <a href="/" aria-label="Stand Clear home">
-              <NameTablet text="Stand Clear" rows={14} maxWidth={540} />
+            <a href="/" aria-label={`${GAME_NAME} home`}>
+              <NameTablet text={GAME_NAME} rows={14} maxWidth={540} />
             </a>
             <h1>Play on a computer</h1>
             <p>
-              Stand Clear is played on a computer. The map, Street View and the board need room side
+              {GAME_NAME} is played on a computer. The map, Street View and the board need room side
               by side. This screen is too narrow to play comfortably.
             </p>
             {started && <p>Your round's clock keeps running while this notice is open.</p>}
@@ -59,7 +60,7 @@ export function PlayPage() {
       {/* Keep an opened game mounted through resizes: no new round or billed map load. */}
       {started && (
         <div hidden={!allowed}>
-          <Suspense fallback={<p className="p-6">Opening Stand Clear…</p>}>
+          <Suspense fallback={<p className="p-6">Opening {GAME_NAME}…</p>}>
             <Game />
           </Suspense>
         </div>
