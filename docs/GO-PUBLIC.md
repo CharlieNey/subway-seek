@@ -40,7 +40,6 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 | 3.1 | A contact address in the terms | Replace `CONTACT-ADDRESS` in `apps/web/terms.html`; commit | `git revert` |
 | 3.2 | Retake the screenshots that show the name | `docs/screenshots/01-home.png`, `05-radar-answered.png`, `06-you-hide.png`, `replay.gif` (the README's captions say how they were made) | `git revert` |
 | 3.3 | Checks | `pnpm lint && pnpm typecheck && pnpm test`, then `pnpm --filter @subway-seek/web build` | — |
-| 3.4 | Delete `docs/HANDOFF.md` if it's still there | `git rm docs/HANDOFF.md` | `git revert` |
 
 **The MTA's licence (optional).** The route symbols are the game's own hexagons since 2026-11-21 (DESIGN.md, Route tiles), so none is needed for them. The MTA licenses its "logos, maps, symbols or other intellectual property", lists "NYCT subway route indicators" and station names among them, and charges no fee for approved free apps ([licensing program](https://www.mta.info/doing-business-with-us/licensing-program), read for the market research, §3.4). In 2021 it refused one indie game, which then removed its route indicators. To bring the MTA's bullets back, apply there and wait for a yes before changing `RouteBullet` in `apps/web/src/ui/vocab.tsx`. The game takes station names from the open data feed (its terms are read in `docs/proposals/license.md`); if you apply, ask whether the names need anything more. Undo: nothing to undo; an application commits you to nothing.
 

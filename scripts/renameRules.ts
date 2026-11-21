@@ -49,7 +49,7 @@ export const KEEP_MARK = "keep-name";
 /**
  * Files never rewritten. The old AWS setup is deleted, not renamed (DEPLOY-PLAN, Retire
  * the old setup); storage.ts and its test name the old keys on purpose; brand.json is
- * written whole; the handoff and the rename's own files are records or rules.
+ * written whole; the rename's own files are its rules.
  */
 export function skipFile(path: string): boolean {
   return (
@@ -58,8 +58,7 @@ export function skipFile(path: string): boolean {
     path === "apps/web/src/brand.json" ||
     path === "apps/web/src/storage.ts" ||
     path === "apps/web/src/storage.test.ts" ||
-    path.startsWith("scripts/rename") ||
-    path === "docs/HANDOFF.md"
+    path.startsWith("scripts/rename")
   );
 }
 
