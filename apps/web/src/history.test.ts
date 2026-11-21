@@ -2,7 +2,7 @@ import type { Dataset, LatLon } from "@subway-seek/data";
 import { loadDataset } from "@subway-seek/data/node";
 import type { SoloView } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type DailyResult, dailyStats, keptView } from "./history.ts";
+import { type DailyResult, dailyStats, keptView, parseResults } from "./history.ts";
 
 const r = (number: number, found: boolean): [string, DailyResult] => [
   `d${number}`,
@@ -30,6 +30,21 @@ describe("dailyStats", () => {
 
   it("is zero when nothing's been played", () => {
     expect(dailyStats({})).toEqual({ played: 0, found: 0, streak: 0 });
+  });
+});
+
+describe("parseResults", () => {
+  it("keeps results and drops entries that aren't, so one bad entry can't stop the homepage", () => {
+    const good = r(1, true);
+    const stored = JSON.stringify({ [good[0]]: good[1], "2026-11-20": 1, x: { number: 2 } });
+    expect(parseResults(stored)).toEqual({ [good[0]]: good[1] });
+  });
+
+  it("is empty for nothing, broken JSON or the wrong shape", () => {
+    expect(parseResults(null)).toEqual({});
+    expect(parseResults("{")).toEqual({});
+    expect(parseResults("[1,2]")).toEqual({});
+    expect(parseResults('"text"')).toEqual({});
   });
 });
 

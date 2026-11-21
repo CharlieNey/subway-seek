@@ -33,10 +33,39 @@ export interface DailyResult {
 
 export function loadResults(): Record<string, DailyResult> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, DailyResult>;
+    return parseResults(localStorage.getItem(KEY));
   } catch {
     return {};
   }
+}
+
+const isResult = (r: unknown): r is DailyResult => {
+  const o = r as Partial<DailyResult> | null;
+  return (
+    typeof o === "object" &&
+    o !== null &&
+    typeof o.number === "number" &&
+    typeof o.found === "boolean" &&
+    typeof o.elapsedSeconds === "number" &&
+    typeof o.share === "string" &&
+    (o.families === undefined || Array.isArray(o.families))
+  );
+};
+
+/**
+ * The stored results, keeping only entries shaped like a result. Storage outlives the
+ * code: one bad entry (an old build, an extension, a hand edit) would otherwise stop the
+ * homepage on every visit, since a reload reads the same entry again.
+ */
+export function parseResults(raw: string | null): Record<string, DailyResult> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw ?? "{}");
+  } catch {
+    return {};
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+  return Object.fromEntries(Object.entries(parsed).filter(([, r]) => isResult(r)));
 }
 
 /** v3 also strips station-question origins and thermometers taken on the street. */
