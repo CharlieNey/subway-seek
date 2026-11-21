@@ -56,6 +56,7 @@ import { searchScene } from "./searchArea.ts";
 import { SOUNDS, useSound } from "./sound.ts";
 import { storageKey } from "./storage.ts";
 import { onStreet } from "./street.ts";
+import { streetOffLine, useStreet } from "./streetMode.ts";
 import { TravelAction, TravelPanel } from "./TravelPanel.tsx";
 import { useLeaving } from "./ui/useLeaving.ts";
 import {
@@ -163,6 +164,7 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
           {GAME_NAME}
         </div>
         <div className="text-[12px] text-ink-2">{roundLine(view, alreadyPlayed)}</div>
+        {view?.stationOnly && !view.result && <StationOnlyLine hiding={isHider(view)} />}
       </div>
       <ClockTile
         time={t === null ? null : hhmm(t)}
@@ -176,6 +178,18 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
       />
     </header>
   );
+}
+
+/**
+ * The round ends at the station (DESIGN.md, Playable without Google): said once, under the
+ * round line, for as long as the round runs.
+ */
+function StationOnlyLine({ hiding }: { hiding: boolean }) {
+  const off = useStreet((s) => s.off);
+  const line = hiding
+    ? "This round ends at the station: you stay below, and the seeker finds you by reaching it."
+    : (streetOffLine(off) ?? "This round ends when you reach the hider's station.");
+  return <div className="mt-1 max-w-[250px] text-[11.5px] leading-[1.35] text-ink-2">{line}</div>;
 }
 
 /** While an elimination is in flight, re-render every frame so the count steps with it. */

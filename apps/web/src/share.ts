@@ -52,7 +52,7 @@ export function shareText(view: SoloView, startName?: string, origin?: string): 
     return [
       `${GAME_NAME} (you hide · ${view.difficulty})${startName ? ` · from ${startName}` : ""}`,
       view.result.kind === "found"
-        ? `Found in ${formatMinutes(elapsed)} · ${qs}`
+        ? `Found${view.stationOnly ? " at the station" : ""} in ${formatMinutes(elapsed)} · ${qs}`
         : `Not found · ${formatMinutes(elapsed)} · ${qs}`,
       view.asked.map((a) => EMOJI[a.q.kind]).join(""),
       `My score: ${formatMinutes(view.scoreSeconds ?? elapsed + view.bonusSeconds)}`,
@@ -65,7 +65,8 @@ export function shareText(view: SoloView, startName?: string, origin?: string): 
   const qs = `${n} ${n === 1 ? "question" : "questions"}`;
   const line =
     view.result.kind === "found"
-      ? `Found it in ${formatMinutes(elapsed)} · ${qs}`
+      ? // A round on the free map ends at the station: say so, not a street catch.
+        `Found ${view.stationOnly ? "the station" : "it"} in ${formatMinutes(elapsed)} · ${qs}`
       : view.result.kind === "gaveUp"
         ? `Gave up after ${formatMinutes(elapsed)} · ${qs}`
         : `Didn't find it in ${formatMinutes(elapsed)} · ${qs}`;

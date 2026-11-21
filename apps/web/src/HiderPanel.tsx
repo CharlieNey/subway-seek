@@ -213,36 +213,56 @@ export function HiderPanel({
                     <NameTablet text={displayName(complex.name)} tile={3.1} maxWidth={315} />
                     <Bullets routes={routesFor(world, complex.routes)} size={18} />
                   </div>
-                  <div className="px-4 pt-2">
-                    <Line>{LINES.hideDeadline}</Line>
-                    <p className="mt-2 text-[13px]">
-                      Walk anywhere within 400 m of it, but you can't leave.
-                    </p>
-                    <p className="mt-2 text-[12px] text-ink-2">
-                      Come up by 10:35 or you'll be placed at the nearest exit and frozen.
-                    </p>
-                    <p className="mt-2 text-[12px] text-ink-2">
-                      If the seeker enters your zone while you're underground, you're caught.
-                    </p>
-                  </div>
-                  <section className="px-4 pt-4">
-                    <Rule>Come up at</Rule>
-                    {view.exits.map((e) => (
-                      <button
-                        type="button"
-                        key={e.exit}
-                        disabled={!e.allowed}
-                        onClick={() => setPicked(e.exit)}
-                        className={`sc-hide-exit sc-focus${exit?.exit === e.exit ? " sc-express-ink sc-grid-lines" : ""}`}
-                      >
-                        <b className="sc-hide-exit-number">{e.exit + 1}</b>
-                        <span>Exit {e.exit + 1}</span>
-                        <span className="ml-auto text-[12px]">
-                          {!e.allowed ? "Outside your zone" : exit?.exit === e.exit ? "Picked" : ""}
-                        </span>
-                      </button>
-                    ))}
-                  </section>
+                  {view.stationOnly ? (
+                    <div className="px-4 pt-2">
+                      <Line>{LINES.hideDeadline}</Line>
+                      <p className="mt-2 text-[13px]">
+                        You stay here, below ground. This round ends at the station: the seeker
+                        finds you by standing in it.
+                      </p>
+                      <p className="mt-2 text-[12px] text-ink-2">
+                        The full game lets you come up and hide in Street View. Tourist and Fog act
+                        on the street, so they stay in your hand.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="px-4 pt-2">
+                        <Line>{LINES.hideDeadline}</Line>
+                        <p className="mt-2 text-[13px]">
+                          Walk anywhere within 400 m of it, but you can't leave.
+                        </p>
+                        <p className="mt-2 text-[12px] text-ink-2">
+                          Come up by 10:35 or you'll be placed at the nearest exit and frozen.
+                        </p>
+                        <p className="mt-2 text-[12px] text-ink-2">
+                          If the seeker enters your zone while you're underground, you're caught.
+                        </p>
+                      </div>
+                      <section className="px-4 pt-4">
+                        <Rule>Come up at</Rule>
+                        {view.exits.map((e) => (
+                          <button
+                            type="button"
+                            key={e.exit}
+                            disabled={!e.allowed}
+                            onClick={() => setPicked(e.exit)}
+                            className={`sc-hide-exit sc-focus${exit?.exit === e.exit ? " sc-express-ink sc-grid-lines" : ""}`}
+                          >
+                            <b className="sc-hide-exit-number">{e.exit + 1}</b>
+                            <span>Exit {e.exit + 1}</span>
+                            <span className="ml-auto text-[12px]">
+                              {!e.allowed
+                                ? "Outside your zone"
+                                : exit?.exit === e.exit
+                                  ? "Picked"
+                                  : ""}
+                            </span>
+                          </button>
+                        ))}
+                      </section>
+                    </>
+                  )}
                 </>
               )}
               {s.kind === "walking" && s.reason === "exit" && <TravelPanel world={world} t={t} />}
@@ -293,6 +313,8 @@ export function HiderPanel({
         <Wainscot>
           {hiding ? (
             <TravelAction world={world} t={t} />
+          ) : s.kind === "platform" && !view.lock && view.stationOnly ? (
+            <WainscotText>Staying below · the round ends at the station</WainscotText>
           ) : s.kind === "platform" && !view.lock ? (
             <>
               <Button

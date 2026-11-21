@@ -19,6 +19,7 @@ import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
 import { displayName, formatDay } from "../names.ts";
 import { routesFor } from "../routes.ts";
+import { type StreetOff, useStreet } from "../streetMode.ts";
 import { FAMILY_NAME } from "../ui/family.ts";
 import { NameTablet } from "../ui/NameTablet.tsx";
 import { Bullets, Caption, FamilySquare } from "../ui/vocab.tsx";
@@ -68,6 +69,15 @@ function useNextDaily() {
   return hoursMinutes(min);
 }
 
+/** Under the doors, when rounds on this page end at the station (streetMode.ts). */
+function homeStreetLine(off: StreetOff | null): string | null {
+  if (off === "demo")
+    return "Rounds here end when you reach the hider's station, on the free map. The full game goes on to search the street in Street View.";
+  if (off === "refusedToday" || off === "refused")
+    return "Google's map is resting until tomorrow, so today's rounds end at the station, on the free map.";
+  return null;
+}
+
 export function Home() {
   const date = nyDate(new Date());
   const today = { date, number: dailyNumber(date) };
@@ -85,6 +95,7 @@ export function Home() {
   const start = facts?.start == null ? undefined : world?.ds.complexes[facts.start];
   const done = hero.kind === "done" ? hero.result : null;
   const watch = replay?.date === date ? "/play?replay" : null;
+  const streetLine = homeStreetLine(useStreet((s) => s.off));
 
   return (
     <div className="hp">
@@ -147,6 +158,7 @@ export function Home() {
                     </>
                   )}
                 </div>
+                {streetLine && <p className="hp-street-off hp-desk">{streetLine}</p>}
                 <div className="hp-phone hp-phone-note">
                   <b>Play on a computer</b>
                   {GAME_NAME} is played on a computer. The map, Street View and the board need room

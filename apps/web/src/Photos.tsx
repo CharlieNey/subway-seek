@@ -3,6 +3,7 @@
  * two compasses for asking, the photo arriving in its plaque, the newest spot photo pinned
  * as "Looking for" while on foot, and the enlarged view with Esc and the arrow keys.
  */
+
 import {
   type Photo,
   type PhotoLook,
@@ -17,6 +18,7 @@ import { reducedMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
 import { useGame } from "./game.ts";
 import { photoUrl } from "./street.ts";
+import { streetOn } from "./streetMode.ts";
 import { Button, PhotoPlaque } from "./ui/vocab.tsx";
 
 const GRID: (PhotoLook | "nw" | "ne" | "sw" | "se")[] = [
@@ -148,6 +150,13 @@ export function PhotoImage({
     if (!sync || reducedMotion()) return false;
     return ((syncedGameTime(sync, Date.now()) - p.answerAt) * 1000) / sync.speed < 3000;
   });
+  // Street View images never share a screen with the free map (Google's terms).
+  if (!streetOn())
+    return (
+      <p className="bg-glaze-hi px-2.5 py-2 text-[12px] text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-grout)]">
+        {photoFrom(p.q)}, facing {photoFacing(p.q.look)}: hidden on the free map.
+      </p>
+    );
   return (
     <div>
       <PhotoPlaque

@@ -44,6 +44,7 @@ import {
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
 import { storageKey } from "./storage.ts";
+import { streetOn, useStreet } from "./streetMode.ts";
 
 // Dev only: ?server=ws://… points a tab at another server, for headless checks.
 const SERVER_URL =
@@ -163,6 +164,8 @@ export const useGame = create<GameStore>((set) => ({
   mapFailed: null,
   send: (intent) => {
     if (!socket || useGame.getState().link.kind !== "open") return;
+    // On the free map a new round ends at the station (streetMode.ts).
+    if (intent.type === "newRound" && !streetOn()) intent = { ...intent, street: false };
     seq += 1;
     const msg = JSON.stringify({ type: "intent", seq, intent });
     pending.push({ seq, msg });
@@ -341,6 +344,7 @@ function handle(msg: ServerMessage) {
       const fresh = (!msg.resumed && view !== null) || bringsNewRound(msg.seq);
       if (fresh) useReplay.getState().close();
       if (!msg.resumed || bringsNewRound(msg.seq)) newRoundSeq = null;
+      queueMicrotask(syncStreet);
       useGame.setState({
         status: "ready",
         link: { kind: "open" },
@@ -435,6 +439,8 @@ function connect() {
     url.searchParams.set("mode", opening.kind);
     if (opening.difficulty) url.searchParams.set("difficulty", opening.difficulty);
   }
+  // The free map: a new round ends at the station (streetMode.ts).
+  if (!streetOn()) url.searchParams.set("street", "off");
   const ws = new WebSocket(url, clientProtocols(token));
   socket = ws;
   let opened = false;
@@ -465,6 +471,20 @@ function connect() {
     failed(e.code, opened, e.reason);
   };
 }
+
+/**
+ * The page went to the free map (Google refused): a round still headed for a street search
+ * finishes at the station instead. Sent once per round; the server's answer settles it.
+ */
+let streetOffSentFor: number | null = null;
+function syncStreet() {
+  const { view, link } = useGame.getState();
+  if (streetOn() || !view || view.result || view.stationOnly || link.kind !== "open") return;
+  if (streetOffSentFor === view.seekStart) return;
+  streetOffSentFor = view.seekStart;
+  useGame.getState().send({ type: "streetOff" });
+}
+useStreet.subscribe(syncStreet);
 
 // The browser knows before the socket does.
 window.addEventListener("offline", () => {

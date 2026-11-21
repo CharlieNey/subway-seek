@@ -25,6 +25,7 @@ import { chooseProvider } from "./map/baseMap.ts";
 import { loadGoogleMaps } from "./map/loadGoogle.ts";
 import { play } from "./sound.ts";
 import { nearestPano, panoPoint, walkToward } from "./street.ts";
+import { refuseGoogle } from "./streetMode.ts";
 import { Button, Caption, Kbd, Num, Plaque, TileTimer } from "./ui/vocab.tsx";
 import { useGameTime } from "./useGameTime.ts";
 
@@ -100,7 +101,9 @@ export function StreetView({ visible }: { visible: boolean }) {
         setReady(true);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setFailed(err instanceof Error ? err.message : String(err));
+        if (cancelled) return;
+        // Google won't load Street View at all (the key, a quota): finish at the station.
+        refuseGoogle(`Street View: ${err instanceof Error ? err.message : String(err)}`);
       });
     return () => {
       cancelled = true;
@@ -455,6 +458,8 @@ function CatchBand({ line }: { line: string }) {
  * plaque. The walk still counted; the map and the questions work.
  */
 export function StreetViewFailed({ reason, onRetry }: { reason: string; onRetry: () => void }) {
+  // A hider above ground can't switch (the engine keeps their round on the street).
+  const seeking = useGame((s) => s.view !== null && !isHider(s.view));
   return (
     <div className="sc-tilefield-dark absolute inset-0 z-30 flex items-center justify-center p-4">
       <Plaque
@@ -466,11 +471,21 @@ export function StreetViewFailed({ reason, onRetry }: { reason: string; onRetry:
             <Button kind="ink" onClick={onRetry}>
               Try again
             </Button>
+            {/* Google may have run out for the day: the round can still finish. */}
+            {seeking && (
+              <Button onClick={() => refuseGoogle(`Street View: ${reason}`)}>
+                End at the station
+              </Button>
+            )}
           </div>
         }
         details={reason}
       >
-        <p>Google's imagery for this corner didn't arrive.</p>
+        <p>
+          Google's imagery for this corner didn't arrive.
+          {seeking &&
+            " If it keeps failing, end the round at the station: if you've reached the hider's station, it counts as found now."}
+        </p>
       </Plaque>
     </div>
   );

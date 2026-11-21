@@ -14,6 +14,7 @@ import { displayName } from "./names.ts";
 import { Numbers, shareFor, Tally, useNewRound } from "./Result.tsx";
 import { useReplay } from "./replay.ts";
 import { routesFor } from "./routes.ts";
+import { streetOn } from "./streetMode.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Bullets, Button } from "./ui/vocab.tsx";
 
@@ -62,6 +63,12 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
             ]}
           />
           <Tally tiles={tallyTiles(view)} play={false} delay={0} />
+          {view.stationOnly && (
+            <p className="max-w-[300px] text-center text-[12px] text-ink-2">
+              This round ended at the station, on the free map: you stayed below until the seeker
+              reached it.
+            </p>
+          )}
           <HandReveal hand={view.hand} own />
           <SpotThumbnail view={view} />
         </>
@@ -98,7 +105,9 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
         ))}
       </div>
       <span className="text-[12px] text-ink-2">
-        Searches with {SEEKER_LEVELS[difficulty].endgameAt} stations left.
+        {streetOn()
+          ? `Searches with ${SEEKER_LEVELS[difficulty].endgameAt} stations left.`
+          : "On the free map every level hunts station by station."}
       </span>
     </section>
   );

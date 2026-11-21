@@ -1,8 +1,9 @@
 /**
  * The base map behind the game's deck.gl layers, behind a small interface so it can
  * be swapped. Default: Google Maps (googleBase.ts), which Google's terms require once
- * Street View is on screen. Fallback: MapLibre + OpenFreeMap tiles — used when no
- * Google key is set, or with VITE_MAP_PROVIDER=maplibre (saves Google map loads in dev).
+ * Street View is on screen. The free map: MapLibre + OpenFreeMap tiles, used whenever the
+ * street endgame is off (streetMode.ts): no Google key, VITE_MAP_PROVIDER=maplibre (saves
+ * Google map loads in dev), or Google refused the map.
  */
 import type { Layer } from "@deck.gl/core";
 import { MapboxOverlay } from "@deck.gl/mapbox";
@@ -11,6 +12,7 @@ import * as maplibregl from "maplibre-gl";
 // MapLibre runs tile parsing in an ES-module worker that imports a sibling chunk
 // (see vite.config.ts for how the build keeps them together).
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { streetOn } from "../streetMode.ts";
 import { fitZoom } from "./shapes.ts";
 import { zoomHold } from "./zoomHold.ts";
 
@@ -150,13 +152,12 @@ export function createMapLibreBase(
 
 export type MapProvider = "google" | "maplibre";
 
+/**
+ * Google's map while the street endgame is on, the free map otherwise (streetMode.ts:
+ * no key, VITE_MAP_PROVIDER=maplibre or dev's ?map=maplibre, or Google refused today).
+ */
 export function chooseProvider(): MapProvider {
-  // Dev only: ?map=maplibre (or google) picks the provider per tab, for headless checks.
-  const asked = import.meta.env.DEV ? new URLSearchParams(location.search).get("map") : null;
-  if (asked === "maplibre" || asked === "google") return asked;
-  const forced = import.meta.env.VITE_MAP_PROVIDER as string | undefined;
-  if (forced === "maplibre" || forced === "google") return forced;
-  return import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? "google" : "maplibre";
+  return streetOn() ? "google" : "maplibre";
 }
 
 /** The point `meters` east of a circle's center, to measure its radius in pixels. */

@@ -813,7 +813,15 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
           <FoldedStation world={world} view={view} t={t} opened={opened} toggle={toggle} />
         </>
       ) : (
-        <StationCategories world={world} view={view} t={t} opened={opened} toggle={toggle} />
+        <StationCategories
+          world={world}
+          view={view}
+          t={t}
+          opened={opened}
+          toggle={toggle}
+          // No photos when the round ends at the station, or when there's nothing to photograph.
+          skipPhotos={view.stationOnly || (!view.hasSpot && !view.hasExitPhoto)}
+        />
       )}
       <QuestionLog world={world} />
       <p className="px-4 pt-3 pb-4 text-[10.5px] text-ink-3">{world.ds.landmarkAttribution}</p>

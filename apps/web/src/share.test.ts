@@ -94,4 +94,11 @@ describe("shareText", () => {
   it("is empty while the round is running", () => {
     expect(shareText(view({}))).toBe("");
   });
+
+  it("says a round on the free map found the station, not the hider on the street", () => {
+    const text = shareText(
+      view({ stationOnly: true, result: { kind: "found", at: 37_200 + 32 * 60 } }),
+    );
+    expect(text.split("\n")[1]).toBe("Found the station in 32 min · 0 questions");
+  });
 });

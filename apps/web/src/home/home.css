@@ -262,6 +262,14 @@
   flex-wrap: wrap;
   margin-top: 10px;
 }
+/* The free map: rounds end at the station (streetMode.ts). One line, under the doors. */
+.hp-street-off {
+  margin-top: 14px;
+  max-width: 460px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-ink-2);
+}
 
 /* ---------- sections ---------- */
 .hp-s {

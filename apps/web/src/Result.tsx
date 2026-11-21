@@ -223,6 +223,12 @@ export function ResultCard({ world }: { world: World }) {
         ]}
       />
       <Tally tiles={tiles} play={live} delay={tallyDelay} />
+      {view.stationOnly && (
+        <p className="max-w-[300px] text-center text-[12px] text-ink-2">
+          This round ended at the station, on the free map. The full game goes on to search the
+          street in Street View.
+        </p>
+      )}
       {view.hiderHand && <HandReveal hand={view.hiderHand} />}
       {view.daily && (
         <p className="text-[12px] text-ink-2">

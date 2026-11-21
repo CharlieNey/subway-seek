@@ -48,6 +48,7 @@ import { displayName } from "./names.ts";
 import { pathUntil, REPLAY_REAL_SECONDS, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
+import { refuseGoogle, useStreet } from "./streetMode.ts";
 import { paintAt, tablet } from "./ui/tablet.ts";
 import { Button, Caption, FollowToggle, Plaque } from "./ui/vocab.tsx";
 
@@ -226,11 +227,13 @@ export function MapView({ credits = 0 }: { credits?: number }) {
   const [pointer, setPointer] = useState<{ at: LonLat; x: number; y: number } | null>(null);
   /** Bumped by "Reload the map". */
   const [attempt, setAttempt] = useState(0);
+  /** Google refused: the base map is made again as the free map (streetMode.ts). */
+  const streetOff = useStreet((s) => s.off);
   const worldRef = useRef(world);
   worldRef.current = world;
 
   // The base map, as soon as the page opens. A reload is one more billed map load.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` is the reload trigger
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` reloads, `streetOff` swaps the map
   useEffect(() => {
     if (!container.current) return;
     let disposed = false;
@@ -241,13 +244,17 @@ export function MapView({ credits = 0 }: { credits?: number }) {
         ? null
         : { html: stationTooltip(w, s.complex), style: TOOLTIP_STYLE };
     };
-    const b: BaseMap =
-      chooseProvider() === "google"
-        ? createGoogleBase(container.current, TIMES_SQ, tooltip)
-        : createMapLibreBase(container.current, TIMES_SQ, tooltip);
+    const google = chooseProvider() === "google";
+    const b: BaseMap = google
+      ? createGoogleBase(container.current, TIMES_SQ, tooltip)
+      : createMapLibreBase(container.current, TIMES_SQ, tooltip);
     useGame.setState({ mapFailed: null });
     const failed = (reason: string) => {
-      if (!disposed) useGame.setState({ mapFailed: reason });
+      if (disposed) return;
+      // Google refused (a daily quota, the key): carry on with the free map, the round
+      // ending at the station (DESIGN.md, Playable without Google).
+      if (google) refuseGoogle(reason);
+      else useGame.setState({ mapFailed: reason });
     };
     b.onFailure(failed);
     b.ready.then(
@@ -265,7 +272,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       setBase(null);
       b.remove();
     };
-  }, [attempt]);
+  }, [attempt, streetOff]);
 
   useEffect(() => {
     if (!world) return;

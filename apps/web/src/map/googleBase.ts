@@ -44,11 +44,19 @@ export function createGoogleBase(
   const zoom = zoomHold(container);
   const failures: ((reason: string) => void)[] = [];
   let rejectReady: (err: Error) => void = () => {};
-  const stopAuth = onGoogleAuthFailure(() => {
-    const reason = "Google Maps rejected the API key";
+  const fail = (reason: string) => {
     rejectReady(new Error(reason));
     for (const cb of failures) cb(reason);
+  };
+  const stopAuth = onGoogleAuthFailure(() => fail("Google Maps rejected the API key"));
+  // A refused map (a daily quota spent, say) draws Google's own error box in the
+  // container rather than calling gm_authFailure: watch for it.
+  const errorBox = new MutationObserver(() => {
+    if (!container.querySelector(".gm-err-container, .gm-err-content")) return;
+    errorBox.disconnect();
+    fail("Google Maps refused to draw (a daily quota or the key)");
   });
+  errorBox.observe(container, { childList: true, subtree: true });
 
   // The search area's blur, in the map pane: under deck.gl's canvas (in the overlay layer)
   // and moving with the map as it pans.
@@ -180,6 +188,7 @@ export function createGoogleBase(
     remove: () => {
       removed = true;
       stopAuth();
+      errorBox.disconnect();
       veilView?.setMap?.(null);
       for (const l of listeners) l.remove();
       zoom.remove();

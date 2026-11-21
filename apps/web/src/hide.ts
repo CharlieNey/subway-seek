@@ -3,6 +3,7 @@ import {
   CARDS,
   CURSE_GAP_SECONDS,
   type HiderView,
+  needsStreet,
   nextStopIndex,
   resolve,
   type SoloView,
@@ -23,6 +24,8 @@ export function cardBlocker(view: HiderView, card: number, t: number, world: Wor
   const cost = id === "redraw" ? 2 : (def.cost ?? 0);
   if (view.hand.length <= cost) return `Choose ${cost} cards to discard`;
   if (id === "redraw") return null;
+  if (view.stationOnly && needsStreet(id))
+    return "This card acts on the street, and this round ends at the station.";
   const last = Math.max(
     -Infinity,
     ...view.cardEvents.filter((e) => CARDS[e.card].kind === "curse").map((e) => e.t),
