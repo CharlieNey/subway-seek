@@ -59,6 +59,11 @@ Re-run 2026-10-06, after every distance moved to the questions' great-circle met
 walking distance had been flat-earth, up to 0.6% off): unchanged. Walker 56.8 game-min,
 asker 17.9 (p25 11.2, p90 27.3), 3.3 questions (radar 64%), 37–42% of seeking.
 
+Re-run 2026-11-21 on the 2027-03-03 timetable (brief W32): walker 58.5 game-min (p90 120),
+asker 17.5 (p25 11, p90 28.4), 3.3 questions (radar 65%, hotter/colder 35%), 37–41% of
+seeking, 1 of 480 stuck. Within a minute of the table everywhere; the asker's p90 is a
+minute longer. No change suggested.
+
 A real player sweeps less efficiently than the simulation, so real endgames should run
 longer than 17 min, toward the top of the third-to-half target. If they run past half,
 the levers are, in order: the on-foot cooldown, the reveal distance (40 m), and the price.

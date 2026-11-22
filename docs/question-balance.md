@@ -62,3 +62,7 @@ Re-run 2026-10-06, after a vetoed question became closed for the round and every
 answer started waiting out a 1-min window: unchanged (5.4–5.5 questions to pin, ~64 min,
 no category above 28%). The simulated seeker faces no cards, and a minute's wait doesn't
 change which questions it asks. The veto's new weight is for the S4 bot-vs-bot run.
+
+Re-run 2026-11-21 on the 2027-03-03 timetable (brief W32): thrifty 1,028 of 1,028, mean
+5.4 questions (p90 7), ~64 min of bonus; greedy 5.5; static 780 of 1,028. No category
+above 28%; thermometer 6%. Unchanged.
