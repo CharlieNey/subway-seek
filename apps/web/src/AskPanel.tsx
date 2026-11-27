@@ -47,6 +47,7 @@ import {
 import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { canHover } from "./layout.ts";
+import { useIsNextQuestion } from "./NextMove.tsx";
 import { displayName } from "./names.ts";
 import {
   type ArrivedPhoto,
@@ -153,10 +154,12 @@ function QChip({
 }) {
   const a = useAsking(view);
   const state = a.state(q, cooling || !!dim);
+  const next = useIsNextQuestion(q);
   return (
     <Chip
       family={familyOf(q)}
       state={state}
+      next={next && state === "ready"}
       pict={pict}
       count={count}
       keys={keys}
@@ -174,10 +177,12 @@ function RouteChip({ route, cooling, view }: { route: Route; cooling: boolean; v
   const a = useAsking(view);
   const q: Question = { kind: "route", letter: route.letter };
   const state = a.state(q, cooling);
+  const next = useIsNextQuestion(q);
   return (
     <button
       type="button"
       data-chip=""
+      data-next={(next && state === "ready") || undefined}
       aria-pressed={state === "armed"}
       aria-label={`Does the ${route.display} stop there?`}
       title={

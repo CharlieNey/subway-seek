@@ -19,16 +19,7 @@ import {
 } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
-import {
-  askBlocker,
-  askLabel,
-  currentHint,
-  type HintId,
-  hhmm,
-  hintText,
-  hm,
-  priceText,
-} from "./ask.ts";
+import { askBlocker, askLabel, hhmm, hm, priceText, WHAT_COUNTS } from "./ask.ts";
 import { GAME_NAME } from "./brand.ts";
 import {
   BootBoard,
@@ -48,9 +39,11 @@ import { HiderPanel } from "./HiderPanel.tsx";
 import { HiderResult } from "./HiderResult.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
-import { canHover, sheetToggle, tapTab, usePlayLayout, useSheet } from "./layout.ts";
+import { sheetToggle, tapTab, usePlayLayout, useSheet } from "./layout.ts";
 import { stillStanding } from "./map/eliminate.ts";
+import { NextTargetContext, NO_TARGET, useNextMove, useNextTarget } from "./NextMove.tsx";
 import { displayName, formatDay } from "./names.ts";
+import type { NextMove } from "./nextMove.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { ReplayPanel } from "./ReplayPanel.tsx";
 import { ResultCard } from "./Result.tsx";
@@ -68,6 +61,7 @@ import {
   type FastForward,
   FollowToggle,
   Line,
+  NextLine,
   Notice,
   TabRow,
   Wainscot,
@@ -364,79 +358,95 @@ function SoundSettings() {
   );
 }
 
-// --- The onboarding hints -------------------------------------------------------------
+// --- The notice row ------------------------------------------------------------------
 
-const HINTS_KEY = storageKey("hints");
+const COUNTS_KEY = storageKey("hints");
 
-function loadSeen(): Set<HintId> {
+/** Whether "What counts" has been shown (kept with the old hints' key, so it stays seen). */
+function countsSeen(): boolean {
   try {
-    return new Set(JSON.parse(localStorage.getItem(HINTS_KEY) ?? "[]") as HintId[]);
+    return (JSON.parse(localStorage.getItem(COUNTS_KEY) ?? "[]") as string[]).includes("counts");
   } catch {
-    return new Set();
+    return false;
   }
 }
 
-/** The first round's three hints: shown once each in the notice row, remembered here. */
-function useHint(view: SoloView | null, onFoot: boolean) {
-  const [seen, setSeen] = useState(loadSeen);
-  // On the first arrival at the street, "What counts" comes first.
-  const hint: HintId | null = onFoot && !seen.has("counts") ? "counts" : currentHint(seen, view);
-  const shown = useRef<HintId | null>(null);
-  const markSeen = (id: HintId) =>
-    setSeen((s) => {
-      const next = new Set(s).add(id);
-      try {
-        localStorage.setItem(HINTS_KEY, JSON.stringify([...next]));
-      } catch {
-        // Storage refused: the hint may show again next time.
-      }
-      return next;
-    });
+/** "What counts", on the first arrival at the street: shown once, remembered here. */
+function useWhatCounts(onFoot: boolean) {
+  const [seen, setSeen] = useState(countsSeen);
+  const show = onFoot && !seen;
+  const markSeen = () => {
+    setSeen(true);
+    try {
+      const old = JSON.parse(localStorage.getItem(COUNTS_KEY) ?? "[]") as string[];
+      localStorage.setItem(COUNTS_KEY, JSON.stringify([...new Set([...old, "counts"])]));
+    } catch {
+      // Storage refused: it may show again next time.
+    }
+  };
+  const was = useRef(false);
   useEffect(() => {
-    // A hint that has been on screen and whose moment has passed counts as seen.
-    if (shown.current && shown.current !== hint) markSeen(shown.current);
-    shown.current = hint;
+    // Shown, then the street left behind: it counts as seen.
+    if (was.current && !show) markSeen();
+    was.current = show;
   });
-  return { hint, dismiss: () => hint && markSeen(hint) };
+  return { show, dismiss: markSeen };
 }
 
-/** The notice row: a refused action, then the first round's hints. Dismissed by clicking. */
-function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
+/**
+ * The notice row: a refused action, "What counts" at the street, then the next-move line,
+ * which is always there while the round runs (nextMove.ts).
+ */
+function NoticeRow({
+  view,
+  onFoot,
+  move,
+}: {
+  view: SoloView;
+  onFoot: boolean;
+  move: NextMove | null;
+}) {
   const { notice, dismissNotice, alreadyPlayed } = useGamePick(
     "notice",
     "dismissNotice",
     "alreadyPlayed",
   );
-  const { hint, dismiss } = useHint(view, onFoot);
+  const counts = useWhatCounts(onFoot);
   const [playedSeen, setPlayedSeen] = useState(false);
-  const tab = useGame((s) => s.tab);
-  const text =
-    notice ??
-    (hint ? hintText(hint, { touch: !canHover(), tab, stationOnly: view.stationOnly }) : null);
-  if (text) {
-    return (
-      <div key={text} className="sc-anim-set mx-4 mt-2.5">
-        <Notice onDismiss={notice ? dismissNotice : dismiss}>
-          <span className="whitespace-pre-line">{text}</span>
-        </Notice>
-      </div>
-    );
-  }
-  if (alreadyPlayed && !view.result && !playedSeen) {
-    return (
-      <div className="mx-4 mt-2.5">
-        <Notice onDismiss={() => setPlayedSeen(true)}>
-          You've played today's daily. This round won't change your result.
-        </Notice>
-      </div>
-    );
-  }
-  return null;
+  const text = notice ?? (counts.show ? WHAT_COUNTS : null);
+  return (
+    <>
+      {text && (
+        <div key={text} className="sc-anim-set mx-4 mt-2.5">
+          <Notice onDismiss={notice ? dismissNotice : counts.dismiss}>
+            <span className="whitespace-pre-line">{text}</span>
+          </Notice>
+        </div>
+      )}
+      {!text && alreadyPlayed && !view.result && !playedSeen && (
+        <div className="mx-4 mt-2.5">
+          <Notice onDismiss={() => setPlayedSeen(true)}>
+            You've played today's daily. This round won't change your result.
+          </Notice>
+        </div>
+      )}
+      {move && (
+        <div className="mx-4 mt-2.5">
+          <NextLine>
+            <span key={move.line} className="sc-anim-step inline-block">
+              {move.line}
+            </span>
+          </NextLine>
+        </div>
+      )}
+    </>
+  );
 }
 
 /** The wainscot's confirm for the armed question: "Ask · Radar 1 mi" and its price. */
 function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: number }) {
   const { armed, send, busy } = useGamePick("armed", "send", "busy");
+  const next = useNextTarget();
   if (!armed) return null;
   const blocker = askBlocker(armed, view, t, world.idx);
   return (
@@ -445,6 +455,7 @@ function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: numbe
         kind="ink"
         keys="⏎"
         disabled={!!blocker || busy}
+        next={next.kind === "askButton"}
         onClick={() => send({ type: "ask", question: armed })}
       >
         <span key={askLabel(armed)} className="sc-anim-step">
@@ -562,6 +573,13 @@ export function Panel() {
   // The answered band collapses into the log rather than vanishing.
   const band = useLeaving(view && !view.result ? liveQuestion(view, now) : null, 280);
   useKeys(world, view, t);
+  // The next move, worked out once for the line and the outline it draws (nextMove.ts).
+  const live = !!(world && view && t !== null && !view.result && !isHider(view));
+  const armedReady =
+    live && armed !== null && world && view && t !== null
+      ? askBlocker(armed, view, t, world.idx) === null
+      : false;
+  const move = useNextMove(live ? world : null, view, t, tab, armed, armedReady);
   // Leaving a tab unmounts its chips without a mouseleave: forget the hover.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on tab change only
   useEffect(() => hover(null), [tab]);
@@ -619,121 +637,133 @@ export function Panel() {
   };
   const toggle = sheetToggle(sheet);
   return (
-    // A finished round's result never folds away: the sheet is for the round.
-    <aside className={cn(aside, !over && "sc-sheet")}>
-      {/* Another tab has the round, and its clock: this one doesn't know the time. */}
-      <PanelTop t={screen.kind === "takenOver" ? null : t} world={world} />
-      {lost.value && (
-        <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
-          <LostBand screen={lost.value} />
-          {/* The dispatcher's lines say the round is held: only where a drop pauses it. */}
-          {SOLO_PAUSES_ON_DROP &&
-            drops.drop !== null &&
-            lineFor(roundKey(view), "lost", drops.drop) && (
-              <div className="mx-4 mt-1.5">
-                <Line>{LINES.lost}</Line>
-              </div>
-            )}
-        </div>
-      )}
-      {SOLO_PAUSES_ON_DROP &&
-        drops.back !== null &&
-        lineFor(roundKey(view), "back", drops.back) && (
-          <div className="sc-anim-set mx-4 mt-2.5">
-            <Line>{LINES.back}</Line>
-          </div>
-        )}
-      {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}
-      {screen.kind === "takenOver" && <TakenOverPlaque />}
-      <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
-        {!over && (
-          <>
-            <RoundNumbers world={world} view={view} t={t} links={!stack} />
-            <div className="sc-tabrow flex items-center justify-between border-b border-grout px-4 pt-2 pb-2.5">
-              <TabRow
-                tabs={[
-                  { id: "travel", label: "Travel" },
-                  { id: "ask", label: view.asked.length ? `Ask · ${view.asked.length}` : "Ask" },
-                ]}
-                active={tab}
-                onSelect={selectTab}
-              />
-              {stack && <RoundLinks view={view} inline />}
-              {stack && (
-                <button
-                  type="button"
-                  className="sc-sheet-toggle sc-focus"
-                  aria-expanded={sheet === "open"}
-                  onClick={() => setSheet(toggle.next)}
-                >
-                  {toggle.label}
-                </button>
-              )}
-            </div>
-          </>
-        )}
-        <NoticeRow view={view} onFoot={onFoot && !over} />
-        <div className="sc-sheet-body contents">
-          <CurseChips world={world} t={t} view={view} />
-        </div>
-        {lookingFor && (
-          <LookingFor
-            key={lookingFor.at}
-            p={lookingFor}
-            onOpen={() => setZoom(photos.indexOf(lookingFor))}
-          />
-        )}
-        <div className="sc-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
-          {over ? (
-            <>
-              {isHider(view) ? (
-                <HiderResult world={world} view={view} />
-              ) : (
-                <ResultCard world={world} />
-              )}
-              <QuestionLog world={world} />
-            </>
-          ) : (
-            <>
-              {band.value && (
-                <div data-land="question" className={band.leaving ? "sc-anim-collapse" : undefined}>
-                  <QuestionBand
-                    key={`${band.value.at}|${questionKey(band.value.q)}`}
-                    a={band.value}
-                    world={world}
-                    t={t}
-                  />
+    <NextTargetContext.Provider value={move?.target ?? NO_TARGET}>
+      {/* A finished round's result never folds away: the sheet is for the round. */}
+      <aside className={cn(aside, !over && "sc-sheet")}>
+        {/* Another tab has the round, and its clock: this one doesn't know the time. */}
+        <PanelTop t={screen.kind === "takenOver" ? null : t} world={world} />
+        {lost.value && (
+          <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
+            <LostBand screen={lost.value} />
+            {/* The dispatcher's lines say the round is held: only where a drop pauses it. */}
+            {SOLO_PAUSES_ON_DROP &&
+              drops.drop !== null &&
+              lineFor(roundKey(view), "lost", drops.drop) && (
+                <div className="mx-4 mt-1.5">
+                  <Line>{LINES.lost}</Line>
                 </div>
               )}
-              {tab === "travel" ? (
-                <TravelPanel world={world} t={t} />
-              ) : (
-                <AskPanel world={world} t={t} />
-              )}
+          </div>
+        )}
+        {SOLO_PAUSES_ON_DROP &&
+          drops.back !== null &&
+          lineFor(roundKey(view), "back", drops.back) && (
+            <div className="sc-anim-set mx-4 mt-2.5">
+              <Line>{LINES.back}</Line>
+            </div>
+          )}
+        {screen.kind === "unreachable" && <ServerPlaque screen={screen} />}
+        {screen.kind === "takenOver" && <TakenOverPlaque />}
+        <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
+          {!over && (
+            <>
+              <RoundNumbers world={world} view={view} t={t} links={!stack} />
+              <div className="sc-tabrow flex items-center justify-between border-b border-grout px-4 pt-2 pb-2.5">
+                <TabRow
+                  tabs={[
+                    { id: "travel", label: "Travel" },
+                    { id: "ask", label: view.asked.length ? `Ask · ${view.asked.length}` : "Ask" },
+                  ]}
+                  active={tab}
+                  onSelect={selectTab}
+                  next={
+                    move?.target.kind === "askTab"
+                      ? "ask"
+                      : move?.target.kind === "travelTab"
+                        ? "travel"
+                        : null
+                  }
+                />
+                {stack && <RoundLinks view={view} inline />}
+                {stack && (
+                  <button
+                    type="button"
+                    className="sc-sheet-toggle sc-focus"
+                    aria-expanded={sheet === "open"}
+                    onClick={() => setSheet(toggle.next)}
+                  >
+                    {toggle.label}
+                  </button>
+                )}
+              </div>
             </>
           )}
-        </div>
-      </div>
-      {down
-        ? screen.kind !== "takenOver" && (
-            <Wainscot>
-              <WainscotText>
-                Buttons come back when you reconnect. Nothing you pressed is lost.
-              </WainscotText>
-            </Wainscot>
-          )
-        : !over && (
-            <Wainscot>
-              {asking ? (
-                <AskConfirm world={world} view={view} t={t} />
-              ) : (
-                <TravelAction world={world} t={t} />
-              )}
-            </Wainscot>
+          <NoticeRow view={view} onFoot={onFoot && !over} move={over ? null : move} />
+          <div className="sc-sheet-body contents">
+            <CurseChips world={world} t={t} view={view} />
+          </div>
+          {lookingFor && (
+            <LookingFor
+              key={lookingFor.at}
+              p={lookingFor}
+              onOpen={() => setZoom(photos.indexOf(lookingFor))}
+            />
           )}
-      {zoom !== null && (
-        <Lightbox photos={photos} index={zoom} onIndex={setZoom} onClose={() => setZoom(null)} />
-      )}
-    </aside>
+          <div className="sc-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
+            {over ? (
+              <>
+                {isHider(view) ? (
+                  <HiderResult world={world} view={view} />
+                ) : (
+                  <ResultCard world={world} />
+                )}
+                <QuestionLog world={world} />
+              </>
+            ) : (
+              <>
+                {band.value && (
+                  <div
+                    data-land="question"
+                    className={band.leaving ? "sc-anim-collapse" : undefined}
+                  >
+                    <QuestionBand
+                      key={`${band.value.at}|${questionKey(band.value.q)}`}
+                      a={band.value}
+                      world={world}
+                      t={t}
+                    />
+                  </div>
+                )}
+                {tab === "travel" ? (
+                  <TravelPanel world={world} t={t} />
+                ) : (
+                  <AskPanel world={world} t={t} />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {down
+          ? screen.kind !== "takenOver" && (
+              <Wainscot>
+                <WainscotText>
+                  Buttons come back when you reconnect. Nothing you pressed is lost.
+                </WainscotText>
+              </Wainscot>
+            )
+          : !over && (
+              <Wainscot>
+                {asking ? (
+                  <AskConfirm world={world} view={view} t={t} />
+                ) : (
+                  <TravelAction world={world} t={t} />
+                )}
+              </Wainscot>
+            )}
+        {zoom !== null && (
+          <Lightbox photos={photos} index={zoom} onIndex={setZoom} onClose={() => setZoom(null)} />
+        )}
+      </aside>
+    </NextTargetContext.Provider>
   );
 }

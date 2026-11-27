@@ -24,6 +24,7 @@ import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
 import { usePlayLayout } from "./layout.ts";
+import { useNextTarget } from "./NextMove.tsx";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
@@ -89,10 +90,12 @@ function Row({
   line,
   onBoard,
   keys,
+  next,
 }: {
   line: CountdownLine;
   onBoard?: () => void;
   keys?: string;
+  next?: boolean;
 }) {
   return (
     <CountdownRow
@@ -105,6 +108,7 @@ function Row({
       struck={line.struck}
       onBoard={onBoard}
       keys={keys}
+      next={next}
     />
   );
 }
@@ -123,6 +127,7 @@ function PlatformView({
   view: SoloView;
 }) {
   const { send, busy } = useGamePick("send", "busy");
+  const next = useNextTarget();
   const st = world.ds.stations[state.station];
   if (!st) return null;
   const groups = platformBoard(world.idx, state, t, isHider(view) ? [] : view.curses);
@@ -159,6 +164,11 @@ function PlatformView({
                     key={`${l.route.id}|${l.dir}`}
                     line={l}
                     keys={l === firstBoardable ? "B" : undefined}
+                    next={
+                      next.kind === "board" &&
+                      world.ds.routes[next.route]?.id === l.route.id &&
+                      next.dir === l.dir
+                    }
                     onBoard={
                       busy
                         ? undefined
@@ -194,6 +204,7 @@ function PlatformView({
                 </span>
                 <Button
                   small
+                  next={next.kind === "transfer" && next.to === x.to}
                   disabled={busy || (isHider(view) && t + x.seconds > view.seekStart)}
                   reason={
                     isHider(view) && t + x.seconds > view.seekStart
@@ -245,6 +256,7 @@ function nextStop(world: World, state: OnTrain, t: number): number {
 
 function TrainView({ world, state, t }: { world: World; state: OnTrain; t: number }) {
   const { send, busy } = useGamePick("send", "busy");
+  const nextMove = useNextTarget();
   const speed = useGame((s) => s.sync?.speed ?? 6);
   const view = useGame((s) => s.view);
   const deadline = isHider(view) ? view.seekStart : null;
@@ -382,6 +394,7 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
               </span>
               <Button
                 small
+                next={nextMove.kind === "stop" && nextMove.stop === k}
                 disabled={busy}
                 label={`Get off at ${nameOf(k)}`}
                 onClick={() => send({ type: "alightAt", stop: k })}

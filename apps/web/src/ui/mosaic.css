@@ -1419,3 +1419,48 @@
     min-height: 44px;
   }
 }
+
+/* The next-move line (nextMove.ts, DESIGN.md Interaction, 2026-11-27): a light row with a
+   faience square, the one thing to do now. */
+.sc-next-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 1px var(--color-grout);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+.sc-next-line::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 4px;
+  background: var(--color-faience);
+}
+/* The control it points at: a dashed faience outline, never the focus ring's solid one. On
+   the black board, a gold rule inside the row. Static: motion is for state changes. */
+[data-next] {
+  outline: 2px dashed var(--color-faience);
+  outline-offset: 3px;
+}
+.sc-cc-row[data-next] {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--color-gold);
+}
+/* "Board" says what a row does where nothing hovers, and on the row the line points at. */
+@media (hover: none) {
+  .sc-cc-row:not(:disabled) .sc-cc-go {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+.sc-cc-row[data-next]:not(:disabled) .sc-cc-go {
+  display: inline-flex;
+  align-items: center;
+}

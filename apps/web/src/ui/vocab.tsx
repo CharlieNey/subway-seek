@@ -45,6 +45,7 @@ export function Button({
   title,
   label,
   className,
+  next,
 }: {
   children: ReactNode;
   kind?: ButtonKind;
@@ -58,6 +59,8 @@ export function Button({
   /** What a screen reader hears, when the visible text repeats down a list ("Get off"). */
   label?: string;
   className?: string;
+  /** The control the next-move line points at (nextMove.ts). */
+  next?: boolean;
 }) {
   const button = (
     <button
@@ -66,6 +69,7 @@ export function Button({
       onClick={onClick}
       title={title}
       aria-label={label}
+      data-next={next || undefined}
       data-key={keys === "⏎" ? undefined : keys}
       className={cn("sc-btn", kind !== "white" && kind, small && "sm", className)}
     >
@@ -124,6 +128,18 @@ export function TileTimer({
 /** A section heading: small caps over a 2 px ink line, no fill. */
 export function Rule({ children, className }: { children: ReactNode; className?: string }) {
   return <span className={cn("sc-rule", className)}>{children}</span>;
+}
+
+/**
+ * The next-move line (nextMove.ts): what to do now, in one plain sentence, on a light row
+ * with a faience square. Not dismissable: it changes as the round does.
+ */
+export function NextLine({ children }: { children: ReactNode }) {
+  return (
+    <p className="sc-next-line" role="status" aria-live="polite">
+      <span>{children}</span>
+    </p>
+  );
 }
 
 /** A light row with a terra cotta square; optional actions keep confirmation in the game. */
@@ -238,10 +254,13 @@ export function TabRow<T extends string>({
   tabs,
   active,
   onSelect,
+  next,
 }: {
   tabs: { id: T; label: ReactNode }[];
   active: T;
   onSelect: (id: T) => void;
+  /** The tab the next-move line points at. */
+  next?: T | null;
 }) {
   if (tabs.length > 3) throw new Error("A tab row holds three tabs at most");
   return (
@@ -252,6 +271,7 @@ export function TabRow<T extends string>({
           type="button"
           role="tab"
           aria-selected={t.id === active}
+          data-next={t.id === next || undefined}
           className="sc-tab sc-focus"
           onClick={() => onSelect(t.id)}
         >
@@ -308,6 +328,7 @@ export function Chip({
   onHover,
   hover,
   title,
+  next,
 }: {
   family?: Family;
   state?: ChipState;
@@ -323,6 +344,8 @@ export function Chip({
   /** Show the hover state (for the component sheet). */
   hover?: boolean;
   title?: string;
+  /** The question the next-move line suggests. */
+  next?: boolean;
 }) {
   const closed = state === "closed";
   return (
@@ -330,6 +353,7 @@ export function Chip({
       type="button"
       className={cn("sc-chip sc-focus", pict && "lm")}
       data-chip=""
+      data-next={next || undefined}
       data-key={keys}
       data-state={state}
       data-hover={hover || undefined}
@@ -530,6 +554,7 @@ export function CountdownRow({
   onBoard,
   hover,
   keys,
+  next,
 }: {
   route: Route;
   dest: string;
@@ -546,12 +571,15 @@ export function CountdownRow({
   /** Show the hover state (for the component sheet). */
   hover?: boolean;
   keys?: string;
+  /** The train the next-move line points at. */
+  next?: boolean;
 }) {
   return (
     <button
       type="button"
       className={cn("sc-cc-row", struck && "struck")}
       disabled={!!reason}
+      data-next={next || undefined}
       data-key={keys}
       data-hover={hover || undefined}
       onClick={onBoard}

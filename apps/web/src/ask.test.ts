@@ -16,10 +16,6 @@ import {
   askLabel,
   chipState,
   closedKeys,
-  currentHint,
-  HINTS,
-  type HintId,
-  hintText,
   keepArmed,
   priceText,
   questionHint,
@@ -177,57 +173,6 @@ describe("the wainscot and the hints", () => {
     expect(questionHint(radar1, v, T0, idx, places).lead).toBe(
       "A 1-mile ring round Times Sq–42 St, drawn on the map.",
     );
-  });
-});
-
-describe("the onboarding hints", () => {
-  const seen = (...ids: HintId[]) => new Set(ids);
-
-  it("comes in order: before the first question, after the first answer, at three left", () => {
-    const fresh = soloView(round, T0, idx);
-    expect(currentHint(seen(), fresh)).toBe("hover");
-    expect(currentHint(seen("hover"), fresh)).toBeNull();
-    const r = ask(round, radar1, T0);
-    // Asked, answer still in its window: nothing new to say.
-    expect(currentHint(seen("hover"), soloView(r, T0 + 30, idx))).toBeNull();
-    const answered = soloView(r, T0 + ANSWER_WINDOW_SECONDS + 1, idx);
-    expect(currentHint(seen("hover"), answered)).toBe(
-      answered.candidates.length <= 3 ? "three" : "ride",
-    );
-    expect(currentHint(seen("hover", "ride"), { ...answered, candidates: [1, 2, 3] })).toBe(
-      "three",
-    );
-    expect(
-      currentHint(seen("hover", "ride", "three"), { ...answered, candidates: [1] }),
-    ).toBeNull();
-  });
-
-  it("says nothing once the round is over", () => {
-    const res = applySoloIntent(round, { type: "giveUp" }, T0 + 60, idx);
-    if (!res.ok) throw new Error(res.error);
-    expect(currentHint(seen(), soloView(res.round, T0 + 61, idx))).toBeNull();
-  });
-  it("says them for this screen: the tab you're on, a touch screen, a round that ends below", () => {
-    // The round opens on Travel, where the questions aren't: the first hint sends you to Ask.
-    expect(hintText("hover", { tab: "travel" })).toBe("Open Ask and hover a question to start.");
-    expect(hintText("hover", { tab: "ask" })).toBe("Hover a question to see what it does.");
-    expect(hintText("hover", { tab: "travel", touch: true })).toBe(
-      "Open Ask and tap a question to start.",
-    );
-    expect(hintText("hover", { tab: "ask", touch: true })).toBe(
-      "Tap a question to see what it does.",
-    );
-    // There's no street search to go up to when the round ends at the station.
-    expect(hintText("three", { stationOnly: true })).toBe("Three left. Ride to each in turn.");
-    expect(hintText("three")).toBe(HINTS.three);
-    expect(hintText("ride", { stationOnly: true, touch: true })).toBe(HINTS.ride);
-    // Eight words or fewer, as the design asks (Interaction: onboarding).
-    for (const t of [
-      hintText("hover", { tab: "travel" }),
-      hintText("hover", { tab: "travel", touch: true }),
-      hintText("three", { stationOnly: true }),
-    ])
-      expect(t.split(" ").length).toBeLessThanOrEqual(8);
   });
 });
 

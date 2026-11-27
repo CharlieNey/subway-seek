@@ -2,8 +2,9 @@
  * Asking is select, see, confirm (DESIGN.md, Interaction): a chip arms a question, the map
  * draws its shape, a one-sentence hint says what it does, and the wainscot confirms with
  * the price. The logic behind the Ask tab, kept pure so it can be tested: arming, what
- * stops a question being asked, chip states, the hints, the onboarding hints and the score
- * tally. No outcome counts, ever: nothing here says how many stations an answer would leave.
+ * stops a question being asked, chip states, the hints, "What counts"
+ * and the score tally. No outcome counts, ever: nothing here says how many stations an
+ * answer would leave.
  */
 import {
   type Answer,
@@ -333,63 +334,15 @@ export function questionText(q: Question, idx: TimetableIndex, ctx?: AskContext)
   return describeQuestion(q, idx.ds, ctx);
 }
 
-// --- The onboarding hints ------------------------------------------------------------
-
-export type HintId = "hover" | "ride" | "three" | "counts";
+// --- What counts at the street ----------------------------------------------------------
 
 /**
- * Three hints, eight words or fewer, shown once each and remembered in the browser; and
- * "What counts", three lines on the first arrival at the street (Interaction).
+ * "What counts": three lines on the first arrival at the street, shown once and
+ * remembered in the browser (Interaction). The station-hunt hints it came with gave way to
+ * the next-move line (nextMove.ts, 2026-11-27).
  */
-export const HINTS: Record<HintId, string> = {
-  hover: "Hover a question to see what it does.",
-  ride: "Ride toward what's left. Get off anywhere.",
-  three: "Three left. Go up and look.",
-  counts:
-    "If this is their station, the hider is inside your circle.\nYou see them once you pass within 40 m.\nYou catch them within 25 m, standing still.",
-};
-
-/**
- * A hint as this screen says it. The questions live on the Ask tab, so from Travel the
- * first hint sends you there; a touch screen taps instead of hovering; and where the round
- * ends at the station, the last one rides rather than going up.
- */
-export function hintText(
-  id: HintId,
-  { touch = false, tab = "ask", stationOnly = false }: HintContext = {},
-): string {
-  if (id === "hover") {
-    const verb = touch ? "tap" : "hover";
-    return tab === "ask"
-      ? `${touch ? "Tap" : "Hover"} a question to see what it does.`
-      : `Open Ask and ${verb} a question to start.`;
-  }
-  if (id === "three" && stationOnly) return "Three left. Ride to each in turn.";
-  return HINTS[id];
-}
-
-export interface HintContext {
-  touch?: boolean;
-  tab?: "travel" | "ask";
-  stationOnly?: boolean;
-}
-
-/**
- * Which onboarding hint shows now, if any: before the first question, after the first
- * answer, and at three stations or fewer. Each shows once.
- */
-export function currentHint(seen: ReadonlySet<HintId>, view: SoloView | null): HintId | null {
-  if (!view || view.result) return null;
-  const want: HintId | null =
-    view.candidates.length <= 3 && view.asked.some(isAnswered)
-      ? "three"
-      : view.asked.some(isAnswered)
-        ? "ride"
-        : view.asked.length === 0
-          ? "hover"
-          : null;
-  return want && !seen.has(want) ? want : null;
-}
+export const WHAT_COUNTS =
+  "If this is their station, the hider is inside your circle.\nYou see them once you pass within 40 m.\nYou catch them within 25 m, standing still.";
 
 // --- The score tally -----------------------------------------------------------------
 
