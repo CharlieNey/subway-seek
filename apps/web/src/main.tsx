@@ -38,12 +38,19 @@ const safe =
     ? "Your round is kept on the server for 3 minutes, its clock running. Reload to pick it up."
     : "Nothing is lost. Your results are kept in this browser.";
 
-void page.then((el) =>
-  createRoot(root).render(
-    <StrictMode>
-      <ErrorBoundary fallback={(error) => <PageBroke error={error} safe={safe} />}>
-        {el}
-      </ErrorBoundary>
-    </StrictMode>,
-  ),
+// A page whose code fails to load (a tab left open across a deploy asks for files the new
+// one doesn't have) gets the same plaque and its Reload, not a blank screen.
+void page.then(
+  (el) =>
+    createRoot(root).render(
+      <StrictMode>
+        <ErrorBoundary fallback={(error) => <PageBroke error={error} safe={safe} />}>
+          {el}
+        </ErrorBoundary>
+      </StrictMode>,
+    ),
+  (error: unknown) =>
+    createRoot(root).render(
+      <PageBroke error={error instanceof Error ? error : new Error(String(error))} safe={safe} />,
+    ),
 );
