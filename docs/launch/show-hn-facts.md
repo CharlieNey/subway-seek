@@ -38,10 +38,10 @@ Plain, no "vibe coded", no name needed:
 ## Hard part 1: balancing with no players
 
 - `pnpm sim` plays every hiding station reachable from 13 start stations in a 20-minute hide: **1,028 games** (`docs/question-balance.md`).
-- When every question cost the same (+10 minutes to the hider's score), a strong seeker spent **91–94%** of its questions on radar and "does this line stop at your station" (`question-balance.md`, line 10).
+- When every question cost the same (+10 minutes to the hider's score), a strong seeker spent **91–94%** of its questions on radar and "does this line stop at your station" (the share: `question-balance.md`, The problem; the flat price: `DESIGN.md`, Questions, and `ARCHITECTURE.md` §5).
 - The set grew to six families with their own prices and cooldowns. Now **no family is above 29%** for a moving seeker at any pace; every family is used (`question-balance.md`, Final rules).
 - A strong seeker pins the station in all 1,028 games, mean 5.4 questions. **A seeker that never moves pins only 780**: riding matters (`docs/ARCHITECTURE.md`, section 5).
-- Whole rounds, bot against bot, with cards (`pnpm sim:match`, 780 rounds): on Normal the station is found in 98% of rounds, at 39 game-minutes; Easy 100%, Hard 96%. **A veto is worth about 9–10 minutes** to the hider (`docs/match-balance.md`).
+- Whole rounds, bot against bot, with cards (`pnpm sim:match`, 780 rounds): on Normal the hider is found in 98% of rounds, and the seeker reaches their station at a median 39 game-minutes; Easy 100%, Hard 96% found. **A veto is worth about 9–10 minutes** to the hider (`docs/match-balance.md`).
 - Caveat to say: the question simulation teleports between stations, so its times are optimistic; the question mix is the point.
 
 ## Hard part 2: hidden information
