@@ -143,7 +143,8 @@ function tripText(idx: TimetableIndex, trip: number): string {
   const route = tr ? idx.ds.routes[tr.route] : undefined;
   if (!tr || !route) return "a train";
   const last = tr.stops[tr.stops.length - 1] as number;
-  return `the ${route.display ?? route.letter} to ${stationName(idx, last)}`;
+  // The board's own words: a destination, not a station you're going to, so no lines.
+  return `the ${route.display ?? route.letter} to ${displayName(idx.ds.stations[last]?.name ?? "")}`;
 }
 
 /**

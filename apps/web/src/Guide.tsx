@@ -6,12 +6,30 @@
  * and replayable from How it plays. It says nothing the seeker's view doesn't hold.
  */
 import { isAnswered, resolve, type SoloView } from "@subway-seek/engine";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 import type { World } from "./game.ts";
 import { useLearn } from "./learn.ts";
 import { stillPossible, useNotHereList } from "./notHere.ts";
+import { roundKey } from "./voice.ts";
 
 export type GuideStep = 1 | 2 | 3 | 4;
+
+/**
+ * How far the guide has got this round: one record, shared by the Travel tab's copy and
+ * the Ask tab's (a tester saw 2 of 4 on one tab and 3 of 4 on the other).
+ */
+const useGuideProgress = create<{
+  round: string | null;
+  reached: GuideStep;
+  rode: boolean;
+  set: (round: string, reached: GuideStep, rode: boolean) => void;
+}>((set) => ({
+  round: null,
+  reached: 1,
+  rode: false,
+  set: (round, reached, rode) => set({ round, reached, rode }),
+}));
 
 /** Which step the round is on, given whether you've been on a train yet. */
 export function guideStep(
@@ -57,17 +75,21 @@ export function Guide({
   const guide = useLearn((s) => s.guide);
   const finish = useLearn((s) => s.finishGuide);
   const notHere = useNotHereList(view);
-  const rode = useRef(false);
-  const reached = useRef<GuideStep>(1);
+  const progress = useGuideProgress();
+  const round = roundKey(view);
+  const mine = progress.round === round;
   const s = resolve(view.seeker, t, world.idx);
-  if (s.kind === "train") rode.current = true;
-  const raw = guideStep(view, t, world, tab, rode.current);
+  const rode = (mine && progress.rode) || s.kind === "train";
+  const raw = guideStep(view, t, world, tab, rode);
   // It only goes forward: a second question doesn't send you back to step 2.
-  if (raw !== "done" && raw > reached.current) reached.current = raw;
-  const step = raw === "done" ? raw : reached.current;
+  const before = mine ? progress.reached : 1;
+  const reached: GuideStep = raw !== "done" && raw > before ? raw : before;
+  const step = raw === "done" ? raw : reached;
   useEffect(() => {
+    if (!mine || progress.reached !== reached || progress.rode !== rode)
+      progress.set(round, reached, rode);
     if (guide === "new" && step === "done") finish();
-  }, [guide, step, finish]);
+  });
   if (guide !== "new" || step === "done") return null;
   return (
     <section className="sc-guide mx-4 mt-2" aria-label="Guide">

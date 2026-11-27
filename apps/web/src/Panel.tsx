@@ -195,7 +195,8 @@ function PanelTop({
         {!stack && stationLine}
       </div>
       <ClockTile
-        time={t === null ? null : hhmm(t)}
+        // Once the round is over the clock shows when it ended, not a time still running.
+        time={t === null ? null : hhmm(view?.result ? view.result.at : t)}
         paused={paused}
         ff={live ? fastForward(world, view, t, busy, stack) : undefined}
         onPause={
