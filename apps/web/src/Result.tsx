@@ -5,21 +5,26 @@
  * round in white. Practice takes a difficulty: three Buttons, the chosen one ink.
  */
 import {
+  categoryOf,
   DIFFICULTIES,
   type Difficulty,
+  isVetoed,
   questionBonusSeconds,
   type SoloView,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm, type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
-import { hubName, useGame, useGamePick, type World } from "./game.ts";
+import { Callouts, useEnding, useReveal, Verdict } from "./Ending.tsx";
+import { hubName, serverHttpUrl, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
-import { dailyStats } from "./history.ts";
+import { dailyStats, playedToday } from "./history.ts";
 import { displayName } from "./names.ts";
 import { useReplay } from "./replay.ts";
 import { routesFor } from "./routes.ts";
 import { shareText } from "./share.ts";
+import { type HardnessData, PERCENTILE_MIN, parFor, parLine, percentileOf } from "./standing.ts";
 import { FAMILY_COLORS } from "./ui/family.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Bullets, Button, Line } from "./ui/vocab.tsx";
@@ -42,7 +47,11 @@ export function useNewRound() {
   return (mode: "daily" | "practice" | "hide", difficulty?: Difficulty) => {
     const inProgress = view && !view.result && view.asked.length > 0;
     if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
-    send(mode !== "daily" ? { type: "newRound", mode, difficulty } : { type: "newRound", mode });
+    send(
+      mode !== "daily"
+        ? { type: "newRound", mode, difficulty }
+        : { type: "newRound", mode, ...(playedToday() ? { replay: true } : {}) },
+    );
   };
 }
 
@@ -73,7 +82,7 @@ const FOUND_SET_MS = 900;
 const TALLY_STEP_MS = 40;
 
 /** Whether the round ended while you watched, so its result sets rather than just being there. */
-function useEndedLive(): boolean {
+export function useEndedLive(): boolean {
   const ended = useMotion((s) => s.ended);
   const [live] = useState(
     () => ended !== null && performance.now() - ended < 4000 && !reducedMotion(),
@@ -136,6 +145,76 @@ export function Tally({
   );
 }
 
+/** The hardest-stations table, loaded once a result needs par (it isn't in the play bundle). */
+function useHardness(want: boolean): HardnessData | null {
+  const [data, setData] = useState<HardnessData | null>(null);
+  useEffect(() => {
+    if (!want || data) return;
+    let live = true;
+    import("./home/hardness.json").then(
+      (m) => live && setData(m.default as HardnessData),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [want, data]);
+  return data;
+}
+
+/** Today's finished dailies, minute by minute, from the server (standings.ts). */
+function useDailyScores(date: string | null): { n: number; counts: number[] } | null {
+  const [scores, setScores] = useState<{ n: number; counts: number[] } | null>(null);
+  useEffect(() => {
+    if (!date) return;
+    let live = true;
+    fetch(serverHttpUrl("/daily/scores"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { date?: string; n?: number; counts?: number[] } | null) => {
+        if (live && j?.date === date && typeof j.n === "number" && Array.isArray(j.counts))
+          setScores({ n: j.n, counts: j.counts });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [date]);
+  return scores;
+}
+
+/**
+ * Par, and on a daily where you stand among today's finishers (DESIGN.md, Coming back).
+ * The percentile waits for PERCENTILE_MIN others; until then it says how many so far.
+ */
+function Standing({ world, view, counts }: { world: World; view: SoloView; counts: boolean }) {
+  const hider = view.hider;
+  const finished = view.result !== null && view.result.kind !== "gaveUp";
+  const data = useHardness(hider !== null);
+  const scores = useDailyScores(view.daily && counts && finished ? view.daily.date : null);
+  if (!view.result || hider === null) return null;
+  // The hardest-stations table is for an ordinary day: a themed Saturday hides by a
+  // narrower search space (themes.ts), so it shows no par rather than a wrong one.
+  const par = data && !view.daily?.theme ? parFor(data, world.ds, view.hub, hider) : null;
+  // Par counts the questions that pin the station: not the on-foot ones, nor vetoed ones.
+  const pinning = view.asked.filter(
+    (a) => categoryOf(a.q) !== "onFoot" && !(a.answer !== null && isVetoed(a.answer)),
+  ).length;
+  const score = (view.result.at - view.seekStart + view.bonusSeconds) / 60;
+  const pct = scores ? percentileOf(scores.counts, scores.n, score) : null;
+  const parts: string[] = [];
+  if (par !== null) parts.push(parLine(par, pinning, view.result.kind === "found"));
+  if (pct)
+    parts.push(
+      `better than ${pct.beat}% of today's ${pct.others} other finished ${pct.others === 1 ? "daily" : "dailies"}`,
+    );
+  else if (scores)
+    parts.push(
+      `your standing shows once ${PERCENTILE_MIN} others finish today (${Math.max(0, scores.n - 1)} so far)`,
+    );
+  if (parts.length === 0) return null;
+  return <p className="max-w-[320px] text-center text-[12.5px] text-ink-2">{parts.join(" · ")}</p>;
+}
+
 /** Share the result: a replayed daily shares the result that counts. "Copied" for 2 s. */
 export function shareFor(
   world: World,
@@ -152,6 +231,11 @@ export function shareFor(
         if (useGame.getState().notice === "Copied") useGame.setState({ notice: null });
       }, 2000);
     };
+    // No clipboard off https (a phone playing a laptop's dev server): the box instead.
+    if (!navigator.clipboard?.writeText) {
+      window.prompt("Copy your result:", text);
+      return;
+    }
     navigator.clipboard
       .writeText(text)
       .then(copied)
@@ -173,11 +257,14 @@ export function ResultCard({ world }: { world: World }) {
   const tiles = view?.result ? tallyTiles(view) : [];
   const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
   const tallied = useTallyCount(tiles.length, live, tallyDelay);
+  const ending = useEnding(world, view);
+  // The map plays both routes once the tablet and the tally have set (DESIGN.md, Ending).
+  useReveal(world, view, live, tallyDelay + tiles.length * TALLY_STEP_MS + 400);
   if (!view?.result) return null;
   const hider = view.hider === null ? undefined : world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
   const kind = view.result.kind;
-  const stats = dailyStats(results);
+  const stats = dailyStats(results, view.daily?.number);
   const questionMin = questionBonusSeconds(view.asked) / 60;
   const { share } = shareFor(world, view, results, alreadyPlayed);
   return (
@@ -200,11 +287,12 @@ export function ResultCard({ world }: { world: World }) {
         hider && <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
       )}
       {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={320} />}
+      <Verdict text={ending.verdict} />
       <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">
         {hider && <Bullets routes={routesFor(world, hider.routes)} size={18} />}
         <span>
           {view.daily
-            ? `Daily #${view.daily.number}`
+            ? `Daily #${view.daily.number}${view.daily.theme ? ` · ${THEME_NAMES[view.daily.theme]}` : ""}`
             : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`}
         </span>
       </div>
@@ -223,6 +311,8 @@ export function ResultCard({ world }: { world: World }) {
         ]}
       />
       <Tally tiles={tiles} play={live} delay={tallyDelay} />
+      <Standing world={world} view={view} counts={!alreadyPlayed} />
+      <Callouts world={world} view={view} callouts={ending.callouts} />
       {view.stationOnly && (
         <p className="max-w-[300px] text-center text-[12px] text-ink-2">
           This round ended at the station, on the free map. The full game goes on to search the
@@ -234,7 +324,7 @@ export function ResultCard({ world }: { world: World }) {
         <p className="text-[12px] text-ink-2">
           {alreadyPlayed
             ? "Played again: your first result today is the one that counts."
-            : `Daily stats: ${stats.played} played · ${stats.found} found · streak ${stats.streak}`}
+            : `Daily stats: ${stats.played} played · ${stats.found} found · ${stats.running} ${stats.running === 1 ? "day" : "days"} running · found streak ${stats.streak}`}
         </p>
       )}
       <div className="my-1 flex flex-wrap justify-center gap-1.5">

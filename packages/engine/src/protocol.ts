@@ -54,6 +54,8 @@ export type NewRoundIntent = {
   mode: RoundMode;
   difficulty?: Difficulty;
   street?: boolean;
+  /** A daily this browser has already played today (DailyInfo.replay). */
+  replay?: boolean;
 };
 /** Solo-only clock controls, handled by the server's session rather than the round. */
 export type ClockIntent =
@@ -110,6 +112,7 @@ export const clientIntentSchema = z.discriminatedUnion("type", [
     mode: z.enum(["daily", "practice", "hide"]),
     difficulty: z.enum(["easy", "normal", "hard"]).optional(),
     street: z.boolean().optional(),
+    replay: z.boolean().optional(),
   }),
   z.object({ type: z.literal("pause") }),
   z.object({ type: z.literal("resume") }),

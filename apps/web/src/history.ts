@@ -13,7 +13,9 @@ import type {
   TrailEntry,
   Transit,
 } from "@subway-seek/engine";
+import { nyDate } from "@subway-seek/engine";
 import { isHider } from "./hide.ts";
+import { daysRunning } from "./standing.ts";
 import { storageKey } from "./storage.ts";
 import { type Family, familyOf } from "./ui/family.ts";
 
@@ -207,14 +209,24 @@ export function saveResult(ds: Dataset, view: SoloView, share: string): void {
   }
 }
 
+/**
+ * Whether this browser already has today's daily result: a daily started now is played
+ * again, and doesn't count toward today's standings (DailyInfo.replay).
+ */
+export function playedToday(now = new Date()): boolean {
+  return Boolean(loadResults()[nyDate(now)]);
+}
+
 export interface DailyStats {
   played: number;
   found: number;
   /** Consecutive days found, ending at the latest result. */
   streak: number;
+  /** Consecutive days with a finished daily, found or not (standing.ts). */
+  running: number;
 }
 
-export function dailyStats(results: Record<string, DailyResult>): DailyStats {
+export function dailyStats(results: Record<string, DailyResult>, today?: number): DailyStats {
   const list = Object.values(results).sort((a, b) => a.number - b.number);
   let streak = 0;
   for (let i = list.length - 1; i >= 0; i--) {
@@ -223,7 +235,12 @@ export function dailyStats(results: Record<string, DailyResult>): DailyStats {
     if (!r.found || (next && next.number !== r.number + 1)) break;
     streak++;
   }
-  return { played: list.length, found: list.filter((r) => r.found).length, streak };
+  return {
+    played: list.length,
+    found: list.filter((r) => r.found).length,
+    streak,
+    running: daysRunning(results, today),
+  };
 }
 
 const HIDE_KEY = storageKey("hide-results:v1");

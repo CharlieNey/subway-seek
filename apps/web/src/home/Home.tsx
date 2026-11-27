@@ -8,9 +8,11 @@
 import {
   DAILY_EPOCH,
   dailyNumber,
+  dailyTheme,
   nyDate,
   RECONNECT_GRACE_MS,
   SEEKER_LEVELS,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
@@ -68,6 +70,8 @@ function homeStreetLine(off: StreetOff | null): string | null {
 export function Home() {
   const date = nyDate(new Date());
   const today = { date, number: dailyNumber(date) };
+  // Saturdays may bend one rule (themes.ts): public, so the page can say so.
+  const theme = dailyTheme(date);
   const facts = useDailyFacts();
   const world = useGame((s) => s.world);
   const [results] = useState(loadResults);
@@ -171,8 +175,13 @@ export function Home() {
                 <div className="hp-meta">
                   <span>
                     <b>Daily #{today.number}</b> · {formatDay(date)}
+                    {theme && ` · ${THEME_NAMES[theme]}`}
                   </span>
-                  <span>Everyone hunts the same hidden station</span>
+                  <span>
+                    {theme === "outerBoroughs"
+                      ? "Saturday: it starts outside Manhattan, and the hider isn't in Manhattan"
+                      : "Everyone hunts the same hidden station"}
+                  </span>
                   {start && facts && (
                     <span>
                       Starts at <b>{displayName(start.name)}</b>,{" "}
@@ -236,6 +245,7 @@ export function Home() {
               <a href="#record">Daily seeking record</a>
               <a href="/play?practice">Practice</a>
               <a href="/hardest">Hardest stations</a>
+              <a href="/stamps">Stamp book</a>
               <a href="/changelog">Changelog</a>
               <a href="/terms.html">Terms, data and privacy</a>
             </nav>
@@ -391,7 +401,7 @@ const MONTH = (date: string) =>
 
 /** Stats and the tile wall: one tile per day, from this browser's results. */
 function Record({ results, today }: { results: Record<string, DailyResult>; today: string }) {
-  const stats = recordStats(results);
+  const stats = recordStats(results, dailyNumber(today));
   const tiles = monthTiles(results, today);
   return (
     <div className="hp-panel">
@@ -405,8 +415,8 @@ function Record({ results, today }: { results: Record<string, DailyResult>; toda
           <span>found</span>
         </div>
         <div>
-          <b>{stats.streak}</b>
-          <span>day streak</span>
+          <b>{stats.running}</b>
+          <span>{stats.running === 1 ? "day" : "days"} running</span>
         </div>
         <div>
           <b>{stats.fastest === null ? "–" : `${Math.round(stats.fastest / 60)} min`}</b>

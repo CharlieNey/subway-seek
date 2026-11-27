@@ -18,6 +18,7 @@ import type { BaseMap } from "./baseMap.ts";
 import { createVeil, eastOf, fitZoom } from "./baseMap.ts";
 import { loadGoogleMaps, onGoogleAuthFailure } from "./loadGoogle.ts";
 import mosaicStyle from "./mosaicStyle.json";
+import { untabOverlay } from "./untabOverlay.ts";
 import { zoomHold } from "./zoomHold.ts";
 
 /**
@@ -37,6 +38,7 @@ export function createGoogleBase(
   const pending: (() => void)[] = [];
   const listeners: google.maps.MapsEventListener[] = [];
   let removed = false;
+  let stopUntab = () => {};
   const whenMap = (fn: (m: google.maps.Map) => void) => {
     if (map) fn(map);
     else pending.push(() => map && fn(map));
@@ -105,6 +107,7 @@ export function createGoogleBase(
         gestureHandling: "greedy",
       });
       overlay.setMap(map);
+      stopUntab = untabOverlay(container);
       listeners.push(map.addListener("idle", zoom.release));
       veilView.setMap(map);
       if (import.meta.env.DEV) {
@@ -186,6 +189,7 @@ export function createGoogleBase(
         );
       }),
     remove: () => {
+      stopUntab();
       removed = true;
       stopAuth();
       errorBox.disconnect();

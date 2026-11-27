@@ -15,6 +15,7 @@ export * from "./search.ts";
 export * from "./seekerBot.ts";
 export * from "./seekerDriver.ts";
 export * from "./solo.ts";
+export * from "./themes.ts";
 export * from "./timetable.ts";
 export * from "./trail.ts";
 export * from "./transit.ts";

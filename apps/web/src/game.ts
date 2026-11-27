@@ -38,11 +38,13 @@ import {
   loadHideReplays,
   loadReplay,
   loadResults,
+  playedToday,
   saveHideResult,
   saveResult,
 } from "./history.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
+import { nyToday, saveStamp } from "./stamps.ts";
 import { storageKey } from "./storage.ts";
 import { streetOn, useStreet } from "./streetMode.ts";
 
@@ -298,7 +300,14 @@ function onView(view: SoloView): Partial<GameStore> {
   if (!view.result) {
     return { alreadyPlayed: !!(view.daily && loadResults()[view.daily.date]) };
   }
-  const { alreadyPlayed, world } = useGame.getState();
+  const { alreadyPlayed, world, replayOnly } = useGame.getState();
+  // The stamp book (stamps.ts): a find as the seeker, or a finished hide. Not the bot's
+  // replay of yesterday, and not a give-up's reveal.
+  const home = view.hider === null ? undefined : world?.ds.complexes[view.hider];
+  if (home && !replayOnly) {
+    if (isHider(view) && !view.incomplete) saveStamp("hidden", home.id, nyToday());
+    else if (!isHider(view) && view.result.kind === "found") saveStamp("found", home.id, nyToday());
+  }
   if (isHider(view) && world) saveHideResult(world.ds, view, shareText(view, hubName(world, view)));
   if (view.daily && !alreadyPlayed && world) {
     saveResult(world.ds, view, shareText(view, hubName(world, view), location.origin));
@@ -441,6 +450,9 @@ function connect() {
   if (opening.kind === "practice" || opening.kind === "hide") {
     url.searchParams.set("mode", opening.kind);
     if (opening.difficulty) url.searchParams.set("difficulty", opening.difficulty);
+  } else if (playedToday()) {
+    // Today's daily again: it doesn't count toward today's standings (DailyInfo.replay).
+    url.searchParams.set("replay", "1");
   }
   // The free map: a new round ends at the station (streetMode.ts).
   if (!streetOn()) url.searchParams.set("street", "off");

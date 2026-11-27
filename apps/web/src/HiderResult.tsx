@@ -7,11 +7,12 @@ import {
 } from "@subway-seek/engine";
 import { useState } from "react";
 import { hhmm, hm, tallyTiles } from "./ask.ts";
+import { Callouts, useEnding, useReveal, Verdict } from "./Ending.tsx";
 import { useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
 import { SpotThumbnail } from "./HiderPhoto.tsx";
 import { displayName } from "./names.ts";
-import { Numbers, shareFor, Tally, useNewRound } from "./Result.tsx";
+import { Numbers, shareFor, Tally, useEndedLive, useNewRound } from "./Result.tsx";
 import { useReplay } from "./replay.ts";
 import { routesFor } from "./routes.ts";
 import { streetOn } from "./streetMode.ts";
@@ -22,6 +23,9 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
   const { busy, results, replayOnly } = useGamePick("busy", "results", "replayOnly");
   const [difficulty, setDifficulty] = useState<Difficulty>(view.difficulty);
   const newRound = useNewRound();
+  const ending = useEnding(world, view);
+  // The map plays the bot's hunt for you once the tablet has set (DESIGN.md, Ending).
+  useReveal(world, view, useEndedLive(), 1200);
   if (!view.result) return null;
   const c = view.hider === null ? null : world.ds.complexes[view.hider];
   const elapsed = Math.max(0, view.result.at - view.seekStart);
@@ -49,6 +53,7 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
           {view.result.kind === "found" && (
             <p className="text-[13px]">Caught at {hhmm(view.result.at)}</p>
           )}
+          <Verdict text={ending.verdict} />
           <div className="w-full text-center">
             <b className="block text-[38px] font-extrabold tabular-nums">
               {hm(view.scoreSeconds ?? 0)}
@@ -63,6 +68,7 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
             ]}
           />
           <Tally tiles={tallyTiles(view)} play={false} delay={0} />
+          <Callouts world={world} view={view} callouts={ending.callouts} />
           {view.stationOnly && (
             <p className="max-w-[300px] text-center text-[12px] text-ink-2">
               This round ended at the station, on the free map: you stayed below until the seeker

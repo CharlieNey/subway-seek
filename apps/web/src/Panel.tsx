@@ -7,6 +7,7 @@
 import {
   type Difficulty,
   dailyNumber,
+  dailyTheme,
   nextEventTime,
   nyDate,
   questionKey,
@@ -14,6 +15,7 @@ import {
   SOLO_PAUSES_ON_DROP,
   type SoloView,
   searchGrid,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
@@ -87,11 +89,12 @@ function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
     if (opening.kind === "hide")
       return `You hide · ${DIFFICULTY_LABEL[opening.difficulty ?? "normal"]}`;
     const date = nyDate(new Date());
-    return `Daily #${dailyNumber(date)} · ${formatDay(date)}`;
+    const theme = dailyTheme(date);
+    return `Daily #${dailyNumber(date)} · ${formatDay(date)}${theme ? ` · ${THEME_NAMES[theme]}` : ""}`;
   }
   if (isHider(view)) return `You hide · ${DIFFICULTY_LABEL[view.difficulty]}`;
   return view.daily
-    ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
+    ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${view.daily.theme ? ` · ${THEME_NAMES[view.daily.theme]}` : ""}${alreadyPlayed ? " · played" : ""}`
     : practiceLine(view.difficulty);
 }
 
@@ -289,34 +292,49 @@ function RoundNumbers({
 function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean }) {
   const { send, alreadyPlayed, busy } = useGamePick("send", "alreadyPlayed", "busy");
   const [soundOpen, setSoundOpen] = useState(false);
+  const { master, setMaster } = useSound();
   const giveUp = () => {
     const ask = view.daily
       ? `Give up and see where the hider was?${alreadyPlayed ? "" : " Today counts as not found."}`
       : "Give up and see where the hider was?";
     if (window.confirm(ask)) send({ type: "giveUp" });
   };
-  const link = "underline decoration-grout underline-offset-2 hover:text-ink";
+  const link = "whitespace-nowrap underline decoration-grout underline-offset-2 hover:text-ink";
   return (
     <>
       <div
         className={cn(
-          "sc-numbers-links flex gap-3 text-[12px] text-ink-2",
-          inline ? "relative ml-auto items-center px-3" : "justify-end px-4 pt-0.5",
+          "sc-numbers-links flex text-[12px] text-ink-2",
+          // On a phone the tab row also holds the tabs and the sheet's toggle: tighter there.
+          inline ? "relative ml-auto items-center gap-2 px-1.5" : "justify-end gap-3 px-4 pt-0.5",
         )}
       >
+        {/* The one-tap mute, kept in this browser (DESIGN.md, Sound). */}
+        <button
+          type="button"
+          aria-pressed={!master}
+          onClick={() => setMaster(!master)}
+          className={cn(link, inline && "min-w-[44px]")}
+        >
+          {master ? "Mute" : "Unmute"}
+        </button>
+        {/* On a phone the tab row is tight: the sound list opens from a caret by Mute. */}
         <button
           type="button"
           aria-expanded={soundOpen}
+          aria-label={inline ? "Choose sounds" : undefined}
           onClick={() => setSoundOpen(!soundOpen)}
-          className={link}
+          className={inline ? "-ml-2 min-w-[32px] hover:text-ink" : link}
         >
-          Sound
+          {inline ? "▾" : "Sound"}
         </button>
         <button type="button" disabled={busy} onClick={giveUp} className={link}>
           Give up
         </button>
         {inline && soundOpen && (
-          <div className="absolute top-full right-0 z-20 w-[230px]">
+          // Six 44 px toggles outgrow the sheet below the tab row on a phone, so the list
+          // opens upward over the numbers and the map, and scrolls if it must.
+          <div className="absolute right-0 bottom-full z-30 max-h-[45dvh] w-[230px] overflow-y-auto">
             <SoundSettings />
           </div>
         )}
@@ -327,8 +345,8 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
 }
 
 /**
- * Which moments make a sound (DESIGN.md, Interaction: Sound is events). "Someone's here"
- * is on unless you turn it off; the chime and the tock are yours to turn on.
+ * Which sounds play (DESIGN.md, Interaction: Sound), under the one-tap mute. All start
+ * on; with reduced motion asked for, the rumble and the pulse start off.
  */
 function SoundSettings() {
   const { on, set } = useSound();
@@ -531,7 +549,8 @@ export function Panel() {
     "hover",
     "alreadyPlayed",
   );
-  const replaying = useReplay((s) => s.active);
+  // The end-of-round reveal plays on the map only; the result card keeps the panel.
+  const replaying = useReplay((s) => s.active && !s.reveal);
   const stack = usePlayLayout() === "stack";
   const { sheet, setSheet } = useSheet();
   const t = useGameTime(4);

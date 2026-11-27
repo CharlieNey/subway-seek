@@ -43,10 +43,17 @@ describe("the record", () => {
     expect(tiles.length % 7).toBe(0);
   });
 
-  it("counts played, found, the streak and the fastest find", () => {
-    expect(recordStats(results)).toEqual({ played: 3, found: 2, streak: 0, fastest: 38 * 60 });
+  it("counts played, found, days running and the fastest find", () => {
+    expect(recordStats(results)).toEqual({
+      played: 3,
+      found: 2,
+      running: 1,
+      fastest: 38 * 60,
+    });
     const two = { "2026-10-05": results["2026-10-05"], "2026-10-06": results["2026-10-06"] };
-    expect(recordStats(two as Record<string, DailyResult>).streak).toBe(2);
+    expect(recordStats(two as Record<string, DailyResult>).running).toBe(2);
+    // Days 1 and 2 played, then nothing: by day 4 the run has ended.
+    expect(recordStats(two as Record<string, DailyResult>, 4).running).toBe(0);
     expect(recordStats({}).fastest).toBeNull();
   });
 

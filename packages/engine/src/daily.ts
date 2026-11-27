@@ -50,6 +50,14 @@ export function seededRandom(seed: number): () => number {
 export interface DailyInfo {
   date: string;
   number: number;
+  /** A themed day's rule (themes.ts); absent on an ordinary day. */
+  theme?: "outerBoroughs";
+  /**
+   * Played again in a browser that already has today's result: it doesn't count toward
+   * today's standings (apps/server/src/standings.ts). The browser says so; there are no
+   * accounts to check it against.
+   */
+  replay?: true;
 }
 
 /** The random source for a day's challenge. */

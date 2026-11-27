@@ -66,3 +66,33 @@ change which questions it asks. The veto's new weight is for the S4 bot-vs-bot r
 Re-run 2026-11-21 on the 2027-03-03 timetable (brief W32): thrifty 1,028 of 1,028, mean
 5.4 questions (p90 7), ~64 min of bonus; greedy 5.5; static 780 of 1,028. No category
 above 28%; thermometer 6%. Unchanged.
+
+Re-run 2026-11-27 (fun round 1, with the themed-day changes on `fun-round-1`): thrifty
+1,028 of 1,028, mean 5.4 questions (p90 7), ~64 min; greedy 5.5; static 780 of 1,028.
+Unchanged: an ordinary day draws exactly as before (`themes.test.ts`).
+
+## Outer boroughs Saturdays (2026-11-27)
+
+`pnpm sim --theme outerBoroughs`: the Saturday daily starts from a hub outside
+Manhattan, and the bot never hides in Manhattan, so the seeker's search space drops it
+too (`packages/engine/src/themes.ts`; DESIGN.md, Coming back).
+
+First run, all five outer hubs. 161 St–Yankee Stadium reaches only 25 stations without
+Manhattan, and the daily's Normal band (5–6 questions from a strong seeker,
+`hardness.ts`) holds just 4 of them, all at 5. A regular would soon know all four, so it
+is left out. Final run, the other four hubs:
+
+| Hub | Reachable, themed (ordinary) | Normal band, themed (ordinary) |
+|---|---|---|
+| Atlantic Av–Barclays Ctr | 53 (74) | 34 stations, 5–6 q, mean 5.6 (25, mean 5.7) |
+| Jackson Hts–Roosevelt Av | 41 (53) | 37 stations, mean 5.3 (44, mean 5.5) |
+| Jay St–MetroTech | 45 (77) | 34 stations, mean 5.2 (48, mean 5.6) |
+| Broadway Junction | 52 (52) | 36 stations, mean 5.4 (36, mean 5.4) |
+
+Every station is pinnable from every hub. Across all reachable stations the moving seekers pin
+in 5.0 (greedy) and 4.9 (thrifty) questions, p90 6, ~58–60 min of bonus, against 5.5 and 5.4
+on an ordinary day; static pins 152 of 191 games. The mean is lower because the search space
+is smaller, but the daily always hides in the Normal band, which holds at 5–6 questions at all
+four hubs, so a themed Saturday is about as hard as any other day. Categories stay within
+the goal: radar 27–28%, matching 26%, measuring 21–27%, Nearest 18–20%. Broadway Junction
+reaches no Manhattan station in 20 minutes, so its Saturday differs only in its seed.

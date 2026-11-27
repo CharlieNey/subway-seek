@@ -26,6 +26,27 @@ function maplibreWorkerChunk(): Plugin {
 }
 
 /**
+ * `virtual:complexes`: every station complex as [id, name, borough, routes], about 20 KB,
+ * for the stamp book (src/stamps.ts), so that page doesn't load the 5 MB timetable.
+ */
+function complexesModule(): Plugin {
+  const id = "virtual:complexes";
+  return {
+    name: "complexes",
+    resolveId: (source) => (source === id ? `\0${id}` : null),
+    load(source) {
+      if (source !== `\0${id}`) return null;
+      const file = createRequire(import.meta.url).resolve("@subway-seek/data/dataset.json");
+      const ds = JSON.parse(readFileSync(file, "utf8")) as {
+        complexes: { id: string; name: string; borough: string; routes: string[] }[];
+      };
+      const list = ds.complexes.map((c) => [c.id, c.name, c.borough, c.routes]);
+      return `export default ${JSON.stringify(list)};`;
+    },
+  };
+}
+
+/**
  * The timetable's size as the browser decodes it. Hosting compresses the download, so its
  * Content-Length can't measure progress; this can (DESIGN.md, Loading: progress is real).
  */
@@ -43,7 +64,7 @@ process.env.VITE_SITE_URL ??= "http://localhost:5173";
 process.env.VITE_GAME_NAME = brand.name;
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), maplibreWorkerChunk()],
+  plugins: [react(), tailwindcss(), maplibreWorkerChunk(), complexesModule()],
   define: { "import.meta.env.VITE_DATASET_BYTES": JSON.stringify(datasetBytes) },
   server: { port: 5173 },
   // Two pages: the app, and the terms page, built so its fonts are bundled like the app's.

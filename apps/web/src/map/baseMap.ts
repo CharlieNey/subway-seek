@@ -14,6 +14,7 @@ import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { streetOn } from "../streetMode.ts";
 import { fitZoom } from "./shapes.ts";
+import { untabOverlay } from "./untabOverlay.ts";
 import { zoomHold } from "./zoomHold.ts";
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -103,6 +104,7 @@ export function createMapLibreBase(
   });
   const overlay = new MapboxOverlay({ interleaved: false, layers: [], getTooltip });
   map.addControl(overlay as unknown as maplibregl.IControl);
+  const stopUntab = untabOverlay(container);
   if (import.meta.env.DEV) (window as unknown as { __map: maplibregl.Map }).__map = map;
   const zoom = zoomHold(container);
   map.on("moveend", zoom.release);
@@ -145,6 +147,7 @@ export function createMapLibreBase(
       map.on("mouseout", () => cb(null));
     },
     remove: () => {
+      stopUntab();
       clearTimeout(timeout);
       zoom.remove();
       map.remove();

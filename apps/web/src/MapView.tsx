@@ -46,7 +46,7 @@ import {
 } from "./map/layers.ts";
 import { answeredShape, questionShape, type Shape } from "./map/shapes.ts";
 import { displayName } from "./names.ts";
-import { pathUntil, REPLAY_REAL_SECONDS, stepReplay, useReplay } from "./replay.ts";
+import { pathUntil, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
 import { refuseGoogle, useStreet } from "./streetMode.ts";
@@ -161,7 +161,7 @@ function replaySceneAt(
   const reduced = reducedMotion();
   const decel = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
   // Game seconds per real second at replay speed; paused or scrubbed, everything is set.
-  const rate = (replay.end - replay.start) / REPLAY_REAL_SECONDS;
+  const rate = (replay.end - replay.start) / replay.seconds;
   const since = (gt: number) => (replay.playing ? ((t - gt) / rate) * 1000 : 1e9);
   const set = (gt: number, ms: number) => (reduced ? 1 : decel(since(gt) / ms));
   const stacks = new Map<string, number>();

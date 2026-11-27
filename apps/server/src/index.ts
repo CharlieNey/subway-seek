@@ -28,6 +28,7 @@ import {
   CLOSE_TOO_MANY_ROUNDS,
   type ClockSync,
   clientMessageSchema,
+  createDailyRound,
   createHideRound,
   createSeekerDriver,
   createSoloRound,
@@ -80,11 +81,13 @@ import {
   RateLimiter,
   WALKS_PER_MINUTE,
 } from "./limits.ts";
-import { MatchLog } from "./matchLog.ts";
+import { scheduleLogSweep } from "./logSweep.ts";
+import { LOG_DIR, MatchLog } from "./matchLog.ts";
 import { createSessionPersistence } from "./persistence.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
 import { isStreetPoint, officialSpot, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
+import { scoresFromLogs } from "./standings.ts";
 import { restorable, type SavedSession, SessionDb } from "./store.ts";
 import { tick as tickGame } from "./tick.ts";
 
@@ -179,15 +182,9 @@ function dailySetup(date: string): Promise<DailySetup> {
 }
 
 async function buildDaily(date: string): Promise<DailySetup> {
-  // Each daily starts somewhere different (same for everyone that day).
-  const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-  // The daily is Normal for everyone; difficulty is a practice setting.
-  const round = createSoloRound(idx, {
-    hub,
-    hideStart: HIDE_START,
-    random: dailyRandom(date, DAILY_SECRET),
-    daily: { date, number: dailyNumber(date) },
-  });
+  // Each daily starts somewhere different (same for everyone that day), and is Normal for
+  // everyone; a Saturday may carry a theme (themes.ts).
+  const round = createDailyRound(idx, date, DAILY_SECRET, HIDE_START);
   // Separate seeds, so the exit doesn't change with how many tries the spot took.
   const [spot, photoExit] = await Promise.all([
     pickSpot(dataset, round.hider, dailyRandom(`${date}|spot`, DAILY_SECRET)),
@@ -203,6 +200,7 @@ async function newRound(
   mode: RoundMode,
   difficulty: Difficulty = "normal",
   streetAsked = true,
+  replay = false,
 ): Promise<{ round: SoloRound; clock: GameClock; log: MatchLog }> {
   let round: SoloRound;
   // The exact hiding spot for the Street View endgame (same spot all day for the daily).
@@ -211,7 +209,7 @@ async function newRound(
   // or forced by this server (no key, or STREET_ENDGAME=off on a heavy day).
   const street = streetAsked && STREET_ENDGAME;
   if (!street) {
-    if (mode === "daily") round = (await dailySetup(nyDate(new Date()))).round;
+    if (mode === "daily") round = (await dailySetup(today())).round;
     else if (mode === "hide") {
       const hub = stationIndex(pickHubId(Math.random));
       round = createHideRound(idx, {
@@ -227,7 +225,7 @@ async function newRound(
     round = stationOnly(round);
     spot = null;
   } else if (mode === "daily") {
-    const date = nyDate(new Date());
+    const date = today();
     let setup = await dailySetup(date);
     if (setup.spotPano === null && process.env.GOOGLE_STREETVIEW_SERVER_KEY) {
       // The day's first build found no spot (a lookup can fail). Same seed, so a retry
@@ -260,6 +258,8 @@ async function newRound(
     spot = picked;
     round = { ...round, photoExit };
   }
+  // A daily played again in this browser: a copy, so the day's shared round isn't marked.
+  if (replay && round.daily) round = { ...round, daily: { ...round.daily, replay: true } };
   if (spot) round = placeHider(round, spot, idx);
   const log = new MatchLog();
   log.write("round_start", {
@@ -296,10 +296,38 @@ function send(socket: WebSocket, msg: ServerMessage) {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(msg));
 }
 
+/**
+ * New York's date for the daily. Dev only: DEV_DAILY_DATE=YYYY-MM-DD plays another day's
+ * daily, to check a themed Saturday locally (themes.ts). Production ignores it.
+ */
+const DEV_DAILY_DATE =
+  process.env.NODE_ENV !== "production" &&
+  /^\d{4}-\d{2}-\d{2}$/.test(process.env.DEV_DAILY_DATE ?? "")
+    ? (process.env.DEV_DAILY_DATE as string)
+    : null;
+if (DEV_DAILY_DATE) console.warn(`DEV_DAILY_DATE: the daily is ${DEV_DAILY_DATE}'s`);
+function today(): string {
+  return DEV_DAILY_DATE ?? nyDate(new Date());
+}
+
+/** Today's finished dailies, for the result's percentile (standings.ts); from the logs at boot. */
+const dailyScores = scoresFromLogs(LOG_DIR, new Date());
+// Match logs older than 90 days go, at boot and daily (logSweep.ts). Production only: a
+// laptop's apps/server/logs are playtest records for `pnpm metrics`, kept on purpose.
+if (process.env.NODE_ENV === "production") scheduleLogSweep(LOG_DIR);
+
 function logEnd(game: Game) {
   const { round } = game;
   if (!round.result) return;
   const elapsed = Math.max(0, round.result.at - round.seekStart);
+  if (
+    round.mode === "daily" &&
+    round.daily &&
+    !round.daily.replay &&
+    !round.human &&
+    (round.result.kind === "found" || round.result.kind === "timeout")
+  )
+    dailyScores.add(round.daily.date, (elapsed + bonusSeconds(round)) / 60, game.log.id);
   game.log.write("round_end", {
     result: round.human?.incomplete ? "incomplete" : round.result.kind,
     incomplete: round.human?.incomplete ?? null,
@@ -320,9 +348,9 @@ function logEnd(game: Game) {
 }
 
 /** A fresh game for a session: a new round with its own log, nothing sent yet. */
-async function newGame(mode: RoundMode, difficulty?: Difficulty, street = true) {
+async function newGame(mode: RoundMode, difficulty?: Difficulty, street = true, replay = false) {
   return {
-    ...(await newRound(mode, difficulty, street)),
+    ...(await newRound(mode, difficulty, street, replay)),
     cardsLogged: 0,
     stationLogged: false,
     shown: "",
@@ -493,14 +521,8 @@ const pastHiders = new Map<string, number>();
 function hiderOn(date: string): number {
   let hider = pastHiders.get(date);
   if (hider === undefined) {
-    // The same seeds as buildDaily: the station doesn't need the Street View lookups.
-    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-    hider = createSoloRound(idx, {
-      hub,
-      hideStart: HIDE_START,
-      random: dailyRandom(date, DAILY_SECRET),
-      daily: { date, number: dailyNumber(date) },
-    }).hider;
+    // The same round as buildDaily: the station doesn't need the Street View lookups.
+    hider = createDailyRound(idx, date, DAILY_SECRET, HIDE_START).hider;
     pastHiders.set(date, hider);
   }
   return hider;
@@ -515,20 +537,14 @@ function hiderOn(date: string): number {
  */
 const botReplays = new Map<string, unknown>();
 function yesterdayReplay(): { date: string; number: number; view: SoloView } | null {
-  const y = new Date(`${nyDate(new Date())}T12:00:00Z`);
+  const y = new Date(`${today()}T12:00:00Z`);
   y.setUTCDate(y.getUTCDate() - 1);
   const date = y.toISOString().slice(0, 10);
   const number = dailyNumber(date);
   if (number < 1) return null;
   let kept = botReplays.get(date) as { date: string; number: number; view: SoloView } | undefined;
   if (!kept) {
-    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-    const round = createSoloRound(idx, {
-      hub,
-      hideStart: HIDE_START,
-      random: dailyRandom(date, DAILY_SECRET),
-      daily: { date, number },
-    });
+    const round = createDailyRound(idx, date, DAILY_SECRET, HIDE_START);
     const played = runSeeker(stationOnly(round), idx, SEEKER_LEVELS.normal).round;
     const end = played.result?.at ?? played.seekEnd;
     kept = { date, number, view: soloView(played, end, idx) };
@@ -544,7 +560,7 @@ function yesterdayReplay(): { date: string; number: number; view: SoloView } | n
  * and yesterday's hider, now that its day is over. Never today's hider.
  */
 async function dailyInfo() {
-  const date = nyDate(new Date());
+  const date = today();
   const { round } = await dailySetup(date);
   const y = new Date(`${date}T12:00:00Z`);
   y.setUTCDate(y.getUTCDate() - 1);
@@ -552,6 +568,7 @@ async function dailyInfo() {
   return {
     date,
     number: dailyNumber(date),
+    theme: round.daily?.theme ?? null,
     start: dataset.stations[round.hub]?.complex ?? null,
     hideStart: round.hideStart,
     seekStart: round.seekStart,
@@ -592,6 +609,13 @@ const httpServer = createServer((req, res) => {
       console.error("yesterday's replay failed:", err);
       res.writeHead(500).end();
     }
+    return;
+  }
+  // How today's finished dailies scored, minute by minute: no station, no player.
+  if (req.method === "GET" && pathname === "/daily/scores") {
+    const date = today();
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ date, ...dailyScores.histogram(date) }));
     return;
   }
   if (req.method === "GET" && pathname === "/daily") {
@@ -692,7 +716,7 @@ wss.on("connection", async (socket, req) => {
     // The free map: the page has no Google, so the round ends at the station.
     const street = params.get("street") !== "off";
     const game: Game = {
-      ...(await newGame(mode, difficulty, street)),
+      ...(await newGame(mode, difficulty, street, params.get("replay") === "1")),
       lastSeq: -1,
       answerTimer: undefined,
     };
@@ -798,7 +822,12 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
     }
     let fresh: Awaited<ReturnType<typeof newGame>>;
     try {
-      fresh = await newGame(intent.mode, intent.difficulty, intent.street !== false);
+      fresh = await newGame(
+        intent.mode,
+        intent.difficulty,
+        intent.street !== false,
+        intent.replay === true,
+      );
     } catch (err) {
       console.error("new round failed:", err);
       s.game.lastSeq = seq;
@@ -960,5 +989,5 @@ async function handleMessage(s: Session<Game>, socket: WebSocket, raw: unknown) 
 }
 
 console.log(
-  `listening on ws://localhost:${PORT} · daily #${dailyNumber(nyDate(new Date()))} + practice rounds, ${SPEED}×`,
+  `listening on ws://localhost:${PORT} · daily #${dailyNumber(today())} + practice rounds, ${SPEED}×`,
 );
