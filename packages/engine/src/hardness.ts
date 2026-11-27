@@ -159,7 +159,8 @@ export function hardnessTable(
     byHub = new Map();
     cache.set(idx, byHub);
   }
-  const key = `${hub}|${hideStart}|${reach.length}`;
+  // The set itself, not its size: a themed day's narrower set can share a size.
+  const key = `${hub}|${hideStart}|${reach.join(",")}`;
   const hit = byHub.get(key);
   if (hit) return hit;
   const ds = idx.ds;
@@ -206,15 +207,21 @@ export function stationsForDifficulty(
   return [...reach];
 }
 
-/** Where the bot hides: a uniform, seeded pick from the difficulty's stations. */
+/**
+ * Where the bot hides: a uniform, seeded pick from the difficulty's stations. `keep`
+ * narrows the stations it may hide at (a themed day's rule, themes.ts); the seeker's
+ * search space is the same narrowed set.
+ */
 export function pickHidingStation(
   idx: TimetableIndex,
   hub: number,
   hideStart: number,
   difficulty: Difficulty,
   random: () => number,
+  keep?: (complex: number) => boolean,
 ): { hider: number; reachable: number[] } {
-  const reachable = reachableComplexes(idx, hub, hideStart, hideStart + HIDE_SECONDS);
+  const all = reachableComplexes(idx, hub, hideStart, hideStart + HIDE_SECONDS);
+  const reachable = keep ? all.filter(keep) : all;
   if (reachable.length === 0) throw new Error("hider can't reach anywhere");
   const options = stationsForDifficulty(
     hardnessTable(idx, hub, hideStart, reachable),

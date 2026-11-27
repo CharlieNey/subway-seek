@@ -7,6 +7,7 @@
 import {
   type Difficulty,
   dailyNumber,
+  dailyTheme,
   nextEventTime,
   nyDate,
   questionKey,
@@ -14,6 +15,7 @@ import {
   SOLO_PAUSES_ON_DROP,
   type SoloView,
   searchGrid,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
@@ -87,11 +89,12 @@ function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
     if (opening.kind === "hide")
       return `You hide · ${DIFFICULTY_LABEL[opening.difficulty ?? "normal"]}`;
     const date = nyDate(new Date());
-    return `Daily #${dailyNumber(date)} · ${formatDay(date)}`;
+    const theme = dailyTheme(date);
+    return `Daily #${dailyNumber(date)} · ${formatDay(date)}${theme ? ` · ${THEME_NAMES[theme]}` : ""}`;
   }
   if (isHider(view)) return `You hide · ${DIFFICULTY_LABEL[view.difficulty]}`;
   return view.daily
-    ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${alreadyPlayed ? " · played" : ""}`
+    ? `Daily #${view.daily.number} · ${formatDay(view.daily.date)}${view.daily.theme ? ` · ${THEME_NAMES[view.daily.theme]}` : ""}${alreadyPlayed ? " · played" : ""}`
     : practiceLine(view.difficulty);
 }
 

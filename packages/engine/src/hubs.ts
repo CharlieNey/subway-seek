@@ -19,6 +19,15 @@ export const HUB_STATION_IDS = [
   "A15", // 125 St
 ] as const;
 
-export function pickHubId(random: () => number): string {
-  return HUB_STATION_IDS[Math.floor(random() * HUB_STATION_IDS.length)] as string;
+/**
+ * The hubs for the Outer boroughs Saturdays (themes.ts): four of the five outside
+ * Manhattan, Atlantic Av–Barclays Ctr, Jackson Hts–Roosevelt Av, Jay St–MetroTech and
+ * Broadway Junction. Not 161 St–Yankee Stadium: without Manhattan it reaches 25 stations
+ * and the daily's Normal band holds just 4, so a regular would soon know them all
+ * (`pnpm sim --theme outerBoroughs`, docs/question-balance.md).
+ */
+export const OUTER_HUB_STATION_IDS = ["235", "G14", "A41", "A51"] as const;
+
+export function pickHubId(random: () => number, ids: readonly string[] = HUB_STATION_IDS): string {
+  return ids[Math.floor(random() * ids.length)] as string;
 }

@@ -223,17 +223,20 @@ export function createSoloRound(
     random = Math.random,
     daily = null,
     difficulty = "normal",
+    keep,
   }: {
     hub: number;
     hideStart: number;
     random?: () => number;
     daily?: DailyInfo | null;
     difficulty?: Difficulty;
+    /** Only these stations may hide the bot or be searched (a themed day, themes.ts). */
+    keep?: (complex: number) => boolean;
   },
 ): SoloRound {
   const seekStart = hideStart + HIDE_SECONDS;
   // A seeded pick from the difficulty's band of stations (hardness.ts).
-  const { hider, reachable } = pickHidingStation(idx, hub, hideStart, difficulty, random);
+  const { hider, reachable } = pickHidingStation(idx, hub, hideStart, difficulty, random, keep);
   // After the hider, so the daily's hider doesn't change with the deck.
   const deck = shuffledDeck(random);
   const rngSeed = Math.floor(random() * 2 ** 32);

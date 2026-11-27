@@ -28,6 +28,7 @@ import {
   CLOSE_TOO_MANY_ROUNDS,
   type ClockSync,
   clientMessageSchema,
+  createDailyRound,
   createHideRound,
   createSeekerDriver,
   createSoloRound,
@@ -181,15 +182,9 @@ function dailySetup(date: string): Promise<DailySetup> {
 }
 
 async function buildDaily(date: string): Promise<DailySetup> {
-  // Each daily starts somewhere different (same for everyone that day).
-  const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-  // The daily is Normal for everyone; difficulty is a practice setting.
-  const round = createSoloRound(idx, {
-    hub,
-    hideStart: HIDE_START,
-    random: dailyRandom(date, DAILY_SECRET),
-    daily: { date, number: dailyNumber(date) },
-  });
+  // Each daily starts somewhere different (same for everyone that day), and is Normal for
+  // everyone; a Saturday may carry a theme (themes.ts).
+  const round = createDailyRound(idx, date, DAILY_SECRET, HIDE_START);
   // Separate seeds, so the exit doesn't change with how many tries the spot took.
   const [spot, photoExit] = await Promise.all([
     pickSpot(dataset, round.hider, dailyRandom(`${date}|spot`, DAILY_SECRET)),
@@ -507,14 +502,8 @@ const pastHiders = new Map<string, number>();
 function hiderOn(date: string): number {
   let hider = pastHiders.get(date);
   if (hider === undefined) {
-    // The same seeds as buildDaily: the station doesn't need the Street View lookups.
-    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-    hider = createSoloRound(idx, {
-      hub,
-      hideStart: HIDE_START,
-      random: dailyRandom(date, DAILY_SECRET),
-      daily: { date, number: dailyNumber(date) },
-    }).hider;
+    // The same round as buildDaily: the station doesn't need the Street View lookups.
+    hider = createDailyRound(idx, date, DAILY_SECRET, HIDE_START).hider;
     pastHiders.set(date, hider);
   }
   return hider;
@@ -536,13 +525,7 @@ function yesterdayReplay(): { date: string; number: number; view: SoloView } | n
   if (number < 1) return null;
   let kept = botReplays.get(date) as { date: string; number: number; view: SoloView } | undefined;
   if (!kept) {
-    const hub = stationIndex(pickHubId(dailyRandom(`${date}|hub`, DAILY_SECRET)));
-    const round = createSoloRound(idx, {
-      hub,
-      hideStart: HIDE_START,
-      random: dailyRandom(date, DAILY_SECRET),
-      daily: { date, number },
-    });
+    const round = createDailyRound(idx, date, DAILY_SECRET, HIDE_START);
     const played = runSeeker(stationOnly(round), idx, SEEKER_LEVELS.normal).round;
     const end = played.result?.at ?? played.seekEnd;
     kept = { date, number, view: soloView(played, end, idx) };
@@ -566,6 +549,7 @@ async function dailyInfo() {
   return {
     date,
     number: dailyNumber(date),
+    theme: round.daily?.theme ?? null,
     start: dataset.stations[round.hub]?.complex ?? null,
     hideStart: round.hideStart,
     seekStart: round.seekStart,

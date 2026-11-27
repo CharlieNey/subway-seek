@@ -8,9 +8,11 @@
 import {
   DAILY_EPOCH,
   dailyNumber,
+  dailyTheme,
   nyDate,
   RECONNECT_GRACE_MS,
   SEEKER_LEVELS,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
@@ -68,6 +70,8 @@ function homeStreetLine(off: StreetOff | null): string | null {
 export function Home() {
   const date = nyDate(new Date());
   const today = { date, number: dailyNumber(date) };
+  // Saturdays may bend one rule (themes.ts): public, so the page can say so.
+  const theme = dailyTheme(date);
   const facts = useDailyFacts();
   const world = useGame((s) => s.world);
   const [results] = useState(loadResults);
@@ -171,8 +175,13 @@ export function Home() {
                 <div className="hp-meta">
                   <span>
                     <b>Daily #{today.number}</b> · {formatDay(date)}
+                    {theme && ` · ${THEME_NAMES[theme]}`}
                   </span>
-                  <span>Everyone hunts the same hidden station</span>
+                  <span>
+                    {theme === "outerBoroughs"
+                      ? "Saturday: it starts outside Manhattan, and the hider isn't in Manhattan"
+                      : "Everyone hunts the same hidden station"}
+                  </span>
                   {start && facts && (
                     <span>
                       Starts at <b>{displayName(start.name)}</b>,{" "}

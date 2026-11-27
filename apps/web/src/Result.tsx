@@ -9,6 +9,7 @@ import {
   type Difficulty,
   questionBonusSeconds,
   type SoloView,
+  THEME_NAMES,
 } from "@subway-seek/engine";
 import { useEffect, useState } from "react";
 import { hm, type TallyTile, tallyTiles } from "./ask.ts";
@@ -279,7 +280,7 @@ export function ResultCard({ world }: { world: World }) {
         {hider && <Bullets routes={routesFor(world, hider.routes)} size={18} />}
         <span>
           {view.daily
-            ? `Daily #${view.daily.number}`
+            ? `Daily #${view.daily.number}${view.daily.theme ? ` · ${THEME_NAMES[view.daily.theme]}` : ""}`
             : `Practice round${view.difficulty === "normal" ? "" : ` · ${DIFFICULTY_LABEL[view.difficulty]}`}`}
         </span>
       </div>

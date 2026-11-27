@@ -4,6 +4,7 @@
  *   pnpm sim                 # a question every 5 game minutes
  *   pnpm sim --pace 8        # ...or every 8
  *   SIM_RULES='{"radar":{"bonusSeconds":480,"cooldownSeconds":900}}' pnpm sim   # try other rules
+ *   pnpm sim --theme outerBoroughs   # a themed Saturday: its hubs and its search space (themes.ts)
  *
  * For every start station (hub) and every complex the hider could reach from it in 20
  * minutes, a simulated seeker asks questions until only the hider's station is left.
@@ -24,11 +25,14 @@ import {
   buildIndex,
   categoryOf,
   chooseQuestion,
+  type DailyTheme,
   evaluate,
   HIDE_SECONDS,
   HUB_STATION_IDS,
+  hardnessTable,
   type MapQuestion,
   nearestToCentre,
+  OUTER_HUB_STATION_IDS,
   type Place,
   placeOf,
   QUESTION_CATEGORIES,
@@ -38,6 +42,8 @@ import {
   type QuestionCategory,
   questionPool,
   reachableComplexes,
+  stationsForDifficulty,
+  themeKeep,
 } from "../src/index.ts";
 
 const paceArg = process.argv.indexOf("--pace");
@@ -54,6 +60,13 @@ if (process.env.SIM_RULES) Object.assign(QUESTION_RULES, JSON.parse(process.env.
 const ds = loadDataset();
 const idx = buildIndex(ds);
 const TEN = 10 * 3600;
+
+// A themed day: its own hubs, and only the stations the theme lets the bot hide at.
+const themeArg = process.argv.indexOf("--theme");
+const THEME = themeArg >= 0 ? (process.argv[themeArg + 1] as DailyTheme) : null;
+if (THEME && THEME !== "outerBoroughs") throw new Error(`unknown theme ${THEME}`);
+const HUBS: readonly string[] = THEME === "outerBoroughs" ? OUTER_HUB_STATION_IDS : HUB_STATION_IDS;
+const keep = themeKeep(idx, THEME);
 
 type Policy = "greedy" | "thrifty" | "static";
 
@@ -137,18 +150,18 @@ const share = (items: string[]) => {
 };
 
 const games: { hub: number; hider: number; reach: number[] }[] = [];
-for (const id of HUB_STATION_IDS) {
+for (const id of HUBS) {
   const hub = ds.stations.findIndex((s) => s.id === id);
-  const reach = reachableComplexes(idx, hub, TEN, TEN + HIDE_SECONDS);
+  const all = reachableComplexes(idx, hub, TEN, TEN + HIDE_SECONDS);
+  const reach = keep ? all.filter(keep) : all;
   for (const hider of reach) games.push({ hub, hider, reach });
 }
 const avgReach = mean(
-  HUB_STATION_IDS.map(
-    (id) => games.filter((g) => ds.stations[g.hub]?.id === id)[0]?.reach.length ?? 0,
-  ),
+  HUBS.map((id) => games.filter((g) => ds.stations[g.hub]?.id === id)[0]?.reach.length ?? 0),
 );
+if (THEME) console.log(`Theme: ${THEME}\n`);
 console.log(
-  `${HUB_STATION_IDS.length} start stations, ~${Math.round(avgReach)} possible hiding stations each ` +
+  `${HUBS.length} start stations, ~${Math.round(avgReach)} possible hiding stations each ` +
     `(${games.length} games per seeker). A question every ${PACE_MIN} min.\n`,
 );
 const rules = QUESTION_CATEGORIES.map(
@@ -179,4 +192,29 @@ for (const policy of ["greedy", "thrifty", "static"] as Policy[]) {
   console.log(
     `  top questions: ${top.map(([k, f]) => `${k} ${Math.round(f * 100)}%`).join(", ")}\n`,
   );
+}
+
+/*
+ * A themed day's daily: what the bot's Normal band (5–6 questions from a strong seeker,
+ * hardness.ts) has to choose from at each of its hubs, beside an ordinary day from the
+ * same hub. The daily is always Normal.
+ */
+if (THEME) {
+  console.log("THE DAILY'S NORMAL BAND, themed vs an ordinary day from the same hub");
+  for (const id of HUBS) {
+    const hub = ds.stations.findIndex((s) => s.id === id);
+    const all = reachableComplexes(idx, hub, TEN, TEN + HIDE_SECONDS);
+    const kept = keep ? all.filter(keep) : all;
+    const describe = (reach: number[]) => {
+      const table = hardnessTable(idx, hub, TEN, reach);
+      const band = stationsForDifficulty(table, reach, "normal");
+      const qs = band.map((c) => table.get(c)?.questions ?? Number.NaN);
+      const pinned = reach.filter((c) => table.get(c)?.questions != null).length;
+      return `${reach.length} reachable, ${pinned} pinnable, Normal band ${band.length} stations (${Math.min(...qs)}–${Math.max(...qs)} questions, mean ${mean(qs).toFixed(1)})`;
+    };
+    const name = ds.complexes[ds.stations[hub]?.complex ?? -1]?.name ?? id;
+    console.log(`  ${name}`);
+    console.log(`    themed:   ${describe(kept)}`);
+    console.log(`    ordinary: ${describe(all)}`);
+  }
 }

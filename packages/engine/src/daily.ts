@@ -50,6 +50,8 @@ export function seededRandom(seed: number): () => number {
 export interface DailyInfo {
   date: string;
   number: number;
+  /** A themed day's rule (themes.ts); absent on an ordinary day. */
+  theme?: "outerBoroughs";
 }
 
 /** The random source for a day's challenge. */

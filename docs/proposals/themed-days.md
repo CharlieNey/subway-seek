@@ -1,6 +1,8 @@
 # Proposal: themed days
 
-*Proposed 2026-11-27 (fun round 1), for Charlie to decide. Nothing here is built. Themes change the daily's seed inputs and its difficulty, so each one needs its own `pnpm sim` and `pnpm sim:hide` run, and the numbers written into `docs/question-balance.md`, before it ships (CLAUDE.md: simulate before pricing).*
+*Decided 2026-11-27: **Outer boroughs, Saturdays only**, built on `fun-round-1` from four hubs (161 St–Yankee Stadium left out after the simulation: `docs/question-balance.md`), first Saturday 2026-12-05 (`OUTER_BOROUGHS_FROM`, to move if the deploy slips past it). The other three themes stay proposals. The share line is unchanged for now. The original proposal follows.*
+
+*Proposed 2026-11-27 (fun round 1), for Charlie to decide. Nothing here was built then. Themes change the daily's seed inputs and its difficulty, so each one needs its own `pnpm sim` and `pnpm sim:hide` run, and the numbers written into `docs/question-balance.md`, before it ships (CLAUDE.md: simulate before pricing).*
 
 ## The idea
 
