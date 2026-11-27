@@ -54,6 +54,20 @@ export type NextTarget =
 export interface NextMove {
   line: string;
   target: NextTarget;
+  /** The train or platform change it named, to hold on to next time (see Hold). */
+  hold?: Hold;
+}
+
+/**
+ * The train or platform change the line named, held while it's still on offer: the same
+ * platform, the train not yet gone, and no new answer since. Without it the planner's
+ * choice flips as departures come and go, and the line reads as changing its mind.
+ */
+export interface Hold {
+  station: number;
+  answers: number;
+  trip?: number;
+  transfer?: number;
 }
 
 export interface NextMoveInput {
@@ -70,6 +84,8 @@ export interface NextMoveInput {
   firstRound?: boolean;
   /** Stations you've stood in this round, so not theirs (notHere.ts). */
   notHere?: readonly number[];
+  /** What the line named last time (NextMove.hold). */
+  hold?: Hold | null;
 }
 
 /** The questions a first round shows before "More questions" (AskPanel.tsx). */
@@ -139,7 +155,7 @@ function rideMove(
   input: NextMoveInput,
   possible: readonly number[],
   lead: string,
-): { line: string; target: NextTarget } | null {
+): NextMove | null {
   const { idx, view, t, tab } = input;
   const { ds } = idx;
   const s = resolve(view.seeker, t, idx);
@@ -151,8 +167,24 @@ function rideMove(
   const one = possible.length === 1;
   const toward = one ? goalName : "the stations still possible";
   if (s.kind === "platform") {
-    const plan = planFromPlatform(idx, s.station, t, view.seekEnd, targets);
-    const first = plan?.intents[0];
+    const answers = view.asked.filter(isAnswered).length;
+    const held =
+      input.hold && input.hold.station === s.station && input.hold.answers === answers
+        ? input.hold
+        : null;
+    const heldTrip = held?.trip !== undefined ? ds.trips[held.trip] : undefined;
+    const heldAt = heldTrip ? heldTrip.stops.indexOf(s.station) : -1;
+    const keepTrip = heldTrip && heldAt >= 0 && (heldTrip.dep[heldAt] as number) >= t;
+    const keepTransfer =
+      held?.transfer !== undefined &&
+      (idx.transfersFrom[s.station] ?? []).some((x) => x.to === held.transfer);
+    const plan =
+      keepTrip || keepTransfer ? null : planFromPlatform(idx, s.station, t, view.seekEnd, targets);
+    const first = keepTrip
+      ? { type: "board" as const, trip: held?.trip as number, stop: heldAt }
+      : keepTransfer
+        ? { type: "transfer" as const, to: held?.transfer as number }
+        : plan?.intents[0];
     if (!first) return null;
     if (first.type === "transfer") {
       // Most platforms in a complex share its name, so name the lines, as the board does.
@@ -163,6 +195,7 @@ function rideMove(
       return {
         line: `${lead}Change to the ${where}, toward ${toward}.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "transfer", to: first.to },
+        hold: { station: s.station, answers, transfer: first.to },
       };
     }
     if (first.type !== "board") return null;
@@ -172,6 +205,7 @@ function rideMove(
       line: `${lead}Ride toward ${toward}: ${tripText(idx, first.trip)}.`,
       target:
         tab === "ask" ? { kind: "travelTab" } : { kind: "board", route: trip.route, dir: trip.dir },
+      hold: { station: s.station, answers, trip: first.trip },
     };
   }
   if (s.kind === "train") {

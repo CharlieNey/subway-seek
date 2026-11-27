@@ -37,7 +37,7 @@ function stepText(step: GuideStep, n: number): string {
     case 2:
       return "Watch the map as the answer lands: ruled-out stations turn hollow, and the number at the top drops.";
     case 3:
-      return "You can ask one question every 5 minutes. In between, ride toward the black squares: board the marked train.";
+      return "You can ask one question every 5 minutes. In between, ride toward the black squares: take the marked train, or walk to the marked platform.";
     case 4:
       return "To win, get off at the hider's station. A wrong one says Not here. Get off at the marked stop, or anywhere.";
   }
@@ -58,9 +58,13 @@ export function Guide({
   const finish = useLearn((s) => s.finishGuide);
   const notHere = useNotHereList(view);
   const rode = useRef(false);
+  const reached = useRef<GuideStep>(1);
   const s = resolve(view.seeker, t, world.idx);
   if (s.kind === "train") rode.current = true;
-  const step = guideStep(view, t, world, tab, rode.current);
+  const raw = guideStep(view, t, world, tab, rode.current);
+  // It only goes forward: a second question doesn't send you back to step 2.
+  if (raw !== "done" && raw > reached.current) reached.current = raw;
+  const step = raw === "done" ? raw : reached.current;
   useEffect(() => {
     if (guide === "new" && step === "done") finish();
   }, [guide, step, finish]);

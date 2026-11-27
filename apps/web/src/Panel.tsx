@@ -812,7 +812,7 @@ export function Panel() {
                 {asking ? (
                   <AskConfirm world={world} view={view} t={t} />
                 ) : (
-                  <TravelAction world={world} t={t} />
+                  <TravelAction world={world} t={t} tab={tab} />
                 )}
               </Wainscot>
             )}

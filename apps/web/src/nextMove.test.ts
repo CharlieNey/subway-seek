@@ -115,6 +115,26 @@ describe("the next move", () => {
     }
   });
 
+  it("keeps naming the same train while it's still on offer", () => {
+    const t0 = round().seekStart;
+    const r = ask(round(), t0);
+    const t = t0 + 90;
+    const first = nextMove(input(r, t));
+    expect(first?.hold).toBeDefined();
+    // Departures move on; with the hold, the line doesn't change its mind.
+    for (const later of [t + 6, t + 30, t + 60]) {
+      const again = nextMove({ ...input(r, later), hold: first?.hold });
+      const held = first?.hold;
+      const trip = held?.trip !== undefined ? idx.ds.trips[held.trip] : undefined;
+      const station = held?.station as number;
+      const gone = trip ? (trip.dep[trip.stops.indexOf(station)] as number) < later : false;
+      if (!gone)
+        expect(again?.line.replace(/^Next question at \S+ /, "")).toBe(
+          first?.line.replace(/^Next question at \S+ /, ""),
+        );
+    }
+  });
+
   it("is blind to the hider: the same view gets the same move", () => {
     const a = round("next");
     const t = a.seekStart;

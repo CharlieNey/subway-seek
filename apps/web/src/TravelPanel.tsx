@@ -588,7 +588,16 @@ export function TravelPanel({ world, t }: { world: World; t: number }) {
  * the next stop (or Stay on past it), Back down. Back down is white, because staying up
  * is usually the point.
  */
-export function TravelAction({ world, t }: { world: World; t: number }) {
+export function TravelAction({
+  world,
+  t,
+  tab = "travel",
+}: {
+  world: World;
+  t: number;
+  /** On Ask with nothing chosen, the strip says where asking happens. */
+  tab?: "travel" | "ask";
+}) {
   const { view, send, busy } = useGamePick("view", "send", "busy");
   if (!view) return null;
   const s = resolve(ownTransit(view), t, world.idx);
@@ -599,7 +608,13 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
       // walking, which needs Google's panoramas. The seeker stays below, as the hider does
       // (DESIGN.md, Phase 3, Fallback; decided 2026-11-27).
       if (view.stationOnly)
-        return <WainscotText>Choose a train on the board to ride it.</WainscotText>;
+        return (
+          <WainscotText>
+            {tab === "ask"
+              ? "Choose a question, then press Ask here."
+              : "Choose a train on the board to ride it."}
+          </WainscotText>
+        );
       return (
         <>
           <Button
@@ -622,7 +637,7 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
         return (
           <>
             <Button disabled={busy} onClick={() => send({ type: "cancelBoard" })}>
-              Get off
+              Stay on the platform
             </Button>
             <WainscotText>
               It leaves in {minutes((trip.dep[s.from] as number) - t)} min

@@ -51,7 +51,8 @@ import { useGame, useGamePick, type World } from "./game.ts";
 import { canHover } from "./layout.ts";
 import { useFirstRound } from "./learn.ts";
 import { useIsNextQuestion, useNextTarget } from "./NextMove.tsx";
-import { displayName } from "./names.ts";
+import { boroughName, displayName } from "./names.ts";
+import { useNotHereList } from "./notHere.ts";
 import {
   type ArrivedPhoto,
   arrivedPhotos,
@@ -223,7 +224,7 @@ function CategoryHint({
   if (!q) return null;
   const hint = questionHint(q, view, t, world.idx, {
     complexName: (c) => displayName(world.ds.complexes[c]?.name ?? "?"),
-    borough: (c) => world.ds.complexes[c]?.borough ?? "?",
+    borough: (c) => boroughName(world.ds.complexes[c]?.borough),
   });
   const ready = readyAt(view, category);
   const cooling = t < ready;
@@ -610,7 +611,7 @@ function GroupHint({
   if (!q) return null;
   const hint = questionHint(q, view, t, world.idx, {
     complexName: (c) => displayName(world.ds.complexes[c]?.name ?? "?"),
-    borough: (c) => world.ds.complexes[c]?.borough ?? "?",
+    borough: (c) => boroughName(world.ds.complexes[c]?.borough),
   });
   const category = categoryOf(q);
   const ready = readyAt(view, category);
@@ -673,7 +674,7 @@ function GoodNext({ world, view, t }: { world: World; view: SoloView; t: number 
         </p>
         <p className="sc-ask-yesno">
           {yesNoText(q, view, t, world.idx, {
-            borough: (c) => world.ds.complexes[c]?.borough ?? "?",
+            borough: (c) => boroughName(world.ds.complexes[c]?.borough),
           })}
         </p>
         <div>
@@ -713,7 +714,7 @@ function StationQuestions({
   const origin = questionOrigin(view.seeker, t, world.idx);
   const cooling = (c: QuestionCategory) => t < readyAt(view, c);
   const yn = (q: Question) =>
-    yesNoText(q, view, t, world.idx, { borough: (c) => ds.complexes[c]?.borough ?? "?" });
+    yesNoText(q, view, t, world.idx, { borough: (c) => boroughName(ds.complexes[c]?.borough) });
   const thermoFrom = view.thermometer;
   const moved = thermoFrom
     ? Math.hypot(
@@ -1064,7 +1065,11 @@ function before(view: SoloView, a: SeenQuestion): number {
  * ("59 stations → 6"), until it collapses into the log.
  */
 export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t: number }) {
+  // Stations you'd already stood in (notHere.ts) are out of the count at the top, so here too.
   const view = useGame((s) => s.view);
+  const notHere = useNotHereList(view);
+  const checkedBefore = notHere.length;
+  const checkedAfter = view ? notHere.filter((c) => view.candidates.includes(c)).length : 0;
   const speed = useGame((s) => s.sync?.speed ?? 6);
   const [zoom, setZoom] = useState<number | null>(null);
   if (!view) return null;
@@ -1131,7 +1136,8 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
             </span>
             {a.remaining !== null && categoryOf(a.q) !== "onFoot" && (
               <span className="text-[12px] tabular-nums opacity-90">
-                {was} {was === 1 ? "station" : "stations"} → {a.remaining}
+                {was - checkedBefore} {was - checkedBefore === 1 ? "station" : "stations"} →{" "}
+                {a.remaining - checkedAfter}
               </span>
             )}
           </>

@@ -3,10 +3,10 @@
  * control it points at reads it from context to draw its outline.
  */
 import { type Question, questionKey, type SoloView } from "@subway-seek/engine";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useRef } from "react";
 import type { World } from "./game.ts";
 import { useFirstRound } from "./learn.ts";
-import { type NextMove, type NextTarget, nextMove } from "./nextMove.ts";
+import { type Hold, type NextMove, type NextTarget, nextMove } from "./nextMove.ts";
 import { useNotHereList } from "./notHere.ts";
 
 const NONE: NextTarget = { kind: "none" };
@@ -37,12 +37,13 @@ export function useNextMove(
 ): NextMove | null {
   const firstRound = useFirstRound();
   const notHere = useNotHereList(view);
+  const hold = useRef<Hold | null>(null);
   const bucket = t === null ? null : Math.floor(t / 15);
   const armedKey = armed ? questionKey(armed) : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: t moves in 15 s steps; armed by key
   return useMemo(() => {
     if (!world || !view || t === null) return null;
-    return nextMove({
+    const move = nextMove({
       idx: world.idx,
       view,
       t,
@@ -53,7 +54,10 @@ export function useNextMove(
       suggest: !view.daily,
       firstRound,
       notHere,
+      hold: hold.current,
     });
+    hold.current = move?.hold ?? null;
+    return move;
   }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere]);
 }
 

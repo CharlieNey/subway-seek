@@ -24,3 +24,16 @@ export const formatDay = (date: string) =>
     month: "short",
     day: "numeric",
   });
+
+/** The dataset's borough codes as people say them: "Yes keeps Manhattan". */
+const BOROUGHS: Record<string, string> = {
+  M: "Manhattan",
+  Bk: "Brooklyn",
+  Bx: "the Bronx",
+  Q: "Queens",
+  SI: "Staten Island",
+};
+
+export function boroughName(code: string | undefined): string {
+  return code === undefined ? "?" : (BOROUGHS[code] ?? code);
+}
