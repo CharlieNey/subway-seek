@@ -1,5 +1,7 @@
 # Proposal: friend challenges
 
+*Decided 2026-11-27: approved as proposed, the smallest version: station only, no cards (option a), an optional name, 30 days and 10,000 live challenges. Build it after the launch posts, not before. The original proposal follows.*
+
 *Proposed 2026-11-27 (fun round 1), for Charlie to decide. Nothing here is built. It adds a round mode, server storage and a public link, so it waits for a yes, and the build starts with the smallest version below.*
 
 ## The idea

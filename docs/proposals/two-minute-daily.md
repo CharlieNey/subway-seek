@@ -1,5 +1,7 @@
 # Proposal: a two-minute daily
 
+*Decided 2026-11-27: yes, named **The Shuttle**, built after launch. Guesses count as turns (six turns in all), and it stays out of the stamp book. The original proposal follows.*
+
 *Proposed 2026-11-27, for Charlie to decide. Nothing here is built. It adds a round with no transit and a second daily seed, so it needs a yes, a name, and a simulation run before any code (CLAUDE.md: simulate before pricing).*
 
 ## The idea
