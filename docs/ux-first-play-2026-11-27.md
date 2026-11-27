@@ -76,4 +76,40 @@ Both finished both rounds without giving up, and both understood the core loop w
 
 Items 1 to 4 decide whether a stranger finishes a round at all; 5 to 7 decide whether they understand it. The brief's order holds: one obvious next move (1, 2, 4), questions as sentences (5, 6), not here (3), less at first and plain words (7, 11), then the rest. Item 8 is the next trap after those.
 
-*The testers' full narration and 144 screenshots stayed in the session's scratch folder; the quotes above are from them. The second cold play, on the fixed branch, is below once it has run.*
+*The testers' full narration and 144 screenshots stayed in the session's scratch folder; the quotes above are from them.*
+
+## The second cold play, on `playable-1`
+
+Run the same way, by two new fresh sessions, on a production build of the branch served apart from the dev server, so no edit could reach them. This time they were told to start where the homepage points, then play the daily.
+
+| Tester | First round (Easy practice, guided) | Daily #54 |
+|---|---|---|
+| Desktop | Found at Nevins St, 3 questions, about 5½ min real | Found at 34 St–Penn Station, 4 questions, about 7 min real |
+| Phone | Found at Wall St, 10 questions, about 12 min real | Their test browser restarted itself mid-round and lost the round; on a second start, found in about 1½ min (knowing roughly where by then) |
+
+Against the first cold play: no one stalled, no reload was needed, and both understood the loop ("ask, ride, ask, ride") within the first round. The desktop tester "was never stuck for five minutes" and "mostly obeyed the hint line". Both used Not here, the suggested question, and the outlined next control.
+
+### What it still found, and what happened to each
+
+Fixed on the branch after their build, so they didn't see these fixes:
+
+1. **The ride advice changed its mind and made U-turns.** It aimed at the middle of what's left, which moves after every answer, and once pointed at the R platform just after "the R doesn't stop there". It now keeps heading for the same station while that's possible, checks the nearest one with 12 or fewer left, names it and why ("the nearest of the 4 left"), and holds the train it named while that train is still to come.
+2. **The map didn't show what an answer did,** at its opening zoom, and − did nothing while following. An answer now frames the stations still possible and you; a too-big ring is framed when chosen; the zoom buttons work while following.
+3. **Counts disagreed** ("34 → 24" on the band, 23 at the top) because the band didn't know Not here; and for 5 seconds after arriving the count hadn't dropped yet. The band now leaves out stations you've stood in, and the line says "Checking this station…" until it counts.
+4. **"You can ask now" while most kinds were greyed out**: now "Ask any question that isn't greyed out".
+5. **A veto on Easy, which says "the hider plays no curses"**, and a first-card sentence pointing at a "tile" no one found. Easy now says "may veto a question"; the levels say "cards against you", not "curses"; the sentence says each card says what it did, where it landed.
+6. **The guide went from 3 of 4 back to 2 of 4**, and "board the marked train" didn't fit a marked Walk button. It only goes forward, and step 3 names a walk too.
+7. **Two stations named 34 St–Penn Station**, and "Get off at 34 St–Penn Station, for 34 St–Penn Station". The 57 repeated names now carry their lines.
+8. **Three instructions at once on the first screen.** The opening voice line stays off in a guided round; on Ask with nothing chosen, the strip says "Choose a question, then press Ask here."
+9. **"More questions" folded itself** at every station, and hid the tester's best question (hotter or colder). It stays open.
+
+Still open, for Charlie or a later round:
+
+- **The daily has no suggested question and no pause.** "In practice I leaned on that box completely; now I have to choose alone." Whether the daily gets either is Charlie's call (DESIGN.md decision log).
+- **Questions that can't rule anything out** can be asked and paid for ("18 stations → 18"). Warning about it would be an outcome count, so it needs a rule call.
+- **On a phone the list you work in is a strip about 260 px tall,** under the map and the header. The sheet already folds ("Map ▴"), but no one found that.
+- **▸ and ▸▸ are unlabelled.** Both testers found by pressing that ▸▸ skips to your stop, which makes rounds much shorter.
+- **The end of a round is easy to miss** on a phone: the result appears while the replay starts on the map.
+- **Station squares are a few pixels wide,** and tapping one for its name is found by accident.
+- **The hider's cards** are still only half explained: which card vetoed, and what Sidewalk shed or Planned work did.
+- **The jump from the guided round to the daily is steep:** prices, every question kind and no suggestion arrive at once.
