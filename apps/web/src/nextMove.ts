@@ -32,8 +32,8 @@ import {
   thriftyQuestion,
 } from "@subway-seek/engine";
 import { hhmm as clockText } from "./ask.ts";
-import { displayName } from "./names.ts";
-import { stillPossible } from "./notHere.ts";
+import { complexLabel, displayName } from "./names.ts";
+import { NOT_HERE_AFTER_SECONDS, stillPossible } from "./notHere.ts";
 
 export type NextTarget =
   | { kind: "none" }
@@ -130,8 +130,10 @@ export function suggestedQuestion(
   return chooseQuestion(idx.ds, cands, pool, view.asked, t, "thrifty", QUESTION_GAP_SECONDS);
 }
 
-const stationName = (idx: TimetableIndex, station: number) =>
-  displayName(idx.ds.stations[station]?.name ?? "");
+const stationName = (idx: TimetableIndex, station: number) => {
+  const c = idx.ds.stations[station]?.complex;
+  return c === undefined ? "" : complexLabel(idx.ds, c);
+};
 
 /** "the 6 to Pelham Bay Park": a trip as the board says it. */
 function tripText(idx: TimetableIndex, trip: number): string {
@@ -190,7 +192,7 @@ function rideMove(
   const goal = rideTarget(idx, possible, here, from, input.hold?.goal);
   if (goal === null) return null;
   const targets = ds.complexes[goal]?.stations ?? [];
-  const goalName = displayName(ds.complexes[goal]?.name ?? "");
+  const goalName = complexLabel(ds, goal);
   const one = possible.length === 1;
   const toward = one ? goalName : "the stations still possible";
   if (s.kind === "platform") {
@@ -276,6 +278,16 @@ export function nextMove(input: NextMoveInput): NextMove | null {
       ? `Not here. ${n} ${n === 1 ? "station" : "stations"} left. `
       : "";
 
+  // Just off the train at a station that could be theirs: the round ends now if it is.
+  if (
+    view.stationOnly &&
+    s.kind === "platform" &&
+    hereComplex !== undefined &&
+    possible.includes(hereComplex) &&
+    t - s.since < NOT_HERE_AFTER_SECONDS
+  ) {
+    return { line: "Checking this station…", target: { kind: "none" } };
+  }
   if (answerPending(view, t)) {
     return { line: "Your answer lands in a few seconds. Watch the map.", target: { kind: "none" } };
   }

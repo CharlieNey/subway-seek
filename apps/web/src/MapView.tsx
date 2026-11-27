@@ -314,6 +314,29 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       if (st.view === prev.view) return;
       version += 1;
       round = buildRound(world, st.view, version, notHere());
+      // An answer landed: show the stations still possible, and you (the playable round;
+      // both cold plays couldn't see what the answer had done at the map's zoom).
+      const answered = (v: typeof st.view) => v?.asked.filter(isAnswered).length ?? 0;
+      if (st.view && !st.view.result && prev.view && answered(st.view) > answered(prev.view)) {
+        const out = new Set(notHere());
+        const pts = st.view.candidates
+          .filter((c) => !out.has(c))
+          .map((c) => world.ds.complexes[c])
+          .filter((c) => c !== undefined)
+          .map((c): LonLat => [c.lon, c.lat]);
+        const t = nowGameTime();
+        if (t !== null) pts.push(world.geo.playerPosition(ownTransit(st.view), t));
+        if (pts.length > 1) {
+          const lons = pts.map((p) => p[0]);
+          const lats = pts.map((p) => p[1]);
+          st.setFollow(false);
+          base.fitBounds(
+            [Math.min(...lons), Math.min(...lats)],
+            [Math.max(...lons), Math.max(...lats)],
+            stacked() ? { top: 44, right: 16, bottom: 36, left: 16 } : 80,
+          );
+        }
+      }
       const hider = st.view?.hider;
       const c = hider !== null && hider !== undefined ? world.ds.complexes[hider] : undefined;
       if (c && prev.view?.hider == null) {

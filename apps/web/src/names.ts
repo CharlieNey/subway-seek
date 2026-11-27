@@ -37,3 +37,30 @@ const BOROUGHS: Record<string, string> = {
 export function boroughName(code: string | undefined): string {
   return code === undefined ? "?" : (BOROUGHS[code] ?? code);
 }
+
+const shared = new WeakMap<object, Set<string>>();
+
+/**
+ * A station as the next-move line names it: with its lines when another station has the
+ * same name ("34 St–Penn Station (A C E)"), since 57 names repeat across the city.
+ */
+export function complexLabel(
+  ds: { complexes: readonly { name: string; routes: readonly string[] }[] },
+  complex: number,
+): string {
+  let names = shared.get(ds);
+  if (!names) {
+    const seen = new Set<string>();
+    names = new Set<string>();
+    for (const c of ds.complexes) {
+      const n = displayName(c.name);
+      if (seen.has(n)) names.add(n);
+      seen.add(n);
+    }
+    shared.set(ds, names);
+  }
+  const c = ds.complexes[complex];
+  if (!c) return "";
+  const n = displayName(c.name);
+  return names.has(n) ? `${n} (${c.routes.join(" ")})` : n;
+}
