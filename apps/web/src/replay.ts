@@ -18,7 +18,7 @@ import { type LogEvent, replayLog } from "./replayLog.ts";
 
 export const REPLAY_REAL_SECONDS = 25;
 /** The reveal at the end of a round: the map alone, once, quicker (DESIGN.md, Ending). */
-export const REVEAL_REAL_SECONDS = 12;
+const REVEAL_REAL_SECONDS = 12;
 
 interface ReplayStore {
   active: boolean;

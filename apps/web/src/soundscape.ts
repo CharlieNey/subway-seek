@@ -43,6 +43,9 @@ export function useSoundscape(world: World | null, view: SoloView | null) {
   const was = useRef<boolean | null>(null);
   useEffect(() => {
     if (riding === null) {
+      // Between rounds (or before one): forget the last ride, so the next round's first
+      // value rings nothing.
+      was.current = null;
       setRiding(false);
       return;
     }

@@ -244,6 +244,25 @@ describe("the ending", () => {
     expect(callouts.map((c) => c.t)).toEqual([...callouts.map((c) => c.t)].sort((a, b) => a - b));
   });
 
+  it("says straight to them only for a quick, short hunt", () => {
+    const { tr } = plainTrip();
+    const seekStart = (tr.dep[0] as number) - 300;
+    const found = (minutes: number) =>
+      endingOf(
+        ds,
+        idx,
+        view({
+          seekStart,
+          hider: complexOf(tr.stops[3] as number),
+          result: { kind: "found", at: seekStart + minutes * 60 },
+          stationFoundAt: seekStart + minutes * 60,
+          replay: { hider: [], seeker: [] },
+        }),
+      ).verdict;
+    expect(found(30)).toBe("Straight to them in 0:30.");
+    expect(found(97)).toBe("Found in 1:37, after 0 questions.");
+  });
+
   it("writes miles with one decimal, never zero", () => {
     expect(miles(0)).toBe("0.1 mi");
     expect(miles(483)).toBe("0.3 mi");

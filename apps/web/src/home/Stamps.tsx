@@ -1,8 +1,10 @@
 /**
- * The station stamp book at /stamps (DESIGN.md, Coming back; proposed 2026-11-27): all
- * 424 station complexes, a square each, ink where you found the hider as the seeker and
- * terra cotta where you hid. Totals for the book, each borough and each line. Kept in
- * this browser (stamps.ts); the list of complexes is built from the dataset at build time.
+ * The station stamp book at /stamps (DESIGN.md, Coming back; proposed 2026-11-27): every
+ * station complex, a square each, ink where you found the hider as the seeker and terra
+ * cotta where you hid. Only the stations a hider can reach from some hub in 20 minutes
+ * (295 of 424) can ever be stamped, so the totals count those and the rest show faded.
+ * Kept in this browser (stamps.ts); the list of complexes is built from the dataset at
+ * build time, and the reachable ones come from the hardest-stations table.
  */
 
 import book from "virtual:complexes";
@@ -25,14 +27,41 @@ const ROUTES = data.routes as Record<
   string,
   { letter: string; display: string; color: string; textColor: string; name: string }
 >;
+/**
+ * The stations a hider can reach from at least one hub: the hardest-stations table lists
+ * each hub's reach, by name and lines (matched to the dataset in standing.test.ts).
+ */
+const REACH_KEYS = new Set(
+  data.hubs.flatMap((h) => h.stations.map((s) => `${s.name}|${s.routes.join(",")}`)),
+);
+const reachable = (c: (typeof book)[number]) => REACH_KEYS.has(`${c[1]}|${c[3].join(",")}`);
+const STAMPABLE = book.filter(reachable);
+
 const bullet = (letter: string) => {
   const r = ROUTES[letter];
   return r ? [{ id: r.letter, diamond: false, ...r }] : [];
 };
 
-function Square({ found, hidden, name }: { found: boolean; hidden: boolean; name: string }) {
-  const state =
-    found && hidden ? "found and hidden in" : found ? "found" : hidden ? "hidden in" : "";
+function Square({
+  found,
+  hidden,
+  name,
+  inReach,
+}: {
+  found: boolean;
+  hidden: boolean;
+  name: string;
+  inReach: boolean;
+}) {
+  const state = !inReach
+    ? "out of reach from every start"
+    : found && hidden
+      ? "found and hidden in"
+      : found
+        ? "found"
+        : hidden
+          ? "hidden in"
+          : "";
   return (
     <li
       title={state ? `${name}: ${state}` : name}
@@ -40,6 +69,7 @@ function Square({ found, hidden, name }: { found: boolean; hidden: boolean; name
       style={{
         width: 14,
         height: 14,
+        opacity: inReach ? 1 : 0.3,
         background: found
           ? "var(--color-ink)"
           : hidden
@@ -54,7 +84,8 @@ function Square({ found, hidden, name }: { found: boolean; hidden: boolean; name
   );
 }
 
-const of = (t: Tally) => `${t.found} found · ${t.hidden} hidden in · ${t.total} stations`;
+const of = (t: Tally, all: number) =>
+  `${t.found} found · ${t.hidden} hidden in · ${t.total} of its ${all} stations can hold a hider`;
 
 export function Stamps() {
   const [stamps, setStamps] = useState<StampBook>({ found: {}, hidden: {} });
@@ -62,7 +93,7 @@ export function Stamps() {
     document.title = `Station stamp book · ${GAME_NAME}`;
     setStamps(loadStamps());
   }, []);
-  const totals = useMemo(() => bookTotals(book, stamps), [stamps]);
+  const totals = useMemo(() => bookTotals(STAMPABLE, stamps), [stamps]);
   const byBorough = useMemo(() => {
     const m = new Map<string, typeof book>();
     for (const c of [...book].sort((a, b) => a[1].localeCompare(b[1]))) {
@@ -102,11 +133,13 @@ export function Stamps() {
             <NameTablet text="Stamp book" rows={14} maxWidth={620} />
           </div>
           <div className="hp-page-lede">
-            <h1>Every station, one stamp at a time.</h1>
+            <h1>Every station a hider can reach, one stamp at a time.</h1>
             <p className="hp-lede">
               A station is stamped in ink when you find the hider there as the seeker, and in terra
-              cotta when you hide there yourself. The book is kept in this browser, like your daily
-              record: clearing site data or switching browsers starts a new one.
+              cotta when you hide there yourself. Every round leaves one of 13 hubs at 10:00 with 20
+              minutes to hide, so {STAMPABLE.length} of the {book.length} stations can hold a hider;
+              the others are faded. The book is kept in this browser, like your daily record:
+              clearing site data or switching browsers starts a new one.
             </p>
           </div>
           <div className="hp-hero-wains sc-wains-field" />
@@ -125,7 +158,7 @@ export function Stamps() {
               </div>
               <div>
                 <b>{totals.total}</b>
-                <span>stations</span>
+                <span>stations can hold a hider</span>
               </div>
               <div>
                 <b>{lines.filter((l) => l.tally.found === l.tally.total).length}</b>
@@ -147,18 +180,19 @@ export function Stamps() {
             <section className="hp-s" key={borough} aria-labelledby={`b-${borough}`}>
               <div className="hp-s-head">
                 <h2 id={`b-${borough}`}>{BOROUGH[borough] ?? borough}</h2>
-                <p>{t ? of(t) : null}</p>
+                <p>{t ? of(t, list.length) : null}</p>
               </div>
               <ul
                 aria-label={`${BOROUGH[borough] ?? borough} stations`}
                 style={{ display: "flex", flexWrap: "wrap", gap: 3, listStyle: "none", padding: 0 }}
               >
-                {list.map(([id, name]) => (
+                {list.map((c) => (
                   <Square
-                    key={id}
-                    name={displayName(name)}
-                    found={!!stamps.found[id]}
-                    hidden={!!stamps.hidden[id]}
+                    key={c[0]}
+                    name={displayName(c[1])}
+                    found={!!stamps.found[c[0]]}
+                    hidden={!!stamps.hidden[c[0]]}
+                    inReach={reachable(c)}
                   />
                 ))}
               </ul>
@@ -174,7 +208,10 @@ export function Stamps() {
         <section className="hp-s" id="lines">
           <div className="hp-s-head">
             <h2>By line</h2>
-            <p>A station counts for every line that stops there.</p>
+            <p>
+              A station counts for every line that stops there, and only stations a hider can reach
+              count.
+            </p>
           </div>
           <ul
             style={{

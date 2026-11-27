@@ -5,8 +5,10 @@
  * round in white. Practice takes a difficulty: three Buttons, the chosen one ink.
  */
 import {
+  categoryOf,
   DIFFICULTIES,
   type Difficulty,
+  isVetoed,
   questionBonusSeconds,
   type SoloView,
   THEME_NAMES,
@@ -17,7 +19,7 @@ import { reducedMotion, useMotion } from "./clearings.ts";
 import { Callouts, useEnding, useReveal, Verdict } from "./Ending.tsx";
 import { hubName, serverHttpUrl, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
-import { dailyStats } from "./history.ts";
+import { dailyStats, playedToday } from "./history.ts";
 import { displayName } from "./names.ts";
 import { useReplay } from "./replay.ts";
 import { routesFor } from "./routes.ts";
@@ -45,7 +47,11 @@ export function useNewRound() {
   return (mode: "daily" | "practice" | "hide", difficulty?: Difficulty) => {
     const inProgress = view && !view.result && view.asked.length > 0;
     if (inProgress && !window.confirm("Leave this round? It won't count.")) return;
-    send(mode !== "daily" ? { type: "newRound", mode, difficulty } : { type: "newRound", mode });
+    send(
+      mode !== "daily"
+        ? { type: "newRound", mode, difficulty }
+        : { type: "newRound", mode, ...(playedToday() ? { replay: true } : {}) },
+    );
   };
 }
 
@@ -186,11 +192,17 @@ function Standing({ world, view, counts }: { world: World; view: SoloView; count
   const data = useHardness(hider !== null);
   const scores = useDailyScores(view.daily && counts && finished ? view.daily.date : null);
   if (!view.result || hider === null) return null;
-  const par = data ? parFor(data, world.ds, view.hub, hider) : null;
+  // The hardest-stations table is for an ordinary day: a themed Saturday hides by a
+  // narrower search space (themes.ts), so it shows no par rather than a wrong one.
+  const par = data && !view.daily?.theme ? parFor(data, world.ds, view.hub, hider) : null;
+  // Par counts the questions that pin the station: not the on-foot ones, nor vetoed ones.
+  const pinning = view.asked.filter(
+    (a) => categoryOf(a.q) !== "onFoot" && !(a.answer !== null && isVetoed(a.answer)),
+  ).length;
   const score = (view.result.at - view.seekStart + view.bonusSeconds) / 60;
   const pct = scores ? percentileOf(scores.counts, scores.n, score) : null;
   const parts: string[] = [];
-  if (par !== null) parts.push(parLine(par, view.asked.length, view.result.kind === "found"));
+  if (par !== null) parts.push(parLine(par, pinning, view.result.kind === "found"));
   if (pct)
     parts.push(
       `better than ${pct.beat}% of today's ${pct.others} other finished ${pct.others === 1 ? "daily" : "dailies"}`,
@@ -252,7 +264,7 @@ export function ResultCard({ world }: { world: World }) {
   const hider = view.hider === null ? undefined : world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
   const kind = view.result.kind;
-  const stats = dailyStats(results);
+  const stats = dailyStats(results, view.daily?.number);
   const questionMin = questionBonusSeconds(view.asked) / 60;
   const { share } = shareFor(world, view, results, alreadyPlayed);
   return (

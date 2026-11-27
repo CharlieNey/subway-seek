@@ -62,28 +62,24 @@ export function monthTiles(results: Record<string, DailyResult>, today: string):
 export interface RecordStats {
   played: number;
   found: number;
-  streak: number;
   /** Days in a row with a finished daily, found or not (standing.ts). */
   running: number;
   /** Fastest find, in seconds; null before the first. */
   fastest: number | null;
 }
 
-export function recordStats(results: Record<string, DailyResult>): RecordStats {
-  const list = Object.values(results).sort((a, b) => a.number - b.number);
-  let streak = 0;
-  for (let i = list.length - 1; i >= 0; i--) {
-    const r = list[i] as DailyResult;
-    const next = list[i + 1];
-    if (!r.found || (next && next.number !== r.number + 1)) break;
-    streak++;
-  }
-  const finds = list.filter((r) => r.found).map((r) => r.elapsedSeconds);
+export function recordStats(
+  results: Record<string, DailyResult>,
+  /** Today's daily number: a run that ended before yesterday shows 0 (standing.ts). */
+  today?: number,
+): RecordStats {
+  const finds = Object.values(results)
+    .filter((r) => r.found)
+    .map((r) => r.elapsedSeconds);
   return {
-    played: list.length,
+    played: Object.keys(results).length,
     found: finds.length,
-    streak,
-    running: daysRunning(results),
+    running: daysRunning(results, today),
     fastest: finds.length ? Math.min(...finds) : null,
   };
 }

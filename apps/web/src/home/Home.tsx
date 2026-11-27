@@ -401,7 +401,7 @@ const MONTH = (date: string) =>
 
 /** Stats and the tile wall: one tile per day, from this browser's results. */
 function Record({ results, today }: { results: Record<string, DailyResult>; today: string }) {
-  const stats = recordStats(results);
+  const stats = recordStats(results, dailyNumber(today));
   const tiles = monthTiles(results, today);
   return (
     <div className="hp-panel">

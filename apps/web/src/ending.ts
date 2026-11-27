@@ -9,8 +9,10 @@
  */
 import type { Dataset } from "@subway-seek/data";
 import {
+  categoryOf,
   distanceMeters,
   isAnswered,
+  isVetoed,
   type SoloView,
   type TimetableIndex,
   type TrailEntry,
@@ -41,6 +43,9 @@ const CLOSE_LEAD_S = 600;
 /** A turning point cuts at least half of what was left. */
 const TURNING_SHARE = 0.5;
 const MAX_CALLOUTS = 3;
+/** "Straight to them" only for a quick, short hunt: within 45 game-min and 6 questions. */
+const STRAIGHT_S = 45 * 60;
+const STRAIGHT_QUESTIONS = 6;
 
 const PRIORITY: CalloutKind[] = ["rodeThrough", "expressPast", "closest", "turningPoint"];
 
@@ -246,6 +251,10 @@ export function endingOf(ds: Dataset, idx: TimetableIndex, view: SoloView): Endi
     .sort((a, b) => a.t - b.t);
 
   const elapsed = Math.max(0, foundAt - from);
+  // The questions that pin the station: not the on-foot ones, nor vetoed ones.
+  const pinning = view.asked.filter(
+    (a) => categoryOf(a.q) !== "onFoot" && !(a.answer !== null && isVetoed(a.answer)),
+  ).length;
   const has = (k: CalloutKind) => found_.some((c) => c.kind === k);
   let verdict: string;
   if (found) {
@@ -256,7 +265,10 @@ export function endingOf(ds: Dataset, idx: TimetableIndex, view: SoloView): Endi
     else if (hiding) verdict = `You held them for ${hm(elapsed)}.`;
     else if (closest)
       verdict = `Within ${miles(closest.m)} at ${hhmm(closest.t)}. Found at ${hhmm(foundAt)}.`;
-    else verdict = `Straight to them in ${hm(elapsed)}.`;
+    else if (elapsed <= STRAIGHT_S && pinning <= STRAIGHT_QUESTIONS)
+      verdict = `Straight to them in ${hm(elapsed)}.`;
+    else
+      verdict = `Found in ${hm(elapsed)}, after ${pinning} ${pinning === 1 ? "question" : "questions"}.`;
   } else {
     const last = lastComplex(ds, trail, end);
     const c = last === null ? undefined : ds.complexes[last];
