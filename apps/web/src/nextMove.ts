@@ -107,6 +107,25 @@ export const SIMPLE_KINDS: readonly Question["kind"][] = [
   "moreRoutes",
 ];
 
+/**
+ * Whether to offer a good next question: only as teaching, inside the guided first round
+ * (Charlie, 2026-11-27). Never in the daily, not in later practice rounds, and not once
+ * the guide was skipped.
+ */
+export function offersSuggestion({
+  daily,
+  firstRound,
+  guide,
+}: {
+  daily: boolean;
+  firstRound: boolean;
+  guide: "new" | "done" | "skipped";
+}): boolean {
+  // The guide showing (a first round, or "Play the guided round" again), or the rest of
+  // a first round the guide was finished in.
+  return !daily && guide !== "skipped" && (guide === "new" || firstRound);
+}
+
 /** An answer on its way: asked, its window still running. */
 export function answerPending(view: SoloView, t: number): boolean {
   return view.asked.some((a) => !isAnswered(a) && a.answerAt > t && categoryOf(a.q) !== "onFoot");

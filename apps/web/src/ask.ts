@@ -329,47 +329,6 @@ export function questionHint(
   }
 }
 
-/**
- * What Yes and No do, in a few words, for the Ask tab's rows (the playable round,
- * 2026-11-27). Like the hints, it names what each answer keeps and never counts it.
- */
-export function yesNoText(
-  q: Question,
-  view: SoloView,
-  t: number,
-  idx: TimetableIndex,
-  places: { borough: (c: number) => string },
-): string {
-  const { ds } = idx;
-  const origin = askContext(q, view, t, idx).origin;
-  switch (q.kind) {
-    case "radar":
-      return "Yes keeps the stations inside the ring, No clears them.";
-    case "route":
-      return "Yes keeps the stations that line stops at, No clears them.";
-    case "borough":
-      return `Yes keeps ${places.borough(origin.complex)}, No the other boroughs.`;
-    case "express":
-      return ds.complexes[origin.complex]?.express
-        ? "Yes keeps the express stops, No the local-only ones."
-        : "Yes keeps the local-only stops, No the express ones.";
-    case "moreRoutes": {
-      const n = ds.complexes[origin.complex]?.routes.length ?? 0;
-      return `Yes keeps stations with more than ${n} ${n === 1 ? "line" : "lines"}, No the rest.`;
-    }
-    case "matching":
-      return `Yes keeps the stations with the same nearest ${LANDMARK_WORDS[q.landmark].one}, No clears them.`;
-    case "measuring":
-      return `Yes keeps the stations nearer one than you are, No the rest.`;
-    case "tentacles":
-      return "The answer names one of them, and keeps the stations nearest it.";
-    case "thermometer":
-      return "Yes keeps the stations on your side of the halfway line, No the other side.";
-    default:
-      return "";
-  }
-}
-
 /** The question as the band and the log say it. */
 export function questionText(q: Question, idx: TimetableIndex, ctx?: AskContext): string {
   return describeQuestion(q, idx.ds, ctx);

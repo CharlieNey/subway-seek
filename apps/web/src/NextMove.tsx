@@ -5,8 +5,14 @@
 import { type Question, questionKey, type SoloView } from "@subway-seek/engine";
 import { createContext, useContext, useMemo, useRef } from "react";
 import type { World } from "./game.ts";
-import { useFirstRound } from "./learn.ts";
-import { type Hold, type NextMove, type NextTarget, nextMove } from "./nextMove.ts";
+import { useFirstRound, useLearn } from "./learn.ts";
+import {
+  type Hold,
+  type NextMove,
+  type NextTarget,
+  nextMove,
+  offersSuggestion,
+} from "./nextMove.ts";
 import { useJustChecked, useNotHereList } from "./notHere.ts";
 
 const NONE: NextTarget = { kind: "none" };
@@ -36,6 +42,7 @@ export function useNextMove(
   armedReady: boolean,
 ): NextMove | null {
   const firstRound = useFirstRound();
+  const guide = useLearn((s) => s.guide);
   const notHere = useNotHereList(view);
   const justChecked = useJustChecked(view);
   const hold = useRef<Hold | null>(null);
@@ -51,8 +58,8 @@ export function useNextMove(
       tab,
       armed,
       armedReady,
-      // A suggested question helps you learn; the daily stays a puzzle (DESIGN.md).
-      suggest: !view.daily,
+      // Teaching only: the guided first round, never the daily (Charlie, 2026-11-27).
+      suggest: offersSuggestion({ daily: view.daily !== null, firstRound, guide }),
       firstRound,
       notHere,
       justChecked,
@@ -65,7 +72,7 @@ export function useNextMove(
         ? { station: -1, answers: -1, goal: hold.current.goal }
         : null);
     return move;
-  }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere, justChecked]);
+  }, [world, view, bucket, tab, armedKey, armedReady, firstRound, guide, notHere, justChecked]);
 }
 
 export { NONE as NO_TARGET };

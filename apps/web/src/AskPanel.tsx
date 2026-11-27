@@ -45,7 +45,6 @@ import {
   readyAt,
   shortQuestion,
   toggleArm,
-  yesNoText,
 } from "./ask.ts";
 import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
@@ -587,7 +586,6 @@ function AskRow({
   chip,
   label,
   options,
-  yesNo,
   dim,
 }: {
   family: Family;
@@ -597,7 +595,6 @@ function AskRow({
   chip?: ReactNode;
   label: ReactNode;
   options?: ReactNode;
-  yesNo?: string;
   dim: boolean;
 }) {
   return (
@@ -609,10 +606,7 @@ function AskRow({
         </p>
       )}
       {options && <div className="sc-chips">{options}</div>}
-      <p className="sc-ask-yesno">
-        {yesNo && <span>{yesNo}</span>}
-        {label}
-      </p>
+      <p className="sc-ask-yesno">{label}</p>
     </div>
   );
 }
@@ -696,11 +690,6 @@ function GoodNext({ world, view, t }: { world: World; view: SoloView; t: number 
           <FamilySquare family={familyOf(q)} />
           <span className="min-w-0 flex-1">{sentence(q, world, view, t)}</span>
         </p>
-        <p className="sc-ask-yesno">
-          {yesNoText(q, view, t, world.idx, {
-            borough: (c) => boroughName(world.ds.complexes[c]?.borough),
-          })}
-        </p>
         <div>
           <Button small next={!chosen} onClick={() => !chosen && toggle(q)}>
             {chosen ? "Chosen · press Ask below" : "Choose this question"}
@@ -739,8 +728,6 @@ function StationQuestions({
   const setMore = useMoreQuestions((m) => m.set);
   const origin = questionOrigin(view.seeker, t, world.idx);
   const cooling = (c: QuestionCategory) => t < readyAt(view, c);
-  const yn = (q: Question) =>
-    yesNoText(q, view, t, world.idx, { borough: (c) => boroughName(ds.complexes[c]?.borough) });
   const thermoFrom = view.thermometer;
   const moved = thermoFrom
     ? Math.hypot(
@@ -780,7 +767,6 @@ function StationQuestions({
               {milesText(miles)}
             </QChip>
           ))}
-          yesNo={yn({ kind: "radar", miles: 1 })}
         />
       </Group>
       <Group
@@ -798,7 +784,6 @@ function StationQuestions({
           options={linesHere(world, origin.complex).map((r) => (
             <RouteChip key={r.letter} route={r} cooling={cooling("matching")} view={view} />
           ))}
-          yesNo={yn({ kind: "route", letter: "" })}
         />
         {(["borough", "express"] as const).map((kind) => (
           <AskRow
@@ -811,7 +796,6 @@ function StationQuestions({
               </QChip>
             }
             label={<RowLabel category="matching" view={view} t={t} />}
-            yesNo={yn({ kind })}
           />
         ))}
         <AskRow
@@ -823,7 +807,6 @@ function StationQuestions({
             </QChip>
           }
           label={<RowLabel category="measuring" view={view} t={t} />}
-          yesNo={yn({ kind: "moreRoutes" })}
         />
       </Group>
       {first && (
@@ -853,7 +836,6 @@ function StationQuestions({
               text="Is your nearest … the same as mine?"
               label={<RowLabel category="matching" view={view} t={t} />}
               options={landmarkChips("matching")}
-              yesNo="Yes keeps the stations with the same nearest one, No clears them."
             />
             <AskRow
               family="measure"
@@ -861,7 +843,6 @@ function StationQuestions({
               text="Are you closer to a … than I am?"
               label={<RowLabel category="measuring" view={view} t={t} />}
               options={landmarkChips("measuring")}
-              yesNo={yn({ kind: "measuring", landmark: "park" })}
             />
             <AskRow
               family="tent"
@@ -893,7 +874,6 @@ function StationQuestions({
                   </QChip>
                 );
               })}
-              yesNo={yn({ kind: "tentacles", landmark: "museum" })}
             />
           </Group>
           <Group title="Hotter or colder" kinds={["thermometer"]} world={world} view={view} t={t}>
@@ -918,7 +898,6 @@ function StationQuestions({
                   </QChip>
                 </>
               }
-              yesNo={yn({ kind: "thermometer" })}
             />
           </Group>
         </>

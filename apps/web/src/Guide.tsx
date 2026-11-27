@@ -76,6 +76,7 @@ export function Guide({
 }) {
   const guide = useLearn((s) => s.guide);
   const finish = useLearn((s) => s.finishGuide);
+  const skip = useLearn((s) => s.skipGuide);
   const notHere = useNotHereList(view);
   const progress = useGuideProgress();
   const round = roundKey(view);
@@ -97,7 +98,7 @@ export function Guide({
     <section className="sc-guide mx-4 mt-2" aria-label="Guide">
       <p className="sc-guide-head">
         <span>Guide · {step} of 4</span>
-        <button type="button" className="sc-focus" onClick={finish}>
+        <button type="button" className="sc-focus" onClick={skip}>
           Skip the guide
         </button>
       </p>

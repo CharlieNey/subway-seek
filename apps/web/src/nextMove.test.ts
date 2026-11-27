@@ -17,6 +17,7 @@ import {
   endLineText,
   type NextMoveInput,
   nextMove,
+  offersSuggestion,
   suggestedQuestion,
 } from "./nextMove.ts";
 
@@ -180,5 +181,16 @@ describe("the next move", () => {
     expect(endLineText({ result: { kind: "gaveUp", at: 0 } }, "Wall St")).toBe(
       "You gave up. The hider was at Wall St.",
     );
+  });
+
+  it("offers a suggested question only in the guided first round, never the daily", () => {
+    expect(offersSuggestion({ daily: false, firstRound: true, guide: "new" })).toBe(true);
+    // The guide finished partway through the first round: still that round.
+    expect(offersSuggestion({ daily: false, firstRound: true, guide: "done" })).toBe(true);
+    expect(offersSuggestion({ daily: false, firstRound: true, guide: "skipped" })).toBe(false);
+    expect(offersSuggestion({ daily: false, firstRound: false, guide: "done" })).toBe(false);
+    expect(offersSuggestion({ daily: true, firstRound: true, guide: "new" })).toBe(false);
+    // "Play the guided round" again, from How it plays.
+    expect(offersSuggestion({ daily: false, firstRound: false, guide: "new" })).toBe(true);
   });
 });

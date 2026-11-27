@@ -118,8 +118,6 @@ function RoundLegend({ world }: { world: World }) {
   if (!view || t === null) return null;
 
   const n = stillPossible(view, notHere).length;
-  // While a question is previewed, the count is today's, not a forecast: say so.
-  const possible = `Now ${n} ${n === 1 ? "station" : "stations"} it could be`;
   const search = view.hasSpot ? searchScene(world, view, t) : null;
   const sq = view.result ? null : shapeQuestion(view, t, world);
   let id = "stations";
@@ -169,9 +167,6 @@ function RoundLegend({ world }: { world: World }) {
                     ? "Your distance, round each one"
                     : `Within ${milesText(TENTACLE_MILES[q.landmark] ?? 0)} of you`}
               </span>,
-              <span key="p">
-                {POSSIBLE} {possible}
-              </span>,
             ]
           : [
               <span key="s">
@@ -185,9 +180,6 @@ function RoundLegend({ world }: { world: World }) {
                       : q.kind === "thermometer" || q.kind === "spotThermometer"
                         ? "Halfway between your readings"
                         : "No shape: the answer is about their station"}
-              </span>,
-              <span key="p">
-                {POSSIBLE} {possible}
               </span>,
             ];
     }

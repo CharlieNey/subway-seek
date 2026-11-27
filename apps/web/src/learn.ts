@@ -9,7 +9,8 @@ import { storageKey } from "./storage.ts";
 const PLAYED_KEY = storageKey("played");
 const GUIDE_KEY = storageKey("guide");
 
-export type GuideState = "new" | "done";
+/** New: not yet shown. Done: shown to the end. Skipped: turned away (no teaching help). */
+export type GuideState = "new" | "done" | "skipped";
 
 function read(key: string): string | null {
   try {
@@ -34,13 +35,15 @@ export interface Learn {
   guide: GuideState;
   markPlayed: () => void;
   finishGuide: () => void;
+  /** "Skip the guide": no guide, and no teaching suggestion, this round. */
+  skipGuide: () => void;
   /** "Play the guided round again", from How it plays. */
   resetGuide: () => void;
 }
 
 export const useLearn = create<Learn>((set) => ({
   played: read(PLAYED_KEY) === "1",
-  guide: read(GUIDE_KEY) === "done" ? "done" : "new",
+  guide: ((g) => (g === "done" || g === "skipped" ? g : "new"))(read(GUIDE_KEY)),
   markPlayed: () => {
     write(PLAYED_KEY, "1");
     set({ played: true });
@@ -48,6 +51,10 @@ export const useLearn = create<Learn>((set) => ({
   finishGuide: () => {
     write(GUIDE_KEY, "done");
     set({ guide: "done" });
+  },
+  skipGuide: () => {
+    write(GUIDE_KEY, "skipped");
+    set({ guide: "skipped" });
   },
   resetGuide: () => {
     write(GUIDE_KEY, null);
