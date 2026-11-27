@@ -115,3 +115,55 @@ Still open, for Charlie or a later round:
 - **Station squares are a few pixels wide,** and tapping one for its name is found by accident.
 - **The hider's cards** are still only half explained: which card vetoed, and what Sidewalk shed or Planned work did.
 - **The jump from the guided round to the daily is steep:** prices, every question kind and no suggestion arrive at once.
+
+## The third cold play, after the second round of fixes
+
+Charlie's orchestrator asked for the second cold play's remaining findings to be fixed (none needed a rule change), then a third cold play. Same method: two new fresh sessions, a separate production build and its own server.
+
+**Fixed before it:**
+- A phone's list grows from about 260 px to 362 px at 844 px high (240 px at Safari's 659), because:
+  - the sheet opens to 66%;
+  - the numbers sit beside the clock;
+  - the answered band drops the question it repeats.
+- The clock's skip buttons carry words. Unusable ones are hidden.
+- A round's end opens the sheet at the result, under "You found the hider at …".
+- Squares still possible are larger. With 12 or fewer left, every one is named.
+- Each card is explained in the seeker's words the first time it lands, and the result says what kept cards added.
+
+| Tester | First round (Easy practice, guided) | Daily #54 |
+|---|---|---|
+| Phone | Found at Chauncey St, 3 questions, about 4 min real | Found at 34 St–Penn Station (A C E), 3 questions, about 3–4 min real |
+| Desktop | Found at 7 Av (B Q), 6 questions, about 8½ min real | Found at 34 St–Penn Station (A C E), 4 questions, about 5 min real |
+
+Neither was stuck at any point, and no one gave up. Against the first cold play (11–13 minutes a daily, with long stalls), a daily took 3–5 minutes.
+
+### What it still found, and what happened to each
+
+Fixed on the branch after their build:
+
+1. **Stations sharing a name on the stop list.** "Two 7 Avs, one row apart; only the (B Q) in the hint stopped me." The stop list now marks stations still possible with the map's square and names repeated ones with their lines. Each departure row says how many stations still possible it calls at further on ("4 still possible ahead"). This was the desktop tester's one change.
+2. **The ride advice, again.**
+   - The line said "this train heads away" on a train with stations still possible ahead. It now says to get off at the first of them.
+   - "Get off at 7 Av (B Q), for 7 Av (B Q)" no longer repeats the name.
+   - A platform change at Times Sq now names its platform: "the A C E platform at 42 St–Port Authority".
+3. **The daily's guide pointed at a marked question the daily doesn't have.** It now says "choose a question".
+4. **Everything greyed out, with no reason in words.** It now reads "Ready now: Matching, Measuring … Each kind of question rests after you ask it (Radar later)."
+5. **Two competing get-off buttons.** The strip now offers the stop the line recommends.
+6. **The skip buttons read like travel commands,** and ▸▸ with no stop chosen ran to the end of the line. They now say "Skip…". ▸▸ only shows once you've chosen a stop.
+7. **Smaller things:**
+   - the guide counting 2 of 4 on one tab and 3 of 4 on the other;
+   - the clock running on after the end;
+   - "Not here" repeated after changing platform;
+   - "Walking to" the station you're in;
+   - the map not following again after an answer framed it;
+   - a new round's list opening scrolled down;
+   - the recommended Walk button off screen.
+
+Still open, for Charlie (rule or product calls):
+
+- **The daily has no suggested question and no pause.** Both phone testers asked for the suggestion there. "Always show the good next question box, including in the daily" was the phone tester's one change.
+- **Questions can't be judged before paying.** "I expected a count such as inside 22 / outside 77." That's the "no outcome counts" rule.
+- **Stations a block apart can't be walked between** unless they're linked as transfers; the desktop tester rode back to Times Sq to reach one.
+- **A first round hides the price of a question.** The desktop tester wanted it taught there ("the first round taught me the buttons but not the thinking").
+- **In the guided round the hints play for you.** "It felt like luck." The suggestion and the ride advice together leave little to deduce; Charlie may want less in practice after the first round.
+- **The hider's cards** are now explained as they land, but a tester who met none still found the result's list of kept cards opaque.
