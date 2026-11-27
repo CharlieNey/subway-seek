@@ -42,7 +42,7 @@
   font-size: 17px;
 }
 .sc-play-stack .sc-ff {
-  width: 40px;
+  width: 44px;
   min-height: 44px;
 }
 
@@ -75,6 +75,7 @@
 .sc-sheet-toggle {
   min-height: 44px;
   padding: 0 12px;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
@@ -135,5 +136,38 @@
 @media (hover: none) {
   .sc-kbd {
     display: none;
+  }
+}
+
+/*
+ * A phone on its side keeps the computer layout (layout.ts), but a screen under 500 px tall
+ * left the questions about 60 px between the header and the wainscot. There the whole
+ * panel scrolls, and the wainscot stays pinned at its foot (the phone pass, 2026-11-27).
+ */
+@media (max-height: 500px) and (orientation: landscape) {
+  main:not(.sc-play-stack) > aside {
+    overflow-y: auto;
+  }
+  main:not(.sc-play-stack) > aside > *,
+  main:not(.sc-play-stack) > aside .sc-sheet-body {
+    flex: none;
+    overflow: visible;
+    min-height: auto;
+  }
+  main:not(.sc-play-stack) > aside .sc-wains {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+  }
+}
+
+/*
+ * The map's zoom buttons at 44 px on a touch screen. Here rather than in mosaic.css, which
+ * sits in a cascade layer: MapLibre's own stylesheet is unlayered and would always win.
+ */
+@media (pointer: coarse) {
+  .maplibregl-ctrl.maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
   }
 }

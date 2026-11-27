@@ -189,7 +189,7 @@ function RouteChip({ route, cooling, view }: { route: Route; cooling: boolean; v
       onFocus={() => a.hover(q)}
       onBlur={() => a.hover(null)}
       className={cn(
-        "sc-focus p-[2px]",
+        "sc-focus sc-route-chip p-[2px]",
         state === "armed" && "shadow-[0_0_0_2px_var(--color-ink)]",
         state === "cooling" && "opacity-40",
         state === "closed" && "cursor-not-allowed opacity-30",

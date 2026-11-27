@@ -301,8 +301,9 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
     <>
       <div
         className={cn(
-          "sc-numbers-links flex gap-3 text-[12px] text-ink-2",
-          inline ? "relative ml-auto items-center px-3" : "justify-end px-4 pt-0.5",
+          "sc-numbers-links flex text-[12px] text-ink-2",
+          // On a phone the tab row also holds the tabs and the sheet's toggle: tighter there.
+          inline ? "relative ml-auto items-center gap-2 px-1.5" : "justify-end gap-3 px-4 pt-0.5",
         )}
       >
         {/* The one-tap mute, kept in this browser (DESIGN.md, Sound). */}
@@ -310,7 +311,7 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
           type="button"
           aria-pressed={!master}
           onClick={() => setMaster(!master)}
-          className={link}
+          className={cn(link, inline && "min-w-[44px]")}
         >
           {master ? "Mute" : "Unmute"}
         </button>
@@ -320,7 +321,7 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
           aria-expanded={soundOpen}
           aria-label={inline ? "Choose sounds" : undefined}
           onClick={() => setSoundOpen(!soundOpen)}
-          className={inline ? "-ml-2 px-0.5 hover:text-ink" : link}
+          className={inline ? "-ml-2 min-w-[32px] hover:text-ink" : link}
         >
           {inline ? "▾" : "Sound"}
         </button>
@@ -328,7 +329,9 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
           Give up
         </button>
         {inline && soundOpen && (
-          <div className="absolute top-full right-0 z-20 w-[230px]">
+          // Six 44 px toggles outgrow the sheet below the tab row on a phone, so the list
+          // opens upward over the numbers and the map, and scrolls if it must.
+          <div className="absolute right-0 bottom-full z-30 max-h-[45dvh] w-[230px] overflow-y-auto">
             <SoundSettings />
           </div>
         )}

@@ -48,7 +48,7 @@ export function Callouts({
           <li key={c.kind}>
             <button
               type="button"
-              className="sc-focus flex w-full items-baseline gap-2.5 border-b border-dashed border-grout py-1.5 text-left text-[13px] leading-[1.4] hover:bg-glaze"
+              className="sc-focus sc-callout flex w-full items-baseline gap-2.5 border-b border-dashed border-grout py-1.5 text-left text-[13px] leading-[1.4] hover:bg-glaze"
               aria-label={`${hhmm(c.t)}: ${c.text} Show it on the map.`}
               onClick={() => showMoment(world, view, c.t)}
             >
