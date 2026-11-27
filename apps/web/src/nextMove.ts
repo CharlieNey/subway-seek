@@ -212,8 +212,14 @@ export function nextMove(input: NextMoveInput): NextMove | null {
     return { line: "Your answer lands in a few seconds. Watch the map.", target: { kind: "none" } };
   }
   if (s.kind === "walking") {
-    const to = s.dest.kind === "platform" ? stationName(idx, s.dest.station) : "";
-    return { line: to ? `Walking to the ${to} platform.` : "Walking.", target: { kind: "none" } };
+    const dest = s.dest.kind === "platform" ? idx.ds.stations[s.dest.station] : undefined;
+    const fromName = displayName(idx.ds.complexes[s.fromComplex]?.name ?? "");
+    const to = !dest
+      ? ""
+      : displayName(dest.name) === fromName
+        ? `${dest.routes.join(" ")} platform`
+        : `${displayName(dest.name)} platform`;
+    return { line: to ? `Walking to the ${to}.` : "Walking.", target: { kind: "none" } };
   }
   if (n === 1) {
     const lead = notHere ? "Not here. One station left. " : "One station left. ";

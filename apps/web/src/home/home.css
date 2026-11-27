@@ -937,3 +937,8 @@
     display: none;
   }
 }
+.hp .hp-alt-line {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--color-ink-2);
+}

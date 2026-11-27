@@ -12,7 +12,7 @@ export const LINES = {
   hideZone: "Stay where you are. They’re on your block.",
   dailyOpens: "Now boarding. Today's hider went underground at 10:00.",
   trainsOpen: "Trains are running. Ride toward what's left.",
-  firstQuestion: "Your question is on its way. Listen for the answer.",
+  firstQuestion: "Your question is on its way. Watch for the answer.",
   veto: "This entrance is closed. That question is gone for the round.",
   upToStreet: "Mind the stairs. Daylight ahead.",
   found: "Last stop. Thank you for riding.",

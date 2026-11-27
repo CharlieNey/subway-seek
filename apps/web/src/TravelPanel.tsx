@@ -639,10 +639,25 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
         );
       }
       if (s.to === next) return <WainscotText>Last stop: {nameOf(next)}</WainscotText>;
+      // A stop you chose further on: say so, and offer the next stop as the change (the
+      // playable round; the testers read "Get off at 5 Av" as overriding their choice).
+      if (s.to !== last) {
+        return (
+          <>
+            <Button disabled={busy} onClick={() => send({ type: "alightAt", stop: next })}>
+              Get off sooner, at {nameOf(next)}
+            </Button>
+            <WainscotText>You get off at {nameOf(s.to)}</WainscotText>
+          </>
+        );
+      }
       return (
-        <Button kind="ink" disabled={busy} onClick={() => send({ type: "alightAt", stop: next })}>
-          Get off at {nameOf(next)}
-        </Button>
+        <>
+          <Button kind="ink" disabled={busy} onClick={() => send({ type: "alightAt", stop: next })}>
+            Get off at {nameOf(next)}
+          </Button>
+          <WainscotText>Or choose a stop above. It runs to {nameOf(last)}.</WainscotText>
+        </>
       );
     }
     case "walking":

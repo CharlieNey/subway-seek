@@ -654,7 +654,7 @@ Personality lives in **twelve fixed moments**, each with one original line in th
 | Trains open at 10:20 | seeker | "Trains are running. Ride toward what's left." |
 | Time's up | hider | "This is your station. Everyone off, please." |
 | Locked in | hider | "You're set. Hold on and watch them come." |
-| First question fired | seeker | "Your question is on its way. Listen for the answer." |
+| First question fired | seeker | "Your question is on its way. Watch for the answer." *(was "Listen", 2026-11-27: the testers looked for a sound)* |
 | A veto arrives | seeker | "This entrance is closed. That question is gone for the round." |
 | Up to the street | the walker | "Mind the stairs. Daylight ahead." |
 | Seeker is in your zone | hider | "Stay where you are. They're on your block." |

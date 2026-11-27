@@ -20,6 +20,7 @@ import { GAME_NAME } from "../brand.ts";
 import { cn } from "../cn.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
+import { useLearn } from "../learn.ts";
 import { displayName, formatDay } from "../names.ts";
 import { REPLAY_REAL_SECONDS } from "../replay.ts";
 import { routesFor } from "../routes.ts";
@@ -58,12 +59,10 @@ function useNextDaily() {
 
 /** Under the doors, when rounds on this page end at the station (streetMode.ts). */
 function homeStreetLine(off: StreetOff | null): string | null {
-  if (off === "demo")
-    return "Rounds here end when you reach the hider's station, on the free map. The full game goes on to search the street in Street View.";
-  if (off === "phone")
-    return "On a phone, rounds end when you reach the hider's station. On a computer they go on to search the street in Street View.";
+  if (off === "demo") return "A round ends when you reach the hider's station.";
+  if (off === "phone") return "On a phone, a round ends when you reach the hider's station.";
   if (off === "refusedToday" || off === "refused")
-    return "Google's map is resting until tomorrow, so today's rounds end at the station, on the free map.";
+    return "Street View is off until tomorrow, so today's rounds end when you reach the hider's station.";
   return null;
 }
 
@@ -77,6 +76,9 @@ export function Home() {
   const [results] = useState(loadResults);
   const [replay] = useState(loadReplay);
   const hero = heroState(results, today, loadSession(), Date.now(), RECONNECT_GRACE_MS);
+  // A first visit's door is an Easy practice round with the guide; the daily sits beside it
+  // (DESIGN.md, Interaction: the playable round).
+  const newcomer = !useLearn((s) => s.played) && hero.kind === "play";
   const friend = friendLine(location.search, today.number);
   const next = useNextDaily();
   useEffect(() => {
@@ -136,6 +138,15 @@ export function Home() {
                         </a>
                       )}
                       <CopyButton text={done.share} label="Copy result" />
+                    </>
+                  ) : newcomer ? (
+                    <>
+                      <a className="sc-btn ink hp-btn-lg" href="/play?practice&difficulty=easy">
+                        <span>Play your first round</span>
+                      </a>
+                      <a className="hp-alt" href="/play?daily">
+                        or today's daily · #{today.number}
+                      </a>
                     </>
                   ) : (
                     <>
@@ -208,6 +219,17 @@ export function Home() {
               </p>
             </div>
             <HowItPlays />
+            {/* The guided first round, again (DESIGN.md, Interaction: the playable round). */}
+            <p className="hp-alt-line">
+              <a
+                className="hp-alt"
+                href="/play?practice&difficulty=easy"
+                onClick={() => useLearn.getState().resetGuide()}
+              >
+                Play the guided round
+              </a>{" "}
+              · an Easy practice round with four steps on the real screen.
+            </p>
           </section>
 
           <section className="hp-s" id="record">

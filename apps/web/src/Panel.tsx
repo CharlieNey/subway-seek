@@ -33,6 +33,7 @@ import {
 } from "./Connection.tsx";
 import { useMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
+import { Guide } from "./Guide.tsx";
 import { openingRound, useGame, useGamePick, type World } from "./game.ts";
 import { CurseChips } from "./HiderCards.tsx";
 import { HiderPanel } from "./HiderPanel.tsx";
@@ -410,6 +411,34 @@ function useWhatCounts(onFoot: boolean) {
   return { show, dismiss: markSeen };
 }
 
+/** The first card played on you, explained once (the playable round: less at first). */
+const FIRST_CARD =
+  "The hider is the computer, and it holds cards. It just played one on you: what it does is on its tile.";
+const CARDS_KEY = storageKey("first-card");
+
+function useFirstCard(view: SoloView) {
+  const t = useGameTime(1);
+  const [seen, setSeen] = useState(() => {
+    try {
+      return localStorage.getItem(CARDS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const landed = t !== null && view.cardEvents.some((e) => e.t <= t);
+  return {
+    show: !seen && landed && !isHider(view),
+    dismiss: () => {
+      setSeen(true);
+      try {
+        localStorage.setItem(CARDS_KEY, "1");
+      } catch {
+        // Refused: it may show again next round.
+      }
+    },
+  };
+}
+
 /**
  * The notice row: a refused action, "What counts" at the street, then the next-move line,
  * which is always there while the round runs (nextMove.ts).
@@ -429,13 +458,14 @@ function NoticeRow({
     "alreadyPlayed",
   );
   const counts = useWhatCounts(onFoot);
+  const cards = useFirstCard(view);
   const [playedSeen, setPlayedSeen] = useState(false);
-  const text = notice ?? (counts.show ? WHAT_COUNTS : null);
+  const text = notice ?? (counts.show ? WHAT_COUNTS : cards.show ? FIRST_CARD : null);
   return (
     <>
       {text && (
         <div key={text} className="sc-anim-set mx-4 mt-2.5">
-          <Notice onDismiss={notice ? dismissNotice : counts.dismiss}>
+          <Notice onDismiss={notice ? dismissNotice : counts.show ? counts.dismiss : cards.dismiss}>
             <span className="whitespace-pre-line">{text}</span>
           </Notice>
         </div>
@@ -725,9 +755,7 @@ export function Panel() {
           )}
           <NoticeRow view={view} onFoot={onFoot && !over} move={over ? null : move} />
           {/* The question in its window, then its answer: above the list, so it's never
-
               scrolled out of view (the playable round; on a phone it was, 2026-11-27). */}
-
           {!over && band.value && (
             <div data-land="question" className={band.leaving ? "sc-anim-collapse" : undefined}>
               <QuestionBand
@@ -760,6 +788,8 @@ export function Panel() {
               </>
             ) : (
               <>
+                {/* The guide scrolls with the list, so a phone keeps room for the list. */}
+                {!onFoot && <Guide world={world} view={view} t={t} tab={tab} />}
                 {tab === "travel" ? (
                   <TravelPanel world={world} t={t} />
                 ) : (
