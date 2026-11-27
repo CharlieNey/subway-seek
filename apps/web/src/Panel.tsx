@@ -181,8 +181,9 @@ function PanelTop({
     <StationOnlyLine hiding={isHider(view)} />
   );
   return (
-    <header className="sc-ptop flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
-      <div className="min-w-0">
+    <header className="sc-ptop flex flex-wrap items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
+      {/* The clock's worded skip buttons drop to their own row rather than squeeze this. */}
+      <div className="min-w-[180px] flex-1">
         {/* On a phone every line here costs the list room (the playable round). */}
         {!stack && (
           <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
