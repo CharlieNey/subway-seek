@@ -336,3 +336,12 @@ export function nextMove(input: NextMoveInput): NextMove | null {
     }
   );
 }
+
+/** What just happened, pinned above the result: "You found the hider at Wall St." */
+export function endLineText(view: Pick<SoloView, "result">, hiderName: string): string {
+  const kind = view.result?.kind;
+  const at = hiderName ? ` at ${hiderName}` : "";
+  if (kind === "found") return `You found the hider${at}. Your result is below.`;
+  if (kind === "gaveUp") return `You gave up. The hider was${at}.`;
+  return `Time's up. The hider was${at}. Your result is below.`;
+}

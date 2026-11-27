@@ -986,7 +986,16 @@ function FoldedStation({
 }
 
 /** The Ask tab. */
-export function AskPanel({ world, t }: { world: World; t: number }) {
+export function AskPanel({
+  world,
+  t,
+  guide,
+}: {
+  world: World;
+  t: number;
+  /** The guided first round's step, under the good next question (Guide.tsx). */
+  guide?: ReactNode;
+}) {
   const view = useGame((s) => s.view);
   const [opened, setOpened] = useState<Set<string>>(new Set());
   if (!view) return null;
@@ -1022,6 +1031,7 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
       ) : (
         <>
           <GoodNext world={world} view={view} t={t} />
+          {guide}
           <StationQuestions
             world={world}
             view={view}
@@ -1116,7 +1126,7 @@ export function QuestionBand({ a, world, t }: { a: SeenQuestion; world: World; t
       ? answer.landmark
       : null;
   return (
-    <div className="mx-2.5 mt-1.5">
+    <div className="mx-2.5 mt-1.5" data-answered={answer !== null || undefined}>
       <ExpressBand family={family} label={label} role="status">
         <p>{questionText(a, world)}</p>
         {answer === null ? (

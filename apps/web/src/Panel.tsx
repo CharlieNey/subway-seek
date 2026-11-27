@@ -17,7 +17,7 @@ import {
   searchGrid,
   THEME_NAMES,
 } from "@subway-seek/engine";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
 import { askBlocker, askLabel, hhmm, priceText, WHAT_COUNTS } from "./ask.ts";
 import { GAME_NAME } from "./brand.ts";
@@ -31,6 +31,7 @@ import {
   useLinkScreen,
   useNow,
 } from "./Connection.tsx";
+import { cardNote, loadSeenCards, saveSeenCards } from "./cardNotes.ts";
 import { useMotion } from "./clearings.ts";
 import { cn } from "./cn.ts";
 import { Guide } from "./Guide.tsx";
@@ -44,8 +45,8 @@ import { sheetToggle, tapTab, usePlayLayout, useSheet } from "./layout.ts";
 import { useFirstRound } from "./learn.ts";
 import { stillStanding } from "./map/eliminate.ts";
 import { NextTargetContext, NO_TARGET, useNextMove, useNextTarget } from "./NextMove.tsx";
-import { displayName, formatDay } from "./names.ts";
-import type { NextMove } from "./nextMove.ts";
+import { complexLabel, displayName, formatDay } from "./names.ts";
+import { endLineText, type NextMove } from "./nextMove.ts";
 import { checkedNow, stillPossible, useNotHere, useNotHereList } from "./notHere.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { ReplayPanel } from "./ReplayPanel.tsx";
@@ -99,7 +100,14 @@ function roundLine(view: SoloView | null, alreadyPlayed: boolean): string {
  * Fast-forward on the clock, in solo rounds: ▸ to the departure or 30 s before the next
  * stop, ▸▸ to your stop or the end of a walk. The clock is later, not faster.
  */
-function fastForward(world: World, view: SoloView, t: number, busy: boolean): FastForward[] {
+function fastForward(
+  world: World,
+  view: SoloView,
+  t: number,
+  busy: boolean,
+  /** A phone: shorter words, so the clock fits its row. */
+  short = false,
+): FastForward[] {
   const send = useGame.getState().send;
   if (isHider(view) && t >= view.seekStart) return [];
   const s = resolve(ownTransit(view), t, world.idx);
@@ -118,6 +126,7 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
       {
         glyph: "▸",
         key: "Space",
+        label: waiting ? (short ? "Leave" : "Leave now") : short ? "Next" : "Next stop",
         title: late(next)
           ? "The next stop is after time's up"
           : waiting
@@ -129,6 +138,7 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
       {
         glyph: "▸▸",
         key: "Shift+Space",
+        label: toEnd === "the last stop" ? "Last stop" : "Your stop",
         title: late(end) ? `${stop} is after time's up` : `Skip to ${toEnd}, ${stop} · Shift+Space`,
         disabled: busy || late(end),
         onClick: go("end"),
@@ -137,24 +147,31 @@ function fastForward(world: World, view: SoloView, t: number, busy: boolean): Fa
   }
   if (s.kind === "walking") {
     return [
-      { glyph: "▸", title: "On a walk, ▸▸ arrives", disabled: true },
       {
         glyph: "▸▸",
         key: "Shift+Space",
+        label: "Arrive",
         title: "Arrive · Shift+Space",
         disabled: busy,
         onClick: go("end"),
       },
     ];
   }
-  const why = s.kind === "platform" ? "Board a train first" : "Nothing to skip to on foot";
-  return [
-    { glyph: "▸", title: why, disabled: true },
-    { glyph: "▸▸", title: why, disabled: true },
-  ];
+  // Nothing to skip to on a platform or on foot: no buttons, rather than two greyed glyphs
+  // whose reason was only in a tooltip (the playable round, 2026-11-27).
+  return [];
 }
 
-function PanelTop({ t, world }: { t: number | null; world: World | null }) {
+function PanelTop({
+  t,
+  world,
+  numbers,
+}: {
+  t: number | null;
+  world: World | null;
+  /** On a phone, the round's numbers sit here, beside the clock (the playable round). */
+  numbers?: ReactNode;
+}) {
   const { view, alreadyPlayed, busy, send } = useGamePick("view", "alreadyPlayed", "busy", "send");
   const paused = useGame((s) => s.sync?.paused ?? false);
   const live = view && !view.result && world && t !== null;
@@ -166,23 +183,26 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
   return (
     <header className="sc-ptop flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
       <div className="min-w-0">
-        <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
-          {GAME_NAME}
-        </div>
+        {/* On a phone every line here costs the list room (the playable round). */}
+        {!stack && (
+          <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
+            {GAME_NAME}
+          </div>
+        )}
         <div className="text-[12px] text-ink-2">{roundLine(view, alreadyPlayed)}</div>
+        {numbers}
         {!stack && stationLine}
       </div>
       <ClockTile
         time={t === null ? null : hhmm(t)}
         paused={paused}
-        ff={live ? fastForward(world, view, t, busy) : undefined}
+        ff={live ? fastForward(world, view, t, busy, stack) : undefined}
         onPause={
           live && (view.mode === "practice" || view.mode === "hide")
             ? () => send({ type: paused ? "resume" : "pause" })
             : undefined
         }
       />
-      {stack && stationLine && <div className="basis-full">{stationLine}</div>}
     </header>
   );
 }
@@ -224,6 +244,46 @@ function useClearingCount(): number {
  * share of your circle left), the time left, and the minutes the questions added to their
  * score. "Give up" is a quiet link.
  */
+/** The round's numbers as [value, label] pairs, in plain words. */
+function useRoundCells(world: World, view: SoloView, t: number): [string, string][] {
+  // The count steps down one per square as an answer clears them (Motion: Ask → answer).
+  const standing = useClearingCount();
+  const notHere = useNotHereList(view);
+  const first = useFirstRound();
+  const onFoot = view.hasSpot && onStreet(view, t, world);
+  const search = onFoot ? searchScene(world, view, t) : null;
+  const center = search ? world.ds.complexes[search.complex] : undefined;
+  const pct =
+    search && center
+      ? Math.round((search.possible.length / searchGrid(center).length) * 100)
+      : null;
+  const n = stillPossible(view, notHere).length + standing;
+  return [
+    pct !== null
+      ? [`${pct}%`, "of your circle left"]
+      : [String(n), n === 1 ? "station it could be" : "stations it could be"],
+    [String(Math.max(0, Math.ceil((view.seekEnd - t) / 60))), "min left"],
+    ...(first
+      ? []
+      : [[`+${view.bonusSeconds / 60}`, "min added to their score"] as [string, string]]),
+  ];
+}
+
+/** On a phone: the numbers as one line under the round's name, beside the clock. */
+function CompactNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
+  const cells = useRoundCells(world, view, t);
+  return (
+    <p className="sc-numbers-line">
+      {cells.map(([value, label], i) => (
+        <span key={label}>
+          {i > 0 && " · "}
+          <b>{value}</b> {label}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function RoundNumbers({
   world,
   view,
@@ -236,34 +296,11 @@ function RoundNumbers({
   /** Sound and Give up under the numbers; on a phone they sit in the tab row instead. */
   links: boolean;
 }) {
-  // The count steps down one per square as an answer clears them (Motion: Ask → answer).
-  const standing = useClearingCount();
-  const onFoot = view.hasSpot && onStreet(view, t, world);
-  const search = onFoot ? searchScene(world, view, t) : null;
-  const center = search ? world.ds.complexes[search.complex] : undefined;
-  const pct =
-    search && center
-      ? Math.round((search.possible.length / searchGrid(center).length) * 100)
-      : null;
-  const notHere = useNotHereList(view);
-  const n = stillPossible(view, notHere).length + standing;
   // Plain words (the playable round): what each number is. A first round leaves out the
   // hider's score minutes until they matter, on the result.
-  const first = useFirstRound();
-  const cells: [string, string][] = [
-    pct !== null
-      ? [`${pct}%`, "of your circle left"]
-      : [String(n), n === 1 ? "station it could be" : "stations it could be"],
-    [String(Math.max(0, Math.ceil((view.seekEnd - t) / 60))), "min left to find them"],
-    ...(first
-      ? []
-      : [
-          [`+${view.bonusSeconds / 60}`, "min your questions add to their score"] as [
-            string,
-            string,
-          ],
-        ]),
-  ];
+  const cells = useRoundCells(world, view, t).map(([v, l]): [string, string] =>
+    l === "min left" ? [v, "min left to find them"] : [v, l],
+  );
   return (
     <>
       <div
@@ -411,32 +448,29 @@ function useWhatCounts(onFoot: boolean) {
   return { show, dismiss: markSeen };
 }
 
-/** The first card played on you, explained once (the playable round: less at first). */
-const FIRST_CARD =
-  "The hider is the computer, and it holds cards. It just played one on you: each card says what it did, where it landed.";
-const CARDS_KEY = storageKey("first-card");
-
-function useFirstCard(view: SoloView) {
+/** Each card the hider plays on you, explained the first time it lands (cardNotes.ts). */
+function useCardNote(view: SoloView) {
   const t = useGameTime(1);
-  const [seen, setSeen] = useState(() => {
-    try {
-      return localStorage.getItem(CARDS_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const landed = t !== null && view.cardEvents.some((e) => e.t <= t);
+  const [seen, setSeen] = useState(loadSeenCards);
+  const note = t === null || isHider(view) ? null : cardNote(view.cardEvents, t, seen);
   return {
-    show: !seen && landed && !isHider(view),
+    note,
     dismiss: () => {
-      setSeen(true);
-      try {
-        localStorage.setItem(CARDS_KEY, "1");
-      } catch {
-        // Refused: it may show again next round.
-      }
+      if (!note) return;
+      const next = new Set(seen).add(note.card);
+      setSeen(next);
+      saveSeenCards(next);
     },
   };
+}
+
+function EndLine({ world, view }: { world: World; view: SoloView }) {
+  const name = view.hider === null ? "" : complexLabel(world.ds, view.hider);
+  return (
+    <div className="mx-4 mt-2.5">
+      <NextLine>{endLineText(view, name)}</NextLine>
+    </div>
+  );
 }
 
 /**
@@ -458,9 +492,9 @@ function NoticeRow({
     "alreadyPlayed",
   );
   const counts = useWhatCounts(onFoot);
-  const cards = useFirstCard(view);
+  const cards = useCardNote(view);
   const [playedSeen, setPlayedSeen] = useState(false);
-  const text = notice ?? (counts.show ? WHAT_COUNTS : cards.show ? FIRST_CARD : null);
+  const text = notice ?? (counts.show ? WHAT_COUNTS : (cards.note?.text ?? null));
   return (
     <>
       {text && (
@@ -623,6 +657,16 @@ export function Panel() {
   // The answered band collapses into the log rather than vanishing.
   const band = useLeaving(view && !view.result ? liveQuestion(view, now) : null, 280);
   useKeys(world, view, t);
+  // The round just ended: open the sheet and show the result from its top, so the end
+  // can't be missed under a scrolled list or a folded sheet (the playable round).
+  const sheetBody = useRef<HTMLDivElement>(null);
+  const ended = !!view?.result;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on the round ending only
+  useEffect(() => {
+    if (!ended) return;
+    if (stack) setSheet("open");
+    sheetBody.current?.scrollTo({ top: 0 });
+  }, [ended]);
   // The next move, worked out once for the line and the outline it draws (nextMove.ts).
   const live = !!(world && view && t !== null && !view.result && !isHider(view));
   const armedReady =
@@ -696,7 +740,11 @@ export function Panel() {
       {/* A finished round's result never folds away: the sheet is for the round. */}
       <aside className={cn(aside, !over && "sc-sheet")}>
         {/* Another tab has the round, and its clock: this one doesn't know the time. */}
-        <PanelTop t={screen.kind === "takenOver" ? null : t} world={world} />
+        <PanelTop
+          t={screen.kind === "takenOver" ? null : t}
+          world={world}
+          numbers={stack && !over ? <CompactNumbers world={world} view={view} t={t} /> : undefined}
+        />
         {lost.value && (
           <div className={lost.leaving ? "sc-anim-collapse" : undefined}>
             <LostBand screen={lost.value} />
@@ -722,7 +770,7 @@ export function Panel() {
         <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
           {!over && (
             <>
-              <RoundNumbers world={world} view={view} t={t} links={!stack} />
+              {!stack && <RoundNumbers world={world} view={view} t={t} links />}
               <div className="sc-tabrow flex items-center justify-between border-b border-grout px-4 pt-2 pb-2.5">
                 <TabRow
                   tabs={[
@@ -754,6 +802,7 @@ export function Panel() {
             </>
           )}
           <NoticeRow view={view} onFoot={onFoot && !over} move={over ? null : move} />
+          {over && !isHider(view) && <EndLine world={world} view={view} />}
           {/* The question in its window, then its answer: above the list, so it's never
               scrolled out of view (the playable round; on a phone it was, 2026-11-27). */}
           {!over && band.value && (
@@ -776,7 +825,10 @@ export function Panel() {
               onOpen={() => setZoom(photos.indexOf(lookingFor))}
             />
           )}
-          <div className="sc-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
+          <div
+            ref={sheetBody}
+            className="sc-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6"
+          >
             {over ? (
               <>
                 {isHider(view) ? (
@@ -788,12 +840,19 @@ export function Panel() {
               </>
             ) : (
               <>
-                {/* The guide scrolls with the list, so a phone keeps room for the list. */}
-                {!onFoot && <Guide world={world} view={view} t={t} tab={tab} />}
+                {/* The guide scrolls with the list, so a phone keeps room for the list; on
+                    Ask it follows the marked question, which is what it points at. */}
                 {tab === "travel" ? (
-                  <TravelPanel world={world} t={t} />
+                  <>
+                    {!onFoot && <Guide world={world} view={view} t={t} tab={tab} />}
+                    <TravelPanel world={world} t={t} />
+                  </>
                 ) : (
-                  <AskPanel world={world} t={t} />
+                  <AskPanel
+                    world={world}
+                    t={t}
+                    guide={!onFoot && <Guide world={world} view={view} t={t} tab={tab} />}
+                  />
                 )}
               </>
             )}

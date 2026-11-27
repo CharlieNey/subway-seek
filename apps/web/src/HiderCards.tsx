@@ -125,10 +125,17 @@ export function HandReveal({ hand, own = false }: { hand: CardId[]; own?: boolea
       </p>
     );
   const bonus = handBonusSeconds(hand) / 60;
+  if (!own)
+    // Plain words for the seeker (the playable round): what a kept card does.
+    return (
+      <p className="max-w-[320px] text-center text-[12px] text-ink-2">
+        The hider ended holding {hand.map((c) => CARDS[c].title).join(", ")}.
+        {bonus > 0 ? ` The cards it kept added ${bonus} min to its score.` : ""}
+      </p>
+    );
   return (
     <p className="text-[12px] text-ink-2">
-      {own ? "Cards held · " : "The hider held "}
-      {hand.map((c) => CARDS[c].title).join(", ")}
+      Cards held · {hand.map((c) => CARDS[c].title).join(", ")}
       {bonus > 0 ? ` · time bonuses +${bonus} min` : ""}
     </p>
   );

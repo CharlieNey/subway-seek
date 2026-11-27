@@ -208,10 +208,30 @@ function labelled(stations: StationDatum[], round: RoundData): StationDatum[] {
 const dashes = new PathStyleExtension({ dash: true });
 const tesserae = new PathStyleExtension({ dash: true, offset: true });
 
-/** A station square's size in px: a tile that grows with the zoom, within bounds. */
-function squarePx(zoom: number, status: StationStatus): number {
-  const base = Math.min(12, Math.max(4, 5 * 2 ** (zoom - 12)));
-  return status === "possible" || status === "hider" || status === "start" ? base : base * 0.8;
+/** With this many still possible or fewer, every one is named and drawn larger. */
+export const FEW_POSSIBLE = 12;
+
+const fewCache = new WeakMap<RoundData, boolean>();
+/** Whether few enough are left to name them all (the playable round, 2026-11-27). */
+function few(round: RoundData): boolean {
+  let out = fewCache.get(round);
+  if (out === undefined) {
+    out = round.status.filter((s) => s === "possible").length <= FEW_POSSIBLE;
+    fewCache.set(round, out);
+  }
+  return out;
+}
+
+/**
+ * A station square's size in px: a tile that grows with the zoom, within bounds. Those
+ * still possible never shrink below 6 px, and 10 px once few are left: on a phone the
+ * cold-play testers couldn't tell 4 px squares apart.
+ */
+function squarePx(zoom: number, status: StationStatus, fewLeft = false): number {
+  const base = 5 * 2 ** (zoom - 12);
+  if (status === "possible" || status === "hider" || status === "start")
+    return Math.min(fewLeft ? 14 : 12, Math.max(fewLeft ? 10 : 6, base));
+  return Math.min(12, Math.max(4, base)) * 0.8;
 }
 
 /**
@@ -443,7 +463,7 @@ function underLayers(scene: Scene): Layer[] {
         return st === "possible" ? "out" : st;
       },
       getPosition: (s) => s.position,
-      getSize: (s) => squarePx(scene.zoom, round.status[s.complex] ?? "out"),
+      getSize: (s) => squarePx(scene.zoom, round.status[s.complex] ?? "out", few(round)),
       sizeUnits: "pixels",
       updateTriggers: { getIcon: round.version, getSize: [round.version, sizeTrigger] },
     }),
@@ -455,7 +475,7 @@ function underLayers(scene: Scene): Layer[] {
       iconMapping: atlas.mapping,
       getIcon: () => "possible",
       getPosition: (s) => s.position,
-      getSize: () => squarePx(scene.zoom, "possible"),
+      getSize: () => squarePx(scene.zoom, "possible", few(round)),
       sizeUnits: "pixels",
       getColor: (s) => {
         const st = round.status[s.complex];
@@ -465,15 +485,16 @@ function underLayers(scene: Scene): Layer[] {
       },
       updateTriggers: {
         getColor: [round.version, frame],
-        getSize: sizeTrigger,
+        getSize: [sizeTrigger, round.version],
       },
     }),
     // Labels: no collision filtering (its shader fails on WebKit/Safari), so keep them
-    // sparse: stations still in play from z13.5, every station from z15.
+    // sparse: stations still in play from z13.5, every station from z15, and at any zoom
+    // once few are left, so you can see where you're going.
     new TextLayer<StationDatum>({
       id: "station-labels",
       data: scene.zoom >= 15 ? data.stations : labelled(data.stations, round),
-      visible: scene.zoom >= 13.5,
+      visible: scene.zoom >= 13.5 || few(round),
       getPosition: (s) => s.position,
       getText: (s) => s.name,
       getSize: 11,

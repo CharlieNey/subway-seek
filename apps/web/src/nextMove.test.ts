@@ -12,7 +12,13 @@ import {
   type TimetableIndex,
 } from "@subway-seek/engine";
 import { beforeAll, describe, expect, it } from "vitest";
-import { answerPending, type NextMoveInput, nextMove, suggestedQuestion } from "./nextMove.ts";
+import {
+  answerPending,
+  endLineText,
+  type NextMoveInput,
+  nextMove,
+  suggestedQuestion,
+} from "./nextMove.ts";
 
 let idx: TimetableIndex;
 beforeAll(() => {
@@ -164,5 +170,15 @@ describe("the next move", () => {
     const res = applySoloIntent(r, { type: "giveUp" }, r.seekStart + 60, idx);
     if (!res.ok) throw new Error(res.error);
     expect(nextMove(input(res.round, r.seekStart + 60))).toBeNull();
+  });
+
+  it("says plainly how the round ended", () => {
+    expect(endLineText({ result: { kind: "found", at: 0 } }, "Wall St")).toBe(
+      "You found the hider at Wall St. Your result is below.",
+    );
+    expect(endLineText({ result: { kind: "timeout", at: 0 } }, "Wall St")).toMatch(/^Time's up\./);
+    expect(endLineText({ result: { kind: "gaveUp", at: 0 } }, "Wall St")).toBe(
+      "You gave up. The hider was at Wall St.",
+    );
   });
 });

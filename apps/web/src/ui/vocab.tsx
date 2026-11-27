@@ -649,6 +649,8 @@ export interface FastForward {
   title: string;
   /** Its key ("Space", "Shift+Space"): said in the title, as the buttons are one glyph wide. */
   key?: string;
+  /** A word on the button: "Next stop", "Your stop" (the playable round: unlabelled, they went unused). */
+  label?: string;
   disabled?: boolean;
   onClick?: () => void;
 }
@@ -700,14 +702,15 @@ export function ClockTile({
           <button
             key={b.glyph}
             type="button"
-            className="sc-ff sc-focus"
+            className={cn("sc-ff sc-focus", b.label && "labelled")}
             data-key={b.key}
             title={b.title}
             aria-label={b.title}
             disabled={b.disabled}
             onClick={b.onClick}
           >
-            {b.glyph}
+            <span aria-hidden="true">{b.glyph}</span>
+            {b.label && <small aria-hidden="true">{b.label}</small>}
           </button>
         ))}
     </div>

@@ -1574,3 +1574,18 @@
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* A skip button with its word (the playable round): glyph, then small caps. */
+.sc-ff.labelled {
+  width: auto;
+  gap: 5px;
+  padding: 0 8px;
+}
+.sc-ff.labelled small {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

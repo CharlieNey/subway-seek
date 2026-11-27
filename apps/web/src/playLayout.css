@@ -1,6 +1,6 @@
 /*
  * A round on a phone (DESIGN.md, Phones; layout.ts decides when). The map on top, the
- * panel under it as a sheet at full width: open it takes 58% of the screen, folded it keeps
+ * panel under it as a sheet at full width: open it takes 66% of the screen, folded it keeps
  * the clock, the numbers, the tabs, the notice row and the wainscot. Controls are 44 px
  * tall for a thumb. The computer layout has none of these classes.
  */
@@ -14,7 +14,9 @@
 }
 .sc-play-stack > aside {
   width: 100%;
-  height: 58dvh;
+  /* 66%, was 58%: the list you work in was a 260 px strip (the playable round). The map
+     keeps a third, and Map ▴ still gives it the screen. */
+  height: 66dvh;
   flex: none;
   min-height: 0;
   border-left: 0;
@@ -45,11 +47,20 @@
   width: 44px;
   min-height: 44px;
 }
+.sc-play-stack .sc-ff.labelled {
+  width: auto;
+}
 
-/* The three numbers on one row, smaller; Sound and Give up beside them. */
+/* The numbers on one row, each beside its label, smaller; Sound and Give up beside them. */
 .sc-play-stack .sc-numbers > div {
-  padding-top: 5px;
-  padding-bottom: 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-top: 4px;
+  padding-bottom: 3px;
+}
+.sc-play-stack .sc-numbers > div > span {
+  line-height: 1.15;
 }
 .sc-play-stack .sc-numbers b {
   font-size: 18px;
@@ -183,4 +194,32 @@
   padding-top: env(safe-area-inset-top);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* The answer on a phone: once it's in, the question it answers is in the log, so the band
+   keeps the answer and the count, tighter (the playable round: room for the list). */
+.sc-play-stack [data-answered] .sc-band-express > p {
+  display: none;
+}
+.sc-play-stack .sc-band-express {
+  gap: 3px;
+  padding: 8px 12px 7px;
+}
+.sc-play-stack .sc-next-line {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+/* On a phone the numbers are one line under the round's name, beside the clock. */
+.sc-numbers-line {
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--color-ink-2);
+}
+.sc-numbers-line b {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
 }
