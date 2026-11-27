@@ -238,7 +238,12 @@ function LegendBox({
   }, [unread, onRead]);
   return (
     <div className="pointer-events-auto absolute top-3 left-3 z-10 flex max-w-[calc(100%-24px)] flex-col items-start gap-1.5">
-      <button type="button" className="sc-focus" onClick={onToggle} aria-expanded={expanded}>
+      <button
+        type="button"
+        className="sc-focus sc-legend-toggle"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
         <Caption tone="light">{title}</Caption>
       </button>
       {expanded && (

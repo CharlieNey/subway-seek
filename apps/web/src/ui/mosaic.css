@@ -1377,3 +1377,40 @@
   background: var(--c);
   box-shadow: inset 0 0 0 2.5px var(--t);
 }
+
+/*
+ * A finger's targets, wherever the layout (DESIGN.md, Phones; the phone pass of
+ * 2026-11-27): on a touch screen the buttons, the map's two toggles, the line hexagons and
+ * the replay's log rows are 44 px (the map's zoom is in playLayout.css). The stacked play layout already sized its
+ * own (playLayout.css); a phone on its side, a tablet and the homepage didn't.
+ */
+@media (pointer: coarse) {
+  .sc-btn,
+  .sc-chip,
+  .sc-cc-row,
+  .sc-cool,
+  .sc-notice,
+  .sc-tab,
+  .sc-numbers-links button,
+  .sc-follow,
+  .sc-legend-toggle,
+  .sc-rp-row {
+    min-height: 44px;
+  }
+  .sc-ff,
+  .sc-rp-play {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .sc-legend-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+  .sc-route-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

@@ -341,7 +341,8 @@ function Departures({
           <div>
             <h3>You hide</h3>
             <p>You ride and hide, a bot seeks. Watch the net close around you.</p>
-            <div className="mt-2 flex gap-1">
+            {/* The buttons wrap, and the hint sits under them: at 360 px they ran into Play. */}
+            <div className="mt-2 flex flex-wrap gap-1">
               {(["easy", "normal", "hard"] as const).map((d) => (
                 <button
                   type="button"
@@ -352,8 +353,8 @@ function Departures({
                   {d.charAt(0).toUpperCase() + d.slice(1)}
                 </button>
               ))}
-              <p>Searches with {SEEKER_LEVELS[difficulty].endgameAt} stations left.</p>
             </div>
+            <p>Searches with {SEEKER_LEVELS[difficulty].endgameAt} stations left.</p>
           </div>
           <span className="st">Now boarding</span>
           <a className="sc-btn go" href={`/play?hide&difficulty=${difficulty}`}>
