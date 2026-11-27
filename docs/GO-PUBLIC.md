@@ -2,6 +2,29 @@
 
 # Going public
 
+## Where it stands (2026-11-27)
+
+**Live:** https://subway-seek.pages.dev, keyless, so every round ends at the station on the free map. The server is one Fly machine. The phone fixes are live: touch sizes, the sideways panel, the notch, and Add to Home Screen as an app.
+
+| | State |
+|---|---|
+| Done | 0 (old cloud), 1 (name, trademark search), 3.1 (contact address), 3.2 (README read and its replay caption written), 4 (server), 5 (site, by upload), 6 (keyless chosen), 7's computer part (Chrome and WebKit with an iPhone profile) |
+| Done, waiting for go | Fun round 1, merged to `main`, not deployed: `DEPLOY-FUN-ROUND.md` |
+| Left, Charlie only | 7's phone part (his iPhone), Safari and Firefox on a computer; the rumble's and pulse's defaults; 2.1 renaming the GitHub repo; 2.2 a domain; 2.3 Google display names; 6.2–6.5 if he ever wants keys; 8.1 making the repo public; 8.2 is the site pane's; 8.3 the posts, which he writes |
+
+### Launch day, when Charlie says go
+
+Each step can be undone on its own. Go in this order.
+
+| # | Do | Undo |
+|---|---|---|
+| L1 | Deploy fun round 1: `DEPLOY-FUN-ROUND.md` (server, then website, then its checks). Before Saturday 5 December, or move the first themed Saturday | Its Rollback section: the previous Fly image, and Pages deployment `33d6ce93` |
+| L2 | Charlie plays a daily on his iPhone and on a computer in Safari (7) | — |
+| L3 | Optional: `gh repo rename subway-seek`, then `git remote set-url origin https://github.com/CharlieNey/subway-seek.git` (2.1) | `gh repo rename stand-clear` <!-- keep-name --> |
+| L4 | Optional: make the repo public, after the history check in 0.5 passes again (8.1) | `gh repo edit --visibility private --accept-visibility-change-consequences` |
+| L5 | The personal site links the game (8.2, the site pane) | Revert that commit there |
+| L6 | Charlie posts, from `launch/` (8.3) | Delete the post |
+
 ## Done in the repo (2026-11-21)
 
 Nothing to do here; listed so the steps below can assume it.
@@ -94,7 +117,7 @@ Decide here. **Keyless is a complete game:** every round ends at the station on 
 
 ## 7. Smoke test on the live site
 
-**Computer part done 2026-11-27, in Chrome only:** daily #54 found, an Easy practice round with a reload mid-ride and Give up, You hide into the seek. No console errors; `fly logs` showed the rounds and the volume kept their three match logs (test rounds, not players). It found that Up to the street was a dead end without Street View, fixed the same day (DESIGN.md, decision log). Safari, Firefox and the phone part are Charlie's.
+**Computer part done 2026-11-27, in Chrome, then in WebKit with an iPhone profile after the phone fixes went live:** daily #54 found, an Easy practice round with a reload mid-ride and Give up, You hide into the seek. No console errors; `fly logs` showed the rounds and the volume kept their three match logs (test rounds, not players). It found that Up to the street was a dead end without Street View, fixed the same day (DESIGN.md, decision log). Safari, Firefox and the phone part are Charlie's. Fun round 1 has its own checks in `DEPLOY-FUN-ROUND.md`.
 
 - Chrome, Safari and Firefox on a computer: a daily to the end, an Easy practice round, You hide; reload mid-round and the round comes back.
 - A phone (Safari on an iPhone, Chrome on an Android if you can borrow one): `/`, a practice round to the station with the sheet folded and opened, `/hardest`, and `/play?replay=yesterday` (yesterday's daily needs a day of uptime first). Turn the phone on its side once: the map moves beside the panel.

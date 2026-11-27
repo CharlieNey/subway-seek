@@ -1,16 +1,16 @@
 # Launch checklist
 
-The blocking items from the launch-prep review of 2026-10-06, what's done, and what still needs a hand. Tick as you go. The ordered path, with an undo for each step, is [`GO-PUBLIC.md`](GO-PUBLIC.md); launch-post material is in [`launch/`](launch/).
+The blocking items from the launch-prep review of 2026-10-06, what's done, and what still needs a hand. Tick as you go. *Brought up to date 2026-11-27: the game is live and keyless at https://subway-seek.pages.dev, and fun round 1 waits for Charlie (below).* The ordered path, with an undo for each step, is [`GO-PUBLIC.md`](GO-PUBLIC.md); launch-post material is in [`launch/`](launch/).
 
 ## Hosting
 
 - [x] `apps/server/Dockerfile`; `infra/fly/fly.toml` (one always-on machine in `ewr` with a volume); `.github/workflows/deploy-server.yml` deploys to Fly after the checks, by hand for now. `infra/aws` (EC2 behind Caddy) kept as an alternative for an AWS account Charlie owns.
 - [x] `apps/web/public/_headers` for Cloudflare Pages; `vercel.json` for Vercel (build, SPA rewrite, immutable hashed assets, security headers).
 - [x] `docs/DEPLOY-PLAN.md` (hosts compared, costs, secrets, key restrictions, quotas, ordered steps) and `docs/DEPLOY.md` (runbook: deploys, re-pin routine, smoke test, rollback). 2026-11-20.
-- [ ] Fly: account, app, volume, secrets, first deploy (`DEPLOY-PLAN.md`, steps 1–3).
-- [ ] Cloudflare Pages: connect the repo; set `VITE_SERVER_URL`, `VITE_SITE_URL`, `NODE_VERSION`, and `VITE_GOOGLE_MAPS_API_KEY` unless the site goes up keyless. `ALLOWED_ORIGINS` on the server must match the site's origin.
-- [ ] Retire the earlier AWS setup: the repository's AWS secrets, and the role, ECR repository and instance profile in that account (`DEPLOY-PLAN.md`, Retire the old setup).
-- [ ] Optional: a domain, and the server's `wss://` URL behind it.
+- [x] Fly: account, app `subway-seek-server` in `ewr`, the 1 GB volume, `DAILY_SECRET` and `ALLOWED_ORIGINS`, first deploy on 2026-11-27 (one machine, shared IPv4).
+- [x] Cloudflare Pages: project `subway-seek`, uploaded with wrangler rather than connected to Git, keyless (no `VITE_GOOGLE_MAPS_API_KEY`). Live since 2026-11-27; the phone fixes went up the same day (`a2c6f10`). `ALLOWED_ORIGINS` is `https://subway-seek.pages.dev`.
+- [x] Retire the earlier AWS setup: the GitHub secrets and everything in that account were deleted 2026-11-27.
+- [ ] Optional: a domain, and the server's `wss://` URL behind it (Charlie buys it).
 
 ## Google
 
@@ -38,11 +38,20 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] S4 bot-vs-bot balance run; deck mix and curse prices set from it (2026-10-07, `docs/match-balance.md`).
 - [x] The share text ends with a link carrying the daily's number and the sharer's minutes, for the "a friend found…" band (2026-10-06).
 - [x] Open Graph title, description and card image, favicon and touch icon; `VITE_SITE_URL` makes the URLs absolute (2026-10-07).
-- [ ] Name check: trademark and app-store search for the name before buying the domain, by hand (`GO-PUBLIC.md`, step 1.2, which says why "Subway" needs care).
+- [x] Name check: done 2026-11-27 against the databases (`trademark-check-2026-11-27.md`); a lawyer is the formal answer before charging money.
 - [x] Limits: 30 new rounds per address per hour, 40 walks per session per minute, 500 live sessions; a refused connection shows the server's reason (2026-10-07).
 - [x] Live sessions on disk: rounds survive a deploy or crash, restored with the rest of their grace period (2026-10-07). `SESSION_DB` on the instance's volume.
-- [ ] Play a full daily, practice seeking and You hide on the deployed site, on Chrome, Safari and Firefox.
+- [ ] Play a full daily, practice seeking and You hide on the deployed site, on Chrome, Safari and Firefox. *2026-11-27: Chrome on a computer done on the live site, and WebKit with an iPhone profile; Charlie's real iPhone, Safari and Firefox still to do.*
 - [x] S3 role-filtered sockets, paced seeker, panorama-ID persistence, hider results and separate browser history (2026-10-08). Photo screens use fixtures; the bot has no photo perception.
+
+## Fun round 1 (2026-11-27)
+
+Built on `fun-round-1`, reviewed, and QA'd locally on 2026-11-27: the ending, sound, par, the daily percentile, days running, the stamp book, Outer boroughs Saturdays (from 5 December), the 90-day log sweep, the phone touch sizes. QA covered every page and mode at desktop, 390×844 and 360×740, in Chromium and in WebKit with an iPhone profile. It also covered keyboard only, a slow connection, reload during an answer, two tabs, back and forward, a server restart mid-round, a daily played to the find and played again, and a themed Saturday through the dev date flag. The first screen is +2.9 KB gzipped on the homepage, and paints no slower.
+
+- [x] Merge to `main` when QA passes (Charlie allowed it 2026-11-27; merging deploys nothing).
+- [ ] **Charlie: hear the sound (play the branch locally: README, Run it, including from a phone) and choose the rumble's and pulse's defaults.**
+- [ ] **Charlie: say go**, then `DEPLOY-FUN-ROUND.md` (server, website, checks, rollback). Deploy before Saturday 5 December or move the first themed Saturday.
+- [ ] After launch, as approved: friend challenges (`proposals/friend-challenges.md`) and The Shuttle (`proposals/two-minute-daily.md`).
 
 ## Pre-launch review (2026-10-06)
 

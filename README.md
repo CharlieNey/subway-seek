@@ -2,11 +2,11 @@
 
 **Hide and seek on the real New York subway timetable.** A hider went underground at 10:00 and got off somewhere. You ride the real weekday timetable at 6× speed and ask questions that rule stations out ("within 2 miles of me?", "does the A stop there?") until you reach their station. With Google keys you then come up and find them in Street View. Or you hide, and a bot hunts you. It plays in a browser, on a computer or a phone.
 
-![REPLAY_ALT](docs/screenshots/replay.gif)
+![The replay after a find: both routes draw across Manhattan on the free map as the clock runs from 10:00 to 11:16, the hider's up the M and the 2 to 72 St, yours up the D and the 1, with the move log beside the map](docs/screenshots/replay.gif)
 
-*REPLAY_CAPTION*
+*The replay after a find, both routes on the real timetable in 25 seconds. Daily #47: the hider rode the M, changed to the 2 and got off at 72 St; one radar question ("within 2 miles?" No, 49 stations left) and two rides found them in 57 minutes.*
 
-**Status:** a solo project, not deployed yet. It runs locally with no accounts and no API keys. The timetable is pinned to Wednesday 2027-03-03.
+**Status:** a solo project, playable at [subway-seek.pages.dev](https://subway-seek.pages.dev). The live site runs without Google keys, so every round ends when you reach the hider's station, on the free map. It also runs locally with no accounts and no API keys. The timetable is pinned to Wednesday 2027-03-03.
 
 **How it's built:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), a five-minute read. The full design, rules and decision log: [`DESIGN.md`](DESIGN.md).
 
@@ -53,6 +53,9 @@ Then open `http://<that address>:5173` on the phone. macOS may ask once whether 
 - **Six question families** (Matching, Measuring, Radar, Thermometer, Nearest, Photos) plus on-foot questions in the street search. Each adds minutes to the hider's score, and each answer lands after a one-minute window.
 - **A card deck** the hider draws from on every answer: time bonuses, Veto, Randomize, and curses that slow the seeker.
 - **Replays** of both routes, and **`/hardest`**, every station ranked by how many questions it takes to find.
+- **The ending:** a verdict line and up to three moments from your own round (you rode straight through their station, your express skipped it, your closest call, the answer that cut the most), while both routes replay on the map.
+- **Reasons to come back:** par from the `/hardest` table, a percentile among today's finished dailies once 20 have finished, days running, and a stamp book of every station you've found or hidden in (`/stamps`). From Saturday 5 December 2026, a Saturday daily starts outside Manhattan and the hider stays out of it.
+- **Sound**, all synthesized in the browser: doors, a rumble while riding, answers, cards and a pulse as the stations fall, with a one-tap mute. Nothing plays before your first tap.
 
 ![Home page](docs/screenshots/01-home.png)
 

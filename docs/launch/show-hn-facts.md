@@ -1,4 +1,4 @@
-*Facts for a Show HN post, checked against the repo on 2026-11-21. Not a post: HN wants posts written by the person posting, not generated or edited by an LLM (the guidelines as read for the market research, §4), so Charlie writes the post from this sheet. Don't paste from it. Name-agnostic: "the game" and `<site>` stand for whatever it's called on the day. Source: `~/personal_projects/market-research/stand-clear.md` §4, with every figure re-read from the files named.*
+*Facts for a Show HN post, checked against the repo on 2026-11-21 and again on 2026-11-27 (the name, the live site, phones, fun round 1). Not a post: HN wants posts written by the person posting, not generated or edited by an LLM (the guidelines as read for the market research, §4), so Charlie writes the post from this sheet. Don't paste from it. The game is **Subway Seek**, live at **https://subway-seek.pages.dev** (no custom domain yet). Source: `~/personal_projects/market-research/stand-clear.md` §4, with every figure re-read from the files named.*
 
 # Show HN: the fact sheet
 
@@ -20,9 +20,15 @@ Plain, no "vibe coded", no name needed:
 
 - You seek a bot, or hide from one, on the real weekday subway timetable at 6×.
 - The hider rides for 20 minutes from 10:00 and gets off somewhere. The seeker asks questions ("within 2 miles of me?", "does the A stop there?", "is your nearest hospital the same as mine?") that rule stations out.
-- With Google keys the seeker then comes up and searches the street in Street View; without them the round ends at the station. **Say which one the live site does on the day** (`docs/GO-PUBLIC.md`, step "Keys or keyless").
+- With Google keys the seeker then comes up and searches the street in Street View; without them the round ends at the station. **The live site is keyless** (2026-11-27), so on the day every round ends when you reach the station. Say so, unless keys have gone on since (`docs/GO-PUBLIC.md`, step 6).
 - A daily (everyone hunts the same station from the same start), practice at Easy, Normal and Hard, and You hide.
-- Phones play too: below 860 px the map stacks over the panel, and a phone round ends at the station, since Street View needs the map beside it. Yesterday's daily also plays as a 25-second replay.
+- Phones play too: below 860 px the map stacks over the panel, and a phone round ends at the station, since Street View needs the map beside it. Yesterday's daily also plays as a 25-second replay. Touch targets are 44 px, and it has a web app manifest, so Add to Home Screen should open it as an app (live 2026-11-27; confirm on a real iPhone before saying so).
+- **Only if fun round 1 is live by then** (`docs/DEPLOY-FUN-ROUND.md`; check the live site, don't assume):
+  - an ending: one verdict line and up to three moments from your own round, found in its log ("you rode straight through their station", "your A ran express past it"), while both routes replay;
+  - par from the `/hardest` table, and a daily percentile once 20 others have finished that day;
+  - days running, and a stamp book of the 295 stations a hider can reach;
+  - Outer boroughs Saturdays from 5 December;
+  - synthesized sound with a one-tap mute.
 
 ## The data
 
@@ -55,10 +61,11 @@ Plain, no "vibe coded", no name needed:
 
 - Charlie designed the rules, the balance method and the look (`DESIGN.md`, with a dated decision log). Claude Code wrote most of the code under Charlie's direction. The tests and the simulations are the check.
 - Strict TypeScript; Biome; Vitest. The engine is pure functions of (state, intent, time), so the server, the bots, the simulations and the tests run the same code.
-- Fill in on the day: the test count from `pnpm test` (333 on 2026-11-21).
+- Fill in on the day: the test count from `pnpm test` (333 on 2026-11-21; 382 on `fun-round-1` on 2026-11-27).
 
 ## What's missing (say it before a commenter does)
 
+- The street search in Street View, on the live site: it runs without Google keys (it's built, and runs locally with keys).
 - The street endgame on a phone (`DESIGN.md`, Phones).
 - Two-player rooms: rounds are against a bot.
 - One weekday's timetable, pinned, not live trains.
