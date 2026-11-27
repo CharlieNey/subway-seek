@@ -24,7 +24,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 ## Terms, attribution and privacy
 
 - [x] `apps/web/terms.html` (a Vite page since 2026-11-21, fonts self-hosted): what the game is, data and attribution (MTA, Google with the required links, OpenStreetMap, NYC Parks), privacy (browser storage, server match logs, Google's own requests, no analytics or cookies), sharing, fair play.
-- [ ] **Put a contact address in** (search the file for `CONTACT-ADDRESS`).
+- [x] **Put a contact address in** (done 2026-11-27: Charlie's personal address).
 - [x] Linked from the homepage footer.
 - [ ] If the game is ever monetised or gets accounts, have a lawyer read the page first.
 

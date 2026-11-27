@@ -206,7 +206,9 @@ export function StreetView({ visible }: { visible: boolean }) {
   if (!usesGoogle) {
     return (
       <div className="sc-tilefield-dark flex h-full items-center justify-center p-6 text-center text-[13px] text-glaze-hi">
-        Street View needs the Google map. Unset VITE_MAP_PROVIDER to use it.
+        {import.meta.env.DEV
+          ? "Street View needs the Google map. Unset VITE_MAP_PROVIDER to use it."
+          : "Street View is off for this round. Go back down to ride on."}
       </div>
     );
   }

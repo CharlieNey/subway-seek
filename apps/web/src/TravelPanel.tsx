@@ -524,9 +524,11 @@ function StreetPanel({ world, state, view }: { world: World; state: OnStreet; vi
     <>
       <Where world={world} complex={state.complex} sub={`On the street · Exit ${state.exit + 1}`} />
       <p className="px-4 pt-3 text-[13px] leading-[1.45] text-ink-2">
-        {view.hasSpot
-          ? "Pick a direction on Street View, or click the map, to walk. Every step is timed at walking speed. The hider appears once you pass within 40 m, and you catch them within 25 m."
-          : "Look around in Street View. Walk with the direction tiles or by clicking the map."}
+        {view.stationOnly
+          ? "Street View is off for this round, so there's nothing to search up here. Go back down to ride on."
+          : view.hasSpot
+            ? "Pick a direction on Street View, or click the map, to walk. Every step is timed at walking speed. The hider appears once you pass within 40 m, and you catch them within 25 m."
+            : "Look around in Street View. Walk with the direction tiles or by clicking the map."}
       </p>
       {others.length > 0 && (
         <section className="px-4 pt-4">
@@ -589,12 +591,15 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
   switch (s.kind) {
     case "platform":
       if (isHider(view)) return <WainscotText>Exits open at 10:20.</WainscotText>;
-      // Where the round ends at the station there's nothing to search up there, so going
-      // up is the alternative, not the main action (DESIGN.md, Phones: first run).
+      // Where the round ends at the station there's nothing up there: no search, and no
+      // walking, which needs Google's panoramas. The seeker stays below, as the hider does
+      // (DESIGN.md, Phase 3, Fallback; decided 2026-11-27).
+      if (view.stationOnly)
+        return <WainscotText>Riding below · the round ends at the station</WainscotText>;
       return (
         <>
           <Button
-            kind={view.stationOnly ? "white" : "ink"}
+            kind="ink"
             disabled={busy}
             onClick={() => send({ type: "exit", exit: nearestExit(world, s.station) })}
           >

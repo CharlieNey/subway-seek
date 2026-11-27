@@ -47,6 +47,8 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 
 ## 3. The repo, ready to show
 
+**3.1 done 2026-11-27:** the terms page gives Charlie's personal address.
+
 | # | Do | Command or click | Undo |
 |---|---|---|---|
 | 3.1 | A contact address in the terms | Replace `CONTACT-ADDRESS` in `apps/web/terms.html`; commit | `git revert` |
@@ -57,6 +59,8 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 
 ## 4. The server (Fly.io)
 
+**Done 2026-11-27.** App `subway-seek-server` in `ewr`: one machine, a shared IPv4 (no dedicated one), the volume `match_logs`, keyless. Deployed with `--remote-only`; the first attempt hung after pushing layers to the builder, the second took under a minute. `/health` and `/daily` answer.
+
 | # | Do | Command or click | Undo |
 |---|---|---|---|
 | 4.1 | Account | `brew install flyctl`, `fly auth signup` with a personal email and card | Close the account (dashboard, Account, Settings) |
@@ -66,6 +70,8 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 | 4.5 | Check | `curl https://subway-seek-server.fly.dev/health` prints `{"ok":true,…}`; `curl …/daily` prints today's start | — |
 
 ## 5. The site (Cloudflare Pages)
+
+**Done 2026-11-27, by upload rather than Git:** classic Pages project `subway-seek`, a keyless build sent with `npx wrangler pages deploy` (DEPLOY-PLAN step 4's fallback). Each change is rebuilt and uploaded by hand: blank every `VITE_` value from `apps/web/.env.local` first, and check `dist` has no `AIza` string.
 
 | # | Do | Command or click | Undo |
 |---|---|---|---|
@@ -87,6 +93,8 @@ Decide here. **Keyless is a complete game:** every round ends at the station on 
 | 6.5 | Browser key | Pages variable `VITE_GOOGLE_MAPS_API_KEY`, then Retry deployment | Remove it and redeploy |
 
 ## 7. Smoke test on the live site
+
+**Computer part done 2026-11-27, in Chrome only:** daily #54 found, an Easy practice round with a reload mid-ride and Give up, You hide into the seek. No console errors; `fly logs` showed the rounds and the volume kept their three match logs (test rounds, not players). It found that Up to the street was a dead end without Street View, fixed the same day (DESIGN.md, decision log). Safari, Firefox and the phone part are Charlie's.
 
 - Chrome, Safari and Firefox on a computer: a daily to the end, an Easy practice round, You hide; reload mid-round and the round comes back.
 - A phone (Safari on an iPhone, Chrome on an Android if you can borrow one): `/`, a practice round to the station with the sheet folded and opened, `/hardest`, and `/play?replay=yesterday` (yesterday's daily needs a day of uptime first). Turn the phone on its side once: the map moves beside the panel.
