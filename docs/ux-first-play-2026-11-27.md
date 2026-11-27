@@ -13,7 +13,7 @@
 
 1. **Asking takes a second press that nobody sees.** Clicking a question only chooses it. The Ask button then appears in the strip at the very bottom of the panel, away from the question, with "+10 min to their score" beside it. The desktop tester "nearly waited for an answer" before finding it. On a phone it sits below the whole list of questions. Charlie's complaint, "hard to figure out how to use a question", is this.
 2. **After an answer, nothing says what to do.** The line "Ride toward what's left. Get off anywhere." appears while you're on the Ask tab; the trains are on the other tab, and nothing says which train goes toward the stations still possible. Both testers stopped and guessed. The desktop tester "knew I'd picked the right direction only AFTER boarding." Neither knew whether to keep asking or start riding.
-3. **A wrong station gives no feedback.** In a round that ends at the station, getting off at a station that could be theirs, and isn't, does nothing. The count doesn't drop, the square stays black, and no message appears. Both testers hit this at every stop ("I did NOT know: have I checked Bryant Pk or not?"; "the game never tells me that and doesn't clear the station. I have to keep that in my head").
+3. **A wrong station gives no feedback.** *Both testers' answer to "the one change that would have helped most".* In a round that ends at the station, getting off at a station that could be theirs, and isn't, does nothing. The count doesn't drop, the square stays black, and no message appears. Both testers hit this at every stop ("I did NOT know: have I checked Bryant Pk or not?"; "the game never tells me that and doesn't clear the station. I have to keep that in my head").
 4. **On a phone the answer lands out of view.** The answer band appears at the top of the panel's list, which you've usually scrolled down to choose a question. The phone tester "never saw the answer arrive". They found it at the bottom, in the log, after noticing the count had changed.
 5. **The question list is a template to assemble, in the show's vocabulary.**
    - Bands in caps: MATCHING · SAME AS MINE?, MEASURING · CLOSER THAN ME?, RADAR · WITHIN …, THERMOMETER, NEAREST.
@@ -42,6 +42,27 @@
 13. **One place, two names.** The stop list says "5 Av" and the station's tablet says "42 St–Bryant Pk". The tester guessed they were the same.
 14. **"Listen for the answer"** while the answer is on its way: both testers heard nothing, and wondered whether they should.
 
+15. **There's no list of the stations left, and the squares have no names.** "6 stations possible" means six small unlabelled squares. The phone tester found by accident that tapping one shows its name, and wanted "a tappable list of the six names".
+16. **You can't tell where a train goes before boarding.** The board shows only the last stop ("Whitehall St–South Ferry"). The desktop tester boarded a 2 that skips the stations it wanted and "only saw that from the stop list after boarding."
+17. **The hider's cards arrive unexplained.**
+    - A Randomize card flashed for about 2 seconds and turned the phone tester's "Same kind of stop?" into a park question: "I paid +10 for a question I didn't choose."
+    - A Wrong way card struck out every downtown train, and "nothing said what this was or why."
+    - Neither tester knew the hider was the computer, or that it holds cards.
+18. **The strip button contradicts the stop you chose.** After choosing Times Sq as the stop, the button at the foot read "Get off at 5 Av" (the next stop).
+19. **A 0-min train silently becomes the next one.** Pressing a train that's leaving now boards the next one ("leaves in 8 min") without saying so, or does nothing visible.
+20. **The daily can't be paused**, and the clock starts while you're still reading the list. Practice can be paused.
+21. **"Following you"** reads the same whether or not the map is following.
+22. **"Ruled out" and "Cleared"** are two words for the same square.
+
+### How the rounds went
+
+| Tester | Daily #54 | Practice |
+|---|---|---|
+| Phone, 390×844 | Found at 34 St–Penn Station, 6 questions, about 11 min real | Found at 50 St (Normal), 5 questions, about 5½ min real |
+| Desktop, 1440×900 | Found at 34 St–Penn Station, 5 questions, about 12–13 min real (two reloads, from my edits) | Found at Houston St, 6 questions, about 8–9 min real |
+
+Both finished both rounds without giving up, and both understood the core loop within a minute: "Someone is at a station, and I ask yes/no questions to rule stations out, then ride there." What they never worked out was how a round is won (arriving), how to read the score, and the hider's cards.
+
 ## What worked
 
 - The hover preview on a computer: the ring drawn on the map with "1 mi round you: Yes keeps inside", the thermometer's halfway line, and the Nearest lines to each museum. "The preview saved me 10 min."
@@ -55,4 +76,4 @@
 
 Items 1 to 4 decide whether a stranger finishes a round at all; 5 to 7 decide whether they understand it. The brief's order holds: one obvious next move (1, 2, 4), questions as sentences (5, 6), not here (3), less at first and plain words (7, 11), then the rest. Item 8 is the next trap after those.
 
-*Status when written: both testers had finished the daily and were partway through a practice round. Their final reports will be added here, with the second cold play on the fixed branch.*
+*The testers' full narration and 144 screenshots stayed in the session's scratch folder; the quotes above are from them. The second cold play, on the fixed branch, is below once it has run.*
