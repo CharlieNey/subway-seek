@@ -194,7 +194,12 @@ function rideMove(
   const targets = ds.complexes[goal]?.stations ?? [];
   const goalName = complexLabel(ds, goal);
   const one = possible.length === 1;
-  const toward = one ? goalName : "the stations still possible";
+  // Say why: with few left it's going to check the nearest one, so name it.
+  const toward = one
+    ? goalName
+    : possible.length <= CHECK_NEAREST_AT
+      ? `${goalName}, the nearest of the ${possible.length} left`
+      : "the stations still possible";
   if (s.kind === "platform") {
     const answers = view.asked.filter(isAnswered).length;
     const held =

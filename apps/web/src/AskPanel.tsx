@@ -31,6 +31,7 @@ import {
   ZONE_RADIUS_M,
 } from "@subway-seek/engine";
 import { type ReactNode, useState } from "react";
+import { create } from "zustand";
 import {
   answerWord,
   chipState,
@@ -522,6 +523,12 @@ function PhotosBlock({
 }
 
 /** The five station categories, ready ones as blocks and cooling ones as rule-rows. */
+/** Whether a first round's "More questions" is open, kept for the round's page. */
+const useMoreQuestions = create<{ open: boolean; set: (open: boolean) => void }>((set) => ({
+  open: false,
+  set: (open) => set({ open }),
+}));
+
 /** A question's sentence, as the band and the log say it. */
 function sentence(q: Question, world: World, view: SoloView, t: number): string {
   return describeQuestion(q, world.ds, askContextFor(q, view, t, world));
@@ -626,7 +633,8 @@ function GroupHint({
       </span>
       <span>
         <b className="font-semibold">{hint.lead}</b> {hint.rest}
-        {t < ready && ` You can ask it at ${hhmm(ready)}; choose it now to have it ready.`}
+        {t < ready &&
+          ` You can ask it at ${hhmm(ready)}. Choose it now, then press Ask once it's ready.`}
       </span>
     </div>
   );
@@ -714,7 +722,9 @@ function StationQuestions({
   const { ds } = world;
   const { send, busy } = useGamePick("send", "busy");
   const first = useFirstRound();
-  const [more, setMore] = useState(false);
+  // Open or closed stays put as you change tab or station (it closed itself every time).
+  const more = useMoreQuestions((m) => m.open);
+  const setMore = useMoreQuestions((m) => m.set);
   const origin = questionOrigin(view.seeker, t, world.idx);
   const cooling = (c: QuestionCategory) => t < readyAt(view, c);
   const yn = (q: Question) =>
