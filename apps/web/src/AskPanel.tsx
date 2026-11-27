@@ -376,7 +376,11 @@ function AskingFrom({
             <TileTimer total={5} left={gapLeft / 60} size={9} />
           </>
         ) : (
-          <span>You can ask now</span>
+          <span>
+            {STATION_CATEGORIES.some((c) => c !== "photo" && t < readyAt(view, c))
+              ? "Ask any question that isn't greyed out"
+              : "You can ask now"}
+          </span>
         )}
       </div>
     </div>

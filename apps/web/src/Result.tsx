@@ -36,9 +36,9 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   hard: "Hard",
 };
 const DIFFICULTY_HINT: Record<Difficulty, string> = {
-  easy: "A station 3–4 good questions find, and the hider plays no curses.",
-  normal: "5–6 questions, like the daily. Curses once you're closing in.",
-  hard: "7–8 questions, often a station with a look-alike. Curses from the first ride.",
+  easy: "A station 3–4 good questions find. The hider plays no curses, but may veto a question.",
+  normal: "5–6 questions, like the daily. The hider plays cards against you once you're close.",
+  hard: "7–8 questions, often a station with a look-alike. Cards against you from the first ride.",
 };
 
 /** Start a round; confirms before leaving one in progress. */
