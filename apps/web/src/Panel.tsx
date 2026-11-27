@@ -413,7 +413,7 @@ function useWhatCounts(onFoot: boolean) {
 
 /** The first card played on you, explained once (the playable round: less at first). */
 const FIRST_CARD =
-  "The hider is the computer, and it holds cards. It just played one on you: what it does is on its tile.";
+  "The hider is the computer, and it holds cards. It just played one on you: each card says what it did, where it landed.";
 const CARDS_KEY = storageKey("first-card");
 
 function useFirstCard(view: SoloView) {

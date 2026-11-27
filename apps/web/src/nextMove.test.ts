@@ -135,6 +135,18 @@ describe("the next move", () => {
     }
   });
 
+  it("keeps heading for the same station while it's still possible", () => {
+    const t0 = round().seekStart;
+    const r = ask(round(), t0);
+    const t = t0 + 90;
+    const first = nextMove(input(r, t));
+    const goal = first?.hold?.goal;
+    expect(goal).toBeDefined();
+    // Later, from anywhere, with no train held: the goal stands while it's possible.
+    const later = nextMove({ ...input(r, t + 120), hold: { station: -1, answers: -1, goal } });
+    if (later?.hold) expect(later.hold.goal).toBe(goal);
+  });
+
   it("is blind to the hider: the same view gets the same move", () => {
     const a = round("next");
     const t = a.seekStart;

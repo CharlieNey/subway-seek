@@ -56,7 +56,12 @@ export function useNextMove(
       notHere,
       hold: hold.current,
     });
-    hold.current = move?.hold ?? null;
+    // A ride names a train and where it's heading; between rides, keep where it was heading.
+    hold.current =
+      move?.hold ??
+      (hold.current?.goal !== undefined
+        ? { station: -1, answers: -1, goal: hold.current.goal }
+        : null);
     return move;
   }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere]);
 }

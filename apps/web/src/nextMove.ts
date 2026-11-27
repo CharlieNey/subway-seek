@@ -14,6 +14,7 @@ import {
   categoryOf,
   chooseQuestion,
   closedQuestions,
+  distanceMeters,
   isAnswered,
   type MapQuestion,
   nearestToCentre,
@@ -68,7 +69,12 @@ export interface Hold {
   answers: number;
   trip?: number;
   transfer?: number;
+  /** The station it was heading for: kept while it's still possible, so no U-turns. */
+  goal?: number;
 }
+
+/** With this many left or fewer, go and check the nearest rather than the middle. */
+export const CHECK_NEAREST_AT = 12;
 
 export interface NextMoveInput {
   idx: TimetableIndex;
@@ -136,15 +142,35 @@ function tripText(idx: TimetableIndex, trip: number): string {
   return `the ${route.display ?? route.letter} to ${stationName(idx, last)}`;
 }
 
-/** Where to ride: the station nearest the middle of what's left, not where you stand. */
+/**
+ * Where to ride: the station it was already heading for while that's still possible (a
+ * cold-play tester was sent back and forth as the middle shifted after each answer);
+ * otherwise, with few left, the nearest one to check, and with many, the one nearest the
+ * middle of what's left. Never where you stand.
+ */
 function rideTarget(
   idx: TimetableIndex,
   possible: readonly number[],
   here: number | null,
+  from: { lat: number; lon: number },
+  held: number | undefined,
 ): number | null {
   const others = possible.filter((c) => c !== here);
   if (others.length === 0) return null;
-  return nearestToCentre(idx.ds, others).complex;
+  if (held !== undefined && others.includes(held)) return held;
+  if (others.length > CHECK_NEAREST_AT) return nearestToCentre(idx.ds, others).complex;
+  let best = others[0] as number;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const c of others) {
+    const p = idx.ds.complexes[c];
+    if (!p) continue;
+    const d = distanceMeters(p, from);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
 }
 
 /**
@@ -160,7 +186,8 @@ function rideMove(
   const { ds } = idx;
   const s = resolve(view.seeker, t, idx);
   const here = s.kind === "platform" ? (ds.stations[s.station]?.complex ?? null) : null;
-  const goal = rideTarget(idx, possible, here);
+  const from = questionOrigin(view.seeker, t, idx);
+  const goal = rideTarget(idx, possible, here, from, input.hold?.goal);
   if (goal === null) return null;
   const targets = ds.complexes[goal]?.stations ?? [];
   const goalName = displayName(ds.complexes[goal]?.name ?? "");
@@ -195,7 +222,7 @@ function rideMove(
       return {
         line: `${lead}Change to the ${where}, toward ${toward}.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "transfer", to: first.to },
-        hold: { station: s.station, answers, transfer: first.to },
+        hold: { station: s.station, answers, transfer: first.to, goal },
       };
     }
     if (first.type !== "board") return null;
@@ -205,7 +232,7 @@ function rideMove(
       line: `${lead}Ride toward ${toward}: ${tripText(idx, first.trip)}.`,
       target:
         tab === "ask" ? { kind: "travelTab" } : { kind: "board", route: trip.route, dir: trip.dir },
-      hold: { station: s.station, answers, trip: first.trip },
+      hold: { station: s.station, answers, trip: first.trip, goal },
     };
   }
   if (s.kind === "train") {
@@ -217,11 +244,16 @@ function rideMove(
       return {
         line: `${lead}Get off at ${stop}${one ? `, for ${goalName}` : ", nearer the stations still possible"}.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "stop", stop: off.stop },
+        hold: { station: -1, answers: -1, goal },
       };
     }
     if (trip && intents.length === 0) {
       const stop = stationName(idx, trip.stops[s.to] as number);
-      return { line: `${lead}Stay on to ${stop}.`, target: { kind: "none" } };
+      return {
+        line: `${lead}Stay on to ${stop}.`,
+        target: { kind: "none" },
+        hold: { station: -1, answers: -1, goal },
+      };
     }
   }
   return null;
