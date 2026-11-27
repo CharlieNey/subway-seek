@@ -6,8 +6,8 @@
 
 | | Live now | After this deploy |
 |---|---|---|
-| Website (Cloudflare Pages, `subway-seek`) | Deployment `33d6ce93`, built from `a2c6f10` (the phone fixes) | Built from the commit you deploy (`main` once `fun-round-1` is merged) |
-| Server (Fly, `subway-seek-server`) | Release v1, image `registry.fly.io/subway-seek-server:deployment-01M8ETYPCKPG15SJ4W190D0Q7X` (built from `409b0d9`) | A new release from the same commit |
+| Website (Cloudflare Pages, `subway-seek`) | Deployment `33d6ce93`, built from `3a2be42` (the phone fixes) | Built from the commit you deploy (`main` once `fun-round-1` is merged) |
+| Server (Fly, `subway-seek-server`) | Release v1, image `registry.fly.io/subway-seek-server:deployment-01M8ETYPCKPG15SJ4W190D0Q7X` (built from `c747cdd`) | A new release from the same commit |
 
 What changes for players: the ending (verdict, callouts, the reveal), sound, par, the daily percentile, days running, the stamp book at `/stamps`, and from Saturday 5 December, Outer boroughs Saturdays. On the server: `GET /daily/scores`, daily standings, the replay flag, the 90-day match-log sweep, and the themed daily. Old and new halves work with each other: an old page ignores the new fields, and a new page without `/daily/scores` simply shows no percentile. Either can go first, but deploy the server first so the percentile works from the page's first load.
 
@@ -75,11 +75,11 @@ cd apps/web && npx wrangler pages deploy dist --project-name subway-seek --branc
 
 Undo the website first if players see something wrong, and the server if it's misbehaving. They're independent.
 
-- **Website:** in the Cloudflare dashboard, Workers & Pages → `subway-seek` → Deployments, open deployment `33d6ce93` (from `a2c6f10`) and choose *Rollback to this deployment*. Or rebuild `a2c6f10` and upload it with the steps above:
+- **Website:** in the Cloudflare dashboard, Workers & Pages → `subway-seek` → Deployments, open deployment `33d6ce93` (from `3a2be42`) and choose *Rollback to this deployment*. Or rebuild `3a2be42` and upload it with the steps above:
 
   ```sh
-  git worktree add /tmp/ss-a2c6f10 a2c6f10
-  cd /tmp/ss-a2c6f10 && pnpm install
+  git worktree add /tmp/ss-3a2be42 3a2be42
+  cd /tmp/ss-3a2be42 && pnpm install
   # then the website build and upload steps, here
   ```
 

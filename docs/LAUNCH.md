@@ -8,7 +8,7 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [x] `apps/web/public/_headers` for Cloudflare Pages; `vercel.json` for Vercel (build, SPA rewrite, immutable hashed assets, security headers).
 - [x] `docs/DEPLOY-PLAN.md` (hosts compared, costs, secrets, key restrictions, quotas, ordered steps) and `docs/DEPLOY.md` (runbook: deploys, re-pin routine, smoke test, rollback). 2026-11-20.
 - [x] Fly: account, app `subway-seek-server` in `ewr`, the 1 GB volume, `DAILY_SECRET` and `ALLOWED_ORIGINS`, first deploy on 2026-11-27 (one machine, shared IPv4).
-- [x] Cloudflare Pages: project `subway-seek`, uploaded with wrangler rather than connected to Git, keyless (no `VITE_GOOGLE_MAPS_API_KEY`). Live since 2026-11-27; the phone fixes went up the same day (`a2c6f10`). `ALLOWED_ORIGINS` is `https://subway-seek.pages.dev`.
+- [x] Cloudflare Pages: project `subway-seek`, uploaded with wrangler rather than connected to Git, keyless (no `VITE_GOOGLE_MAPS_API_KEY`). Live since 2026-11-27; the phone fixes went up the same day (`3a2be42`). `ALLOWED_ORIGINS` is `https://subway-seek.pages.dev`.
 - [x] Retire the earlier AWS setup: the GitHub secrets and everything in that account were deleted 2026-11-27.
 - [ ] Optional: a domain, and the server's `wss://` URL behind it (Charlie buys it).
 
