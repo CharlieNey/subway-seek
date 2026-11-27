@@ -20,6 +20,13 @@ describe("today's finished dailies", () => {
     expect(finishedDaily([start("2026-11-27"), end("gaveUp", 40)])).toBeNull();
     expect(finishedDaily([start("2026-11-27", "practice"), end("found", 30)])).toBeNull();
     expect(finishedDaily([start("2026-11-27")])).toBeNull();
+    // Played again in a browser that already had today's result: not counted.
+    const replay = line({
+      event: "round_start",
+      mode: "daily",
+      daily: { date: "2026-11-27", number: 54, replay: true },
+    });
+    expect(finishedDaily([replay, end("found", 12)])).toBeNull();
     expect(finishedDaily(["not json", start("2026-11-27"), end("found", 50)])?.minutes).toBe(50);
   });
 

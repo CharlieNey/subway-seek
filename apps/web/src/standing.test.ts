@@ -79,4 +79,10 @@ describe("days running", () => {
     expect(daysRunning(of(r(50), r(52), r(53)))).toBe(2);
     expect(daysRunning({})).toBe(0);
   });
+  it("ends once a day is missed: yesterday still counts, the day before doesn't", () => {
+    const rs = of(r(50), r(51), r(52));
+    expect(daysRunning(rs, 52)).toBe(3);
+    expect(daysRunning(rs, 53)).toBe(3);
+    expect(daysRunning(rs, 54)).toBe(0);
+  });
 });

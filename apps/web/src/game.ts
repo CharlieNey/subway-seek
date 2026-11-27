@@ -38,6 +38,7 @@ import {
   loadHideReplays,
   loadReplay,
   loadResults,
+  playedToday,
   saveHideResult,
   saveResult,
 } from "./history.ts";
@@ -449,6 +450,9 @@ function connect() {
   if (opening.kind === "practice" || opening.kind === "hide") {
     url.searchParams.set("mode", opening.kind);
     if (opening.difficulty) url.searchParams.set("difficulty", opening.difficulty);
+  } else if (playedToday()) {
+    // Today's daily again: it doesn't count toward today's standings (DailyInfo.replay).
+    url.searchParams.set("replay", "1");
   }
   // The free map: a new round ends at the station (streetMode.ts).
   if (!streetOn()) url.searchParams.set("street", "off");

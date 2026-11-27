@@ -5,7 +5,8 @@
  * and rebuilt from the match logs at boot, so a restart keeps the day's count.
  *
  * What it serves is a histogram of minutes and nothing else: no station, no route, no
- * player. A daily played twice counts twice; there are no accounts to tell.
+ * player. A daily the browser says it already played (DailyInfo.replay) doesn't count;
+ * one played again in a fresh browser does, since there are no accounts to tell.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,25 +14,32 @@ import { join } from "node:path";
 /** Dates kept: today and yesterday in New York, so midnight doesn't empty the list. */
 const KEEP_DATES = 2;
 /** A score past this many minutes goes in the last bucket (2 h cap plus bonuses). */
-export const MAX_MINUTE = 400;
+const MAX_MINUTE = 400;
 
 export class DailyScores {
   private readonly byDate = new Map<string, number[]>();
-  /** Match logs already counted: a round's end can be logged again by a later intent. */
-  private readonly seen = new Set<string>();
+  /**
+   * Match logs already counted, by date: a round's end can be logged again by a later
+   * intent. Dropped with their date, so this doesn't grow for the life of the process.
+   */
+  private readonly seen = new Map<string, Set<string>>();
 
   /** Count a finished daily once per round (`id`: its match log's). */
   add(date: string, minutes: number, id: string) {
-    if (!Number.isFinite(minutes) || minutes < 0 || this.seen.has(id)) return;
-    this.seen.add(id);
+    if (!Number.isFinite(minutes) || minutes < 0) return;
+    const seen = this.seen.get(date) ?? new Set<string>();
+    if (seen.has(id)) return;
+    seen.add(id);
+    this.seen.set(date, seen);
     const list = this.byDate.get(date) ?? [];
     list.push(Math.min(MAX_MINUTE, Math.round(minutes)));
     this.byDate.set(date, list);
-    // Oldest dates out first: Map keeps insertion order.
+    // Oldest dates out first.
     while (this.byDate.size > KEEP_DATES) {
       const oldest = [...this.byDate.keys()].sort()[0];
       if (oldest === undefined) break;
       this.byDate.delete(oldest);
+      this.seen.delete(oldest);
     }
   }
 
@@ -53,16 +61,22 @@ export function finishedDaily(lines: string[]): { date: string; minutes: number 
   let minutes: number | null = null;
   for (const line of lines) {
     if (!line) continue;
-    let e: { event?: string; mode?: string; daily?: { date?: unknown } | null } & Record<
-      string,
-      unknown
-    >;
+    let e: {
+      event?: string;
+      mode?: string;
+      daily?: { date?: unknown; replay?: unknown } | null;
+    } & Record<string, unknown>;
     try {
       e = JSON.parse(line);
     } catch {
       continue;
     }
-    if (e.event === "round_start" && e.mode === "daily" && typeof e.daily?.date === "string")
+    if (
+      e.event === "round_start" &&
+      e.mode === "daily" &&
+      typeof e.daily?.date === "string" &&
+      e.daily.replay !== true
+    )
       date = e.daily.date;
     if (
       e.event === "round_end" &&

@@ -61,9 +61,15 @@ export function percentileOf(
   return { beat: Math.round((100 * worse) / others), others };
 }
 
-/** Days in a row with a finished daily, found or not, ending at the latest one played. */
-export function daysRunning(results: Record<string, DailyResult>): number {
+/**
+ * Days in a row you played the daily (found, timed out or given up), ending at the latest
+ * one played. With `today` (its daily number), a run whose last day is before yesterday
+ * has ended: 0. Yesterday still counts, since today's may not be played yet.
+ */
+export function daysRunning(results: Record<string, DailyResult>, today?: number): number {
   const numbers = [...new Set(Object.values(results).map((r) => r.number))].sort((a, b) => a - b);
+  const latest = numbers.at(-1);
+  if (today !== undefined && (latest === undefined || latest < today - 1)) return 0;
   let run = 0;
   for (let i = numbers.length - 1; i >= 0; i--) {
     if (i < numbers.length - 1 && numbers[i] !== (numbers[i + 1] as number) - 1) break;
