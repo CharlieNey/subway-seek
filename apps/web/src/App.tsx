@@ -55,7 +55,7 @@ export function App() {
   return (
     <main
       className={cn(
-        "flex h-screen w-screen overflow-hidden bg-glaze text-ink",
+        "sc-safe-area flex h-screen w-screen overflow-hidden bg-glaze text-ink",
         stack && "sc-play-stack",
         stack && replayOnly && "sc-play-replay",
       )}

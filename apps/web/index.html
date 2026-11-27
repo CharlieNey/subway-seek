@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: the page runs under the notch and the home indicator, and the
+         safe-area padding (env(safe-area-inset-*)) keeps the controls clear of them. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>%VITE_GAME_NAME%</title>
     <meta
       name="description"
@@ -11,6 +13,12 @@
     <meta name="theme-color" content="#F4EFE3" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Add to Home Screen opens it as an app, not a Safari tab (public/manifest.webmanifest). -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="%VITE_GAME_NAME%" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
     <!-- Link previews. The page is static: one card for /, /play and /?d=…, nothing per daily. -->
     <meta property="og:type" content="website" />
