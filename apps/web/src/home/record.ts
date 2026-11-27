@@ -6,6 +6,7 @@
 import { DAILY_EPOCH } from "@subway-seek/engine";
 import { resumable, type StoredSession } from "../doors.ts";
 import type { DailyResult } from "../history.ts";
+import { daysRunning } from "../standing.ts";
 import type { Family } from "../ui/family.ts";
 
 /** A find under this many minutes gets a gold edge on the wall. */
@@ -62,6 +63,8 @@ export interface RecordStats {
   played: number;
   found: number;
   streak: number;
+  /** Days in a row with a finished daily, found or not (standing.ts). */
+  running: number;
   /** Fastest find, in seconds; null before the first. */
   fastest: number | null;
 }
@@ -80,6 +83,7 @@ export function recordStats(results: Record<string, DailyResult>): RecordStats {
     played: list.length,
     found: finds.length,
     streak,
+    running: daysRunning(results),
     fastest: finds.length ? Math.min(...finds) : null,
   };
 }

@@ -14,6 +14,7 @@ import type {
   Transit,
 } from "@subway-seek/engine";
 import { isHider } from "./hide.ts";
+import { daysRunning } from "./standing.ts";
 import { storageKey } from "./storage.ts";
 import { type Family, familyOf } from "./ui/family.ts";
 
@@ -212,6 +213,8 @@ export interface DailyStats {
   found: number;
   /** Consecutive days found, ending at the latest result. */
   streak: number;
+  /** Consecutive days with a finished daily, found or not (standing.ts). */
+  running: number;
 }
 
 export function dailyStats(results: Record<string, DailyResult>): DailyStats {
@@ -223,7 +226,12 @@ export function dailyStats(results: Record<string, DailyResult>): DailyStats {
     if (!r.found || (next && next.number !== r.number + 1)) break;
     streak++;
   }
-  return { played: list.length, found: list.filter((r) => r.found).length, streak };
+  return {
+    played: list.length,
+    found: list.filter((r) => r.found).length,
+    streak,
+    running: daysRunning(results),
+  };
 }
 
 const HIDE_KEY = storageKey("hide-results:v1");

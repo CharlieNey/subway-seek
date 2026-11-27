@@ -404,8 +404,8 @@ function Record({ results, today }: { results: Record<string, DailyResult>; toda
           <span>found</span>
         </div>
         <div>
-          <b>{stats.streak}</b>
-          <span>day streak</span>
+          <b>{stats.running}</b>
+          <span>{stats.running === 1 ? "day" : "days"} running</span>
         </div>
         <div>
           <b>{stats.fastest === null ? "–" : `${Math.round(stats.fastest / 60)} min`}</b>

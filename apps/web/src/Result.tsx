@@ -14,13 +14,14 @@ import { useEffect, useState } from "react";
 import { hm, type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
 import { Callouts, useEnding, useReveal, Verdict } from "./Ending.tsx";
-import { hubName, useGame, useGamePick, type World } from "./game.ts";
+import { hubName, serverHttpUrl, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
 import { dailyStats } from "./history.ts";
 import { displayName } from "./names.ts";
 import { useReplay } from "./replay.ts";
 import { routesFor } from "./routes.ts";
 import { shareText } from "./share.ts";
+import { type HardnessData, PERCENTILE_MIN, parFor, parLine, percentileOf } from "./standing.ts";
 import { FAMILY_COLORS } from "./ui/family.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import { Bullets, Button, Line } from "./ui/vocab.tsx";
@@ -137,6 +138,70 @@ export function Tally({
   );
 }
 
+/** The hardest-stations table, loaded once a result needs par (it isn't in the play bundle). */
+function useHardness(want: boolean): HardnessData | null {
+  const [data, setData] = useState<HardnessData | null>(null);
+  useEffect(() => {
+    if (!want || data) return;
+    let live = true;
+    import("./home/hardness.json").then(
+      (m) => live && setData(m.default as HardnessData),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [want, data]);
+  return data;
+}
+
+/** Today's finished dailies, minute by minute, from the server (standings.ts). */
+function useDailyScores(date: string | null): { n: number; counts: number[] } | null {
+  const [scores, setScores] = useState<{ n: number; counts: number[] } | null>(null);
+  useEffect(() => {
+    if (!date) return;
+    let live = true;
+    fetch(serverHttpUrl("/daily/scores"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { date?: string; n?: number; counts?: number[] } | null) => {
+        if (live && j?.date === date && typeof j.n === "number" && Array.isArray(j.counts))
+          setScores({ n: j.n, counts: j.counts });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [date]);
+  return scores;
+}
+
+/**
+ * Par, and on a daily where you stand among today's finishers (DESIGN.md, Coming back).
+ * The percentile waits for PERCENTILE_MIN others; until then it says how many so far.
+ */
+function Standing({ world, view, counts }: { world: World; view: SoloView; counts: boolean }) {
+  const hider = view.hider;
+  const finished = view.result !== null && view.result.kind !== "gaveUp";
+  const data = useHardness(hider !== null);
+  const scores = useDailyScores(view.daily && counts && finished ? view.daily.date : null);
+  if (!view.result || hider === null) return null;
+  const par = data ? parFor(data, world.ds, view.hub, hider) : null;
+  const score = (view.result.at - view.seekStart + view.bonusSeconds) / 60;
+  const pct = scores ? percentileOf(scores.counts, scores.n, score) : null;
+  const parts: string[] = [];
+  if (par !== null) parts.push(parLine(par, view.asked.length));
+  if (pct)
+    parts.push(
+      `better than ${pct.beat}% of today's ${pct.others} other finished ${pct.others === 1 ? "daily" : "dailies"}`,
+    );
+  else if (scores)
+    parts.push(
+      `your standing shows once ${PERCENTILE_MIN} others finish today (${Math.max(0, scores.n - 1)} so far)`,
+    );
+  if (parts.length === 0) return null;
+  return <p className="max-w-[320px] text-center text-[12.5px] text-ink-2">{parts.join(" · ")}</p>;
+}
+
 /** Share the result: a replayed daily shares the result that counts. "Copied" for 2 s. */
 export function shareFor(
   world: World,
@@ -228,6 +293,7 @@ export function ResultCard({ world }: { world: World }) {
         ]}
       />
       <Tally tiles={tiles} play={live} delay={tallyDelay} />
+      <Standing world={world} view={view} counts={!alreadyPlayed} />
       <Callouts world={world} view={view} callouts={ending.callouts} />
       {view.stationOnly && (
         <p className="max-w-[300px] text-center text-[12px] text-ink-2">
@@ -240,7 +306,7 @@ export function ResultCard({ world }: { world: World }) {
         <p className="text-[12px] text-ink-2">
           {alreadyPlayed
             ? "Played again: your first result today is the one that counts."
-            : `Daily stats: ${stats.played} played · ${stats.found} found · streak ${stats.streak}`}
+            : `Daily stats: ${stats.played} played · ${stats.found} found · ${stats.running} ${stats.running === 1 ? "day" : "days"} running · found streak ${stats.streak}`}
         </p>
       )}
       <div className="my-1 flex flex-wrap justify-center gap-1.5">

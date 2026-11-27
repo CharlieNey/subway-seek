@@ -80,11 +80,12 @@ import {
   RateLimiter,
   WALKS_PER_MINUTE,
 } from "./limits.ts";
-import { MatchLog } from "./matchLog.ts";
+import { LOG_DIR, MatchLog } from "./matchLog.ts";
 import { createSessionPersistence } from "./persistence.ts";
 import { type Session, SessionStore } from "./sessions.ts";
 import { withPhotoUrls } from "./sign.ts";
 import { isStreetPoint, officialSpot, pickExitPano, pickSpot, spotFromPano } from "./spot.ts";
+import { scoresFromLogs } from "./standings.ts";
 import { restorable, type SavedSession, SessionDb } from "./store.ts";
 import { tick as tickGame } from "./tick.ts";
 
@@ -296,10 +297,20 @@ function send(socket: WebSocket, msg: ServerMessage) {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(msg));
 }
 
+/** Today's finished dailies, for the result's percentile (standings.ts); from the logs at boot. */
+const dailyScores = scoresFromLogs(LOG_DIR, new Date());
+
 function logEnd(game: Game) {
   const { round } = game;
   if (!round.result) return;
   const elapsed = Math.max(0, round.result.at - round.seekStart);
+  if (
+    round.mode === "daily" &&
+    round.daily &&
+    !round.human &&
+    (round.result.kind === "found" || round.result.kind === "timeout")
+  )
+    dailyScores.add(round.daily.date, (elapsed + bonusSeconds(round)) / 60, game.log.id);
   game.log.write("round_end", {
     result: round.human?.incomplete ? "incomplete" : round.result.kind,
     incomplete: round.human?.incomplete ?? null,
@@ -592,6 +603,13 @@ const httpServer = createServer((req, res) => {
       console.error("yesterday's replay failed:", err);
       res.writeHead(500).end();
     }
+    return;
+  }
+  // How today's finished dailies scored, minute by minute: no station, no player.
+  if (req.method === "GET" && pathname === "/daily/scores") {
+    const date = nyDate(new Date());
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ date, ...dailyScores.histogram(date) }));
     return;
   }
   if (req.method === "GET" && pathname === "/daily") {

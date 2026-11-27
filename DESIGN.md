@@ -828,6 +828,13 @@ The same round, replayed for the seeker after the find, scrubbed to the Veto at 
 - **Hidden information:** everything here reads `view.replay`, which the server sends only when the round ends (every round reveals the hider then, an unfound daily included: decided 2026-10-07). Nothing here exists mid-round.
 - **The share text is unchanged:** a verdict can give the station away to a friend who hasn't played today.
 
+### Coming back
+
+*Proposed 2026-11-27 (fun round 1), built on branch `fun-round-1` for Charlie to play.* Reasons to play tomorrow, all without accounts.
+- **Par:** the questions a strong seeker needs for that station from that hub, from the hardest-stations table (`/hardest`), shown under the result's numbers: "Par 6 · 3 over". Daily and practice; a station the table doesn't rate gets none. The table loads only when a result needs it.
+- **Percentile, daily only:** "better than 64% of today's 213 other finished dailies". A finished daily is found or timed out; give-ups don't count, and neither does a replay of a daily you've already played. The server keeps today's hider scores in memory, rebuilt from the match logs at boot, and serves `GET /daily/scores`: a histogram of minutes, nothing else. It shows once **20** others have finished today, because a rank among a handful says little; before that the line reads "your standing shows once 20 others finish today (12 so far)". A daily played twice in two browsers counts twice: there are no accounts to tell.
+- **Days running:** days in a row with a finished daily, found or not, kept in this browser with the daily record. The homepage's "day streak" tile becomes "days running"; the result keeps the found streak beside it ("6 days running · found streak 4").
+
 ### Questions
 
 The Ask tab's six categories and the on-foot questions. Mocks from the same round, on the game's real landmark data and its own search code: the Deck page, part nine.
@@ -1085,6 +1092,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | *Proposed, on branch `fun-round-1`:* par on every result from the hardest-stations table; a daily percentile against today's other finished dailies from 20 finishers, served as a minute histogram by `GET /daily/scores`; "days running" (played) replaces the homepage's found streak tile, which stays on the result | Fun round 1: reasons to come back without accounts. Par is the same table the bot hides by, so it's fair. 20 because a rank among fewer is noise. The histogram carries no station or player |
 | 2026-11-27 | *Proposed, on branch `fun-round-1`, reversing 2026-10-06:* six synthesized sounds on by default at a quiet volume, with a one-tap Mute: doors, rumble while riding, answer, card, a pulse as the stations fall, and Someone's here. Silent until the first tap; none on the home page; reduced motion starts the continuous two off | Fun round 1 asked for sound as a reason the game feels alive. It reverses "one sound on" and "no soundtrack", so it waits for Charlie to hear it. Web Audio only, so nothing to license, and no MTA recordings |
 | 2026-11-27 | *Proposed, on branch `fun-round-1`:* the ending (Ending): a verdict line, up to three callouts from four detectors (rode through, express past, closest call, turning point), and a 12 s reveal of both routes on the map while the result card keeps the panel. Same for You hide. The share text is unchanged | Fun round 1 (Charlie, via the orchestrator): a station-only round ended flat. Every line comes from the round's own trails and answers, so nothing is invented; the share text stays as it was because a verdict can give the station away |
 | 2026-11-27 | In a round that ends at the station, the seeker gets no Up to the street: the wainscot reads "Riding below · the round ends at the station", as the hider's does. A seeker already up when the street turns off is told to go back down, and the street pane says Street View is off instead of the developer hint | Charlie, after the live smoke test: up there was a dead end. Walking needs Google's panoramas (`street.ts`), so every map click said "No street to walk to there", and the pane showed "Unset VITE_MAP_PROVIDER" to players. Going up and down only cost 4 game-min |
