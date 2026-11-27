@@ -218,6 +218,11 @@ export function shareFor(
         if (useGame.getState().notice === "Copied") useGame.setState({ notice: null });
       }, 2000);
     };
+    // No clipboard off https (a phone playing a laptop's dev server): the box instead.
+    if (!navigator.clipboard?.writeText) {
+      window.prompt("Copy your result:", text);
+      return;
+    }
     navigator.clipboard
       .writeText(text)
       .then(copied)

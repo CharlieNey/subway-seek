@@ -30,6 +30,16 @@ Open http://localhost:5173 and play today's daily or a practice round. With no G
 
 Without keys every round ends at the station: reaching the hider's station is the find, and the result says so. The same happens on the free map with keys (`VITE_MAP_PROVIDER=maplibre`), since Google's terms keep Street View off a non-Google map, and when Google refuses the map or a panorama mid-round. Keys and other settings are under [Configuration](#configuration).
 
+**On a phone on the same Wi-Fi.** The dev server accepts pages from private network addresses (10.x, 192.168.x, 172.16–31.x; `limits.ts`), so a phone can play against your laptop without touching production:
+
+```sh
+IP=$(ipconfig getifaddr en0)          # the laptop's Wi-Fi address (macOS)
+pnpm dev:server                       # first terminal
+VITE_GOOGLE_MAPS_API_KEY= VITE_MAP_PROVIDER=maplibre VITE_SERVER_URL=ws://$IP:8787 pnpm dev:web --host   # second
+```
+
+Then open `http://<that address>:5173` on the phone. macOS may ask once whether `node` can accept incoming connections: allow it. Blanking the key keeps the run keyless like the live site, so no map load is billed. Over plain `http` the browser has no clipboard, so Share result opens a box you copy from. The local daily uses a dev secret, so its station isn't the live one.
+
 ## What's in it
 
 ![The Ask panel after a radar question: the 2-mile ring on the map and 49 stations left](docs/screenshots/05-radar-answered.png)
