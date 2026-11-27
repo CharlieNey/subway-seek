@@ -4,6 +4,10 @@
 
 Before and after screenshots at phone and desktop size, and the report for Charlie: [Playable Round 1](https://claude.ai/artifact/BjmLA5TStKRbzRpX3in8G1) (private link).
 
+**Decided by Charlie, 2026-11-27, after the third cold play** (DESIGN.md decision log):
+- **No counts before asking.** Questions say only what they ask; no line under them says what Yes or No would rule out, and the map's legend shows no count while one is chosen. "I think that would take the fun out of it." Several testers asked for counts (items below); that's now a settled no.
+- **The good next question is teaching only:** in the guided first round, never in the daily or in later practice. The testers' wish for it in the daily is a settled no; a pause on the daily is still open.
+
 ## How it was run
 
 - **Cold play, yes.** Two fresh Claude sessions, each started from an empty folder with no project files or instructions, so neither had seen this repo or its docs. Each was given only the local address and a headed Chrome, and told to play today's daily, then a practice round, narrating what it thought each control did. One played at phone size (390×844), one at desktop size (1440×900). Neither read the source.
@@ -107,8 +111,8 @@ Fixed on the branch after their build, so they didn't see these fixes:
 
 Still open, for Charlie or a later round:
 
-- **The daily has no suggested question and no pause.** "In practice I leaned on that box completely; now I have to choose alone." Whether the daily gets either is Charlie's call (DESIGN.md decision log).
-- **Questions that can't rule anything out** can be asked and paid for ("18 stations → 18"). Warning about it would be an outcome count, so it needs a rule call.
+- **The daily has no suggested question and no pause.** "In practice I leaned on that box completely; now I have to choose alone." *Decided: no suggestion in the daily. A pause is still open.*
+- **Questions that can't rule anything out** can be asked and paid for ("18 stations → 18"). *Decided: no warning. It would be an outcome count.*
 - **On a phone the list you work in is a strip about 260 px tall,** under the map and the header. The sheet already folds ("Map ▴"), but no one found that.
 - **▸ and ▸▸ are unlabelled.** Both testers found by pressing that ▸▸ skips to your stop, which makes rounds much shorter.
 - **The end of a round is easy to miss** on a phone: the result appears while the replay starts on the map.
@@ -161,8 +165,8 @@ Fixed on the branch after their build:
 
 Still open, for Charlie (rule or product calls):
 
-- **The daily has no suggested question and no pause.** Both phone testers asked for the suggestion there. "Always show the good next question box, including in the daily" was the phone tester's one change.
-- **Questions can't be judged before paying.** "I expected a count such as inside 22 / outside 77." That's the "no outcome counts" rule.
+- **The daily has no suggested question and no pause.** Both phone testers asked for the suggestion there. "Always show the good next question box, including in the daily" was the phone tester's one change. *Decided: no. The suggestion is teaching only, in the guided first round; a pause is still open.*
+- **Questions can't be judged before paying.** "I expected a count such as inside 22 / outside 77." *Decided: no. That's the game ("I think that would take the fun out of it"); the Yes/No lines under questions went too.*
 - **Stations a block apart can't be walked between** unless they're linked as transfers; the desktop tester rode back to Times Sq to reach one.
 - **A first round hides the price of a question.** The desktop tester wanted it taught there ("the first round taught me the buttons but not the thinking").
 - **In the guided round the hints play for you.** "It felt like luck." The suggestion and the ride advice together leave little to deduce; Charlie may want less in practice after the first round.
