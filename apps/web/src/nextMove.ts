@@ -50,7 +50,9 @@ export type NextTarget =
   /** A stop on the train's stop list: get off there. */
   | { kind: "stop"; stop: number }
   /** A platform change on foot: the Walk button for that platform. */
-  | { kind: "transfer"; to: number };
+  | { kind: "transfer"; to: number }
+  /** Aboard a train that hasn't left and heads the wrong way: step back off. */
+  | { kind: "stayOff" };
 
 export interface NextMove {
   line: string;
@@ -244,6 +246,13 @@ function rideMove(
   }
   if (s.kind === "train") {
     const intents = planOnTrain(idx, s, t, view.seekEnd, targets);
+    if (intents[0]?.type === "cancelBoard") {
+      return {
+        line: `${lead}This train heads away from the stations still possible. Stay on the platform.`,
+        target: tab === "ask" ? { kind: "travelTab" } : { kind: "stayOff" },
+        hold: { station: -1, answers: -1, goal },
+      };
+    }
     const off = intents.find((i) => i.type === "alightAt");
     const trip = ds.trips[s.trip];
     if (off && off.type === "alightAt" && trip) {
@@ -331,7 +340,10 @@ export function nextMove(input: NextMoveInput): NextMove | null {
   const next = `${notHere}Next question at ${clockText(nextReadyAt(view.asked, t))}. `;
   return (
     rideMove(input, possible, next) ?? {
-      line: `${next}Wait here, or ride on.`,
+      line:
+        s.kind === "train"
+          ? `${next}Stay on, or get off at any stop.`
+          : `${next}Wait here, or ride on.`,
       target: { kind: "none" },
     }
   );

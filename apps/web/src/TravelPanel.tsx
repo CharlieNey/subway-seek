@@ -603,6 +603,7 @@ export function TravelAction({
   /** On Ask with nothing chosen, the strip says where asking happens. */
   tab?: "travel" | "ask";
 }) {
+  const target = useNextTarget();
   const { view, send, busy } = useGamePick("view", "send", "busy");
   if (!view) return null;
   const s = resolve(ownTransit(view), t, world.idx);
@@ -641,7 +642,11 @@ export function TravelAction({
       if (t < (trip.dep[s.from] as number)) {
         return (
           <>
-            <Button disabled={busy} onClick={() => send({ type: "cancelBoard" })}>
+            <Button
+              disabled={busy}
+              next={target.kind === "stayOff"}
+              onClick={() => send({ type: "cancelBoard" })}
+            >
               Stay on the platform
             </Button>
             <WainscotText>
