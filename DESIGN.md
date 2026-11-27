@@ -1103,6 +1103,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | Match logs older than 90 days are deleted, at boot and daily (`logSweep.ts`). A log's age is the later of its start (its name) and its last write, so a running round is never touched. Built on `fun-round-1`; it deploys with the fun round | Charlie approved it with the friend-challenges proposal: at about 30 KB a round the 1 GB volume holds some 30,000 rounds |
 | 2026-11-27 | `viewport-fit=cover` with safe-area padding, and a web app manifest so Add to Home Screen opens the game as an app (Phones, phone pass) | Two of the phone pass's own findings: without `cover` the safe-area padding was zero, and without a manifest a Home Screen icon opened a Safari tab |
 | 2026-11-27 | Touch screens get 44 px targets in every layout, a phone on its side scrolls the whole panel, and the homepage's You hide row wraps (Phones, phone pass) | Charlie asked for a phone test as far as a computer can go: the stacked layout already met 44 px, but a phone on its side, the homepage and the Ask tab's line hexagons didn't, and the You hide row broke at 360 px |
 | 2026-11-27 | *Proposed, on branch `fun-round-1`:* a station stamp book at `/stamps`, kept in this browser by GTFS complex id: found as seeker, hidden in as hider, with borough and line totals | Fun round 1: a long-term reason to ride somewhere new. Ids rather than dataset indexes so a re-pinned timetable keeps everyone's book |

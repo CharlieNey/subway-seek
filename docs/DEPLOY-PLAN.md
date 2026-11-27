@@ -93,6 +93,7 @@ Google budgets only alert; they don't stop billing. What caps spend is a per-day
 At those quotas Google refuses further loads for the rest of the day instead of billing. The client handles a refused map: the round carries on without it (`DESIGN.md`, Loading, connecting and errors). A refused panorama shows Try again and, since 2026-11-21, "End at the station", which finishes the round on the free map. If the quota runs out early in a day, `fly secrets set STREET_ENDGAME=off` ends every round at the station until you unset it (`fly secrets unset STREET_ENDGAME`). Raise the quotas as players turn up (past the free caps they cost money), and keep a $5 budget alert as a second signal.
 
 - **Fly:** cost is bounded by size. Keep one machine (`fly scale count 1`, never `--ha`), no autoscaling.
+- **The volume:** match logs run about 30 KB a round, so 1 GB holds some 30,000. The server deletes logs older than 90 days at boot and daily (`apps/server/src/logSweep.ts`; built 2026-11-27 on `fun-round-1`, it ships with the fun round). Copy logs down with `fly ssh sftp` before then if you want them for `pnpm metrics`.
 - **Cloudflare:** the free plan has no overage billing.
 
 ## Exact steps

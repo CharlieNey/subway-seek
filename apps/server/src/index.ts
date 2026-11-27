@@ -80,6 +80,7 @@ import {
   RateLimiter,
   WALKS_PER_MINUTE,
 } from "./limits.ts";
+import { scheduleLogSweep } from "./logSweep.ts";
 import { LOG_DIR, MatchLog } from "./matchLog.ts";
 import { createSessionPersistence } from "./persistence.ts";
 import { type Session, SessionStore } from "./sessions.ts";
@@ -299,6 +300,8 @@ function send(socket: WebSocket, msg: ServerMessage) {
 
 /** Today's finished dailies, for the result's percentile (standings.ts); from the logs at boot. */
 const dailyScores = scoresFromLogs(LOG_DIR, new Date());
+// Match logs older than 90 days go, at boot and daily (logSweep.ts).
+scheduleLogSweep(LOG_DIR);
 
 function logEnd(game: Game) {
   const { round } = game;

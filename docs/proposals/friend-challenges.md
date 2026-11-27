@@ -54,7 +54,7 @@ A bot hider's round is a hub, a station (`SoloRound.hider`) and the route there 
 | Opening, per address | — | 60 an hour; past that a plain "Too many challenges opened. Wait a few minutes." |
 | Friend rounds | Logged like any round: one JSONL file of a few KB | Same as today |
 
-The match logs are the bigger long-run cost: about 30 KB a round on today's evidence (6 MB for 204 rounds in `apps/server/logs`), so 1 GB holds roughly 30,000 rounds. That's true with or without challenges. A sweep that deletes logs older than 90 days should come before any launch push.
+The match logs are the bigger long-run cost: about 30 KB a round on today's evidence (6 MB for 204 rounds in `apps/server/logs`), so 1 GB holds roughly 30,000 rounds. That's true with or without challenges. A sweep that deletes logs older than 90 days should come before any launch push. *Approved and built 2026-11-27 on `fun-round-1` (`apps/server/src/logSweep.ts`), shipping with the fun round.*
 
 ## Smallest version worth shipping
 
