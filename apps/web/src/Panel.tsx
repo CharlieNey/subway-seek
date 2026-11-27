@@ -122,7 +122,10 @@ function fastForward(
     const stop = displayName(world.ds.stations[trip?.stops[s.to] as number]?.name ?? "");
     const toEnd = trip && s.to === trip.stops.length - 1 ? "the last stop" : "your stop";
     const late = (at: number | null) => !isHider(view) && at !== null && at >= view.seekEnd;
-    return [
+    // ▸▸ only once you've chosen a stop: before that it skips to the end of the line,
+    // which testers feared and once rode (the playable round).
+    const chosen = trip ? s.to !== trip.stops.length - 1 : false;
+    const buttons: FastForward[] = [
       {
         glyph: "▸",
         key: "Space",
@@ -138,19 +141,13 @@ function fastForward(
       {
         glyph: "▸▸",
         key: "Shift+Space",
-        label:
-          toEnd === "the last stop"
-            ? short
-              ? "To last stop"
-              : "Skip to last stop"
-            : short
-              ? "To your stop"
-              : "Skip to your stop",
+        label: short ? "To your stop" : "Skip to your stop",
         title: late(end) ? `${stop} is after time's up` : `Skip to ${toEnd}, ${stop} · Shift+Space`,
         disabled: busy || late(end),
         onClick: go("end"),
       },
     ];
+    return chosen ? buttons : buttons.slice(0, 1);
   }
   if (s.kind === "walking") {
     return [
