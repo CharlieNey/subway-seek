@@ -27,6 +27,7 @@ describe("par", () => {
     expect(parLine(6, 9)).toBe("Par 6 · 3 over");
     expect(parLine(6, 6)).toBe("Par 6 · level");
     expect(parLine(6, 4)).toBe("Par 6 · 2 under");
+    expect(parLine(6, 0, false)).toBe("Par 6");
   });
 });
 

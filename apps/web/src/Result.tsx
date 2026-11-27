@@ -189,7 +189,7 @@ function Standing({ world, view, counts }: { world: World; view: SoloView; count
   const score = (view.result.at - view.seekStart + view.bonusSeconds) / 60;
   const pct = scores ? percentileOf(scores.counts, scores.n, score) : null;
   const parts: string[] = [];
-  if (par !== null) parts.push(parLine(par, view.asked.length));
+  if (par !== null) parts.push(parLine(par, view.asked.length, view.result.kind === "found"));
   if (pct)
     parts.push(
       `better than ${pct.beat}% of today's ${pct.others} other finished ${pct.others === 1 ? "daily" : "dailies"}`,

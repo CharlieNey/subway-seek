@@ -33,8 +33,12 @@ export function parFor(
   return st?.questions ?? null;
 }
 
-/** "Par 6 · 3 over", "Par 6 · level", "Par 6 · 2 under". */
-export function parLine(par: number, asked: number): string {
+/**
+ * "Par 6 · 3 over", "Par 6 · level", "Par 6 · 2 under" for a find. Without one, over or
+ * under means nothing (a give-up with no questions isn't "6 under"): just "Par 6".
+ */
+export function parLine(par: number, asked: number, found = true): string {
+  if (!found) return `Par ${par}`;
   const d = asked - par;
   return `Par ${par} · ${d === 0 ? "level" : d > 0 ? `${d} over` : `${-d} under`}`;
 }

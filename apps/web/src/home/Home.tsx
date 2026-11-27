@@ -236,6 +236,7 @@ export function Home() {
               <a href="#record">Daily seeking record</a>
               <a href="/play?practice">Practice</a>
               <a href="/hardest">Hardest stations</a>
+              <a href="/stamps">Stamp book</a>
               <a href="/changelog">Changelog</a>
               <a href="/terms.html">Terms, data and privacy</a>
             </nav>

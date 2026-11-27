@@ -25,9 +25,11 @@ const page =
         ? import("./home/Home.tsx").then(({ Home }) => <Home />)
         : path === "/hardest"
           ? import("./home/Hardest.tsx").then(({ Hardest }) => <Hardest />)
-          : path === "/changelog"
-            ? import("./home/Changelog.tsx").then(({ Changelog }) => <Changelog />)
-            : import("./home/NotFound.tsx").then(({ NotFound }) => <NotFound />);
+          : path === "/stamps"
+            ? import("./home/Stamps.tsx").then(({ Stamps }) => <Stamps />)
+            : path === "/changelog"
+              ? import("./home/Changelog.tsx").then(({ Changelog }) => <Changelog />)
+              : import("./home/NotFound.tsx").then(({ NotFound }) => <NotFound />);
 
 // What a broken page can promise: the game's round lives on the server, the homepage's
 // results in this browser.
