@@ -259,7 +259,8 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 14px 16px;
+  /* Clear of the home indicator on a phone (viewport-fit=cover); 14 px elsewhere. */
+  padding: 14px 16px max(14px, env(safe-area-inset-bottom));
   min-height: 66px;
   background-color: var(--color-buff);
   border-top: 3px solid var(--color-buff-deep);

@@ -1014,7 +1014,8 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
   - On its side, under 500 px tall, the whole panel scrolls and the wainscot stays pinned; the questions had about 60 px.
   - The homepage's You hide row wraps its three buttons and puts the hint under them: at 360 px the hint ran into Play and the page scrolled sideways (live today).
   - On a phone the sound list opens upward from its caret and scrolls; Mute is 44 px wide and the tab row's links sit closer, so Map ▴ stays on one line at 360 px.
-  - Left as they are: footer and inline text links (21–24 px), and the question families' headers, which are full-width and only tappable while cooling. keeping a solo round past the 3-minute grace, which covers a lock screen but not a call (Open questions, "A drop pauses the daily").
+  - Left as they are: footer and inline text links (21–24 px), and the question families' headers, which are full-width and only tappable while cooling.
+  - **Notch and home indicator, and Add to Home Screen** (same day): `viewport-fit=cover`, so the page runs edge to edge and `env(safe-area-inset-*)` means something. The round pads the status bar at the top and the notch at either side (`.sc-safe-area` on the play page's `main`), the wainscot pads the home indicator, and the homepage pads its top bar, sides and footer. A web app manifest (`public/manifest.webmanifest`: standalone, the glaze background, icons drawn from the favicon at 192 and 512 px plus a maskable one) makes Add to Home Screen open the game as an app. Checked with Chrome's safe-area override at 47/34 px in portrait and 47/47/21 px on its side; a real iPhone still has to confirm it. keeping a solo round past the 3-minute grace, which covers a lock screen but not a call (Open questions, "A drop pauses the daily").
 
 ## Open questions & risks
 
@@ -1100,6 +1101,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | `viewport-fit=cover` with safe-area padding, and a web app manifest so Add to Home Screen opens the game as an app (Phones, phone pass) | Two of the phone pass's own findings: without `cover` the safe-area padding was zero, and without a manifest a Home Screen icon opened a Safari tab |
 | 2026-11-27 | Touch screens get 44 px targets in every layout, a phone on its side scrolls the whole panel, and the homepage's You hide row wraps (Phones, phone pass) | Charlie asked for a phone test as far as a computer can go: the stacked layout already met 44 px, but a phone on its side, the homepage and the Ask tab's line hexagons didn't, and the You hide row broke at 360 px |
 | 2026-11-27 | *Proposed, on branch `fun-round-1`:* a station stamp book at `/stamps`, kept in this browser by GTFS complex id: found as seeker, hidden in as hider, with borough and line totals | Fun round 1: a long-term reason to ride somewhere new. Ids rather than dataset indexes so a re-pinned timetable keeps everyone's book |
 | 2026-11-27 | *Proposed, on branch `fun-round-1`:* par on every result from the hardest-stations table; a daily percentile against today's other finished dailies from 20 finishers, served as a minute histogram by `GET /daily/scores`; "days running" (played) replaces the homepage's found streak tile, which stays on the result | Fun round 1: reasons to come back without accounts. Par is the same table the bot hides by, so it's fair. 20 because a rank among fewer is noise. The histogram carries no station or player |
