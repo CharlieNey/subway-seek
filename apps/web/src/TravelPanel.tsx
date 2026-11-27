@@ -26,7 +26,8 @@ import { isHider, ownTransit } from "./hide.ts";
 import { usePlayLayout } from "./layout.ts";
 import { useLearn } from "./learn.ts";
 import { useNextTarget } from "./NextMove.tsx";
-import { displayName } from "./names.ts";
+import { complexLabel, displayName } from "./names.ts";
+import { stillPossible, useNotHereList } from "./notHere.ts";
 import { routesFor } from "./routes.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import {
@@ -87,22 +88,47 @@ function Where({
   );
 }
 
+/** A small ink square before a station still possible, the map's own mark. */
+function PossibleMark({ light = false }: { light?: boolean }) {
+  return (
+    <span
+      className={cn("sc-poss", light && "light")}
+      role="img"
+      aria-label="still possible"
+      title="Still possible"
+    />
+  );
+}
+
 function Row({
   line,
   onBoard,
   keys,
   next,
+  ahead,
 }: {
   line: CountdownLine;
   onBoard?: () => void;
   keys?: string;
   next?: boolean;
+  /** How many stations still possible it calls at after here (the playable round). */
+  ahead?: number | null;
 }) {
   return (
     <CountdownRow
       route={line.route}
       dest={line.dest}
-      time={line.note ? `${hhmm(line.first.dep)} · ${line.note}` : hhmm(line.first.dep)}
+      time={[
+        hhmm(line.first.dep),
+        line.note,
+        ahead === null || ahead === undefined
+          ? null
+          : ahead === 0
+            ? "none still possible ahead"
+            : `${ahead} still possible ahead`,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
       minutes={line.minutes}
       then={line.thenMinutes}
       reason={line.reason}
@@ -130,9 +156,23 @@ function PlatformView({
   const { send, busy } = useGamePick("send", "busy");
   const next = useNextTarget();
   const guide = useLearn((g) => g.guide);
+  const notHere = useNotHereList(view);
   const st = world.ds.stations[state.station];
   if (!st) return null;
   const groups = platformBoard(world.idx, state, t, isHider(view) ? [] : view.curses);
+  // Stations still possible each train calls at after here, from the seeker's own list.
+  const possible = new Set(isHider(view) ? [] : stillPossible(view, notHere));
+  const ahead = (l: CountdownLine): number | null => {
+    if (isHider(view)) return null;
+    const tr = world.ds.trips[l.first.trip];
+    if (!tr) return null;
+    const seen = new Set<number>();
+    for (let k = l.first.stop + 1; k < tr.stops.length; k++) {
+      const c = world.ds.stations[tr.stops[k] as number]?.complex;
+      if (c !== undefined && possible.has(c)) seen.add(c);
+    }
+    return seen.size;
+  };
   const transfers = world.idx.transfersFrom[state.station] ?? [];
   const firstBoardable = groups.flatMap((g) => g.lines).find((l) => !l.reason);
   // The round opens: the daily's line, or in practice the trains' (Voice).
@@ -169,6 +209,7 @@ function PlatformView({
                     key={`${l.route.id}|${l.dir}`}
                     line={l}
                     keys={l === firstBoardable ? "B" : undefined}
+                    ahead={ahead(l)}
                     next={
                       next.kind === "board" &&
                       world.ds.routes[next.route]?.id === l.route.id &&
@@ -264,13 +305,26 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
   const nextMove = useNextTarget();
   const speed = useGame((s) => s.sync?.speed ?? 6);
   const view = useGame((s) => s.view);
+  const notHere = useNotHereList(view);
+  // The stations still possible, marked on the stop list as on the map (seeker only).
+  const possible = new Set(view && !isHider(view) ? stillPossible(view, notHere) : []);
   const deadline = isHider(view) ? view.seekStart : null;
   const deadlineStation = deadline === null ? null : lastStation(state, deadline, world.idx);
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
   const route = trip && world.ds.routes[trip.route];
   if (!trip || !route) return null;
-  const nameOf = (k: number) => displayName(world.ds.stations[trip.stops[k] as number]?.name ?? "");
+  // Lines in brackets where a name repeats ("7 Av (B Q)"): a tester nearly got off at the
+  // other 7 Av, one row down (the playable round).
+  const complexAt = (k: number) => world.ds.stations[trip.stops[k] as number]?.complex;
+  const nameOf = (k: number) => {
+    const c = complexAt(k);
+    return c === undefined ? "" : complexLabel(world.ds, c);
+  };
+  const possibleHere = (k: number) => {
+    const c = complexAt(k);
+    return c !== undefined && possible.has(c);
+  };
   const waiting = t < (trip.dep[state.from] as number);
   const next = nextStop(world, state, t);
   const from = world.ds.stations[trip.stops[state.from] as number];
@@ -380,7 +434,10 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
                 <span className="w-[38px] flex-none text-[12px] text-[#cfc6b4] tabular-nums">
                   {time}
                 </span>
-                <b className="font-semibold">{nameOf(k)}</b>
+                <b className="font-semibold">
+                  {possibleHere(k) && <PossibleMark light />}
+                  {nameOf(k)}
+                </b>
                 <span className="ml-auto font-display text-[12px] font-bold tracking-[0.08em] uppercase">
                   {k === last ? "Last stop" : "Getting off"}
                 </span>
@@ -393,7 +450,10 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
               className="flex min-h-9 items-center gap-2.5 border-b border-dashed border-grout py-1.5 text-[13.5px]"
             >
               <span className="w-[38px] flex-none text-[12px] text-ink-2 tabular-nums">{time}</span>
-              <b className="min-w-0 truncate font-semibold">{nameOf(k)}</b>
+              <b className="min-w-0 truncate font-semibold">
+                {possibleHere(k) && <PossibleMark />}
+                {nameOf(k)}
+              </b>
               <span className="flex-1 [&_.sc-rbs]:flex-nowrap">
                 {st && <Bullets routes={routesFor(world, st.routes)} size={18} />}
               </span>

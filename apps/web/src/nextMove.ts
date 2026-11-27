@@ -94,6 +94,8 @@ export interface NextMoveInput {
   notHere?: readonly number[];
   /** What the line named last time (NextMove.hold). */
   hold?: Hold | null;
+  /** The station checked last, and when: "Not here" is said for it, once (notHere.ts). */
+  justChecked?: { complex: number; at: number } | null;
 }
 
 /** The questions a first round shows before "More questions" (AskPanel.tsx). */
@@ -247,6 +249,30 @@ function rideMove(
     };
   }
   if (s.kind === "train") {
+    // A train that calls at stations still possible: get off at the first of them. Simple
+    // to follow, and Not here checks it (a tester saw "this train heads away" on a train
+    // with 4 still possible ahead).
+    const tr = ds.trips[s.trip];
+    if (tr) {
+      const leaving = t < (tr.dep[s.from] as number);
+      const start = leaving ? s.from + 1 : Math.max(s.from + 1, stopAhead(tr, t));
+      for (let k = start; k < tr.stops.length; k++) {
+        const c = ds.stations[tr.stops[k] as number]?.complex;
+        if (c === undefined || !possible.includes(c)) continue;
+        const stop = stationName(idx, tr.stops[k] as number);
+        if (s.to === k)
+          return {
+            line: `${lead}Stay on to ${stop}, a station still possible.`,
+            target: { kind: "none" },
+            hold: { station: -1, answers: -1, goal: c },
+          };
+        return {
+          line: `${lead}Get off at ${stop}, the first station still possible on this train.`,
+          target: tab === "ask" ? { kind: "travelTab" } : { kind: "stop", stop: k },
+          hold: { station: -1, answers: -1, goal: c },
+        };
+      }
+    }
     const intents = planOnTrain(idx, s, t, view.seekEnd, targets);
     if (intents[0]?.type === "cancelBoard") {
       return {
@@ -260,7 +286,13 @@ function rideMove(
     if (off && off.type === "alightAt" && trip) {
       const stop = stationName(idx, trip.stops[off.stop] as number);
       return {
-        line: `${lead}Get off at ${stop}${one ? `, for ${goalName}` : ", nearer the stations still possible"}.`,
+        line: `${lead}Get off at ${stop}${
+          one
+            ? ds.stations[trip.stops[off.stop] as number]?.complex === goal
+              ? ", the last one left"
+              : `, for ${goalName}`
+            : ", nearer the stations still possible"
+        }.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "stop", stop: off.stop },
         hold: { station: -1, answers: -1, goal },
       };
@@ -277,6 +309,13 @@ function rideMove(
   return null;
 }
 
+/** The first stop the train hasn't reached yet. */
+function stopAhead(tr: { arr: readonly number[] }, t: number): number {
+  let k = 0;
+  while (k < tr.arr.length && (tr.arr[k] as number) <= t) k++;
+  return k;
+}
+
 /** The move for this moment. Null on the street and once the round is over. */
 export function nextMove(input: NextMoveInput): NextMove | null {
   const { idx, view, t, tab, armed, armedReady, suggest } = input;
@@ -287,10 +326,14 @@ export function nextMove(input: NextMoveInput): NextMove | null {
   const n = possible.length;
   // Just stood in a station that could have been theirs: say so first (notHere.ts).
   const hereComplex = s.kind === "platform" ? idx.ds.stations[s.station]?.complex : undefined;
-  // Only until you ask from there: after that it's old news.
-  const askedSince = s.kind === "platform" && view.asked.some((a) => a.at >= s.since);
+  // Said for the station just checked, until you ask from there or a few minutes pass;
+  // not again after changing platform there (a tester heard it twice).
+  const just = input.justChecked;
   const notHere =
-    hereComplex !== undefined && (input.notHere ?? []).includes(hereComplex) && !askedSince
+    just &&
+    hereComplex === just.complex &&
+    t - just.at < 5 * 60 &&
+    !view.asked.some((a) => a.at >= just.at)
       ? `Not here. ${n} ${n === 1 ? "station" : "stations"} left. `
       : "";
 

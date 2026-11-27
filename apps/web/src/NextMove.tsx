@@ -7,7 +7,7 @@ import { createContext, useContext, useMemo, useRef } from "react";
 import type { World } from "./game.ts";
 import { useFirstRound } from "./learn.ts";
 import { type Hold, type NextMove, type NextTarget, nextMove } from "./nextMove.ts";
-import { useNotHereList } from "./notHere.ts";
+import { useJustChecked, useNotHereList } from "./notHere.ts";
 
 const NONE: NextTarget = { kind: "none" };
 
@@ -37,6 +37,7 @@ export function useNextMove(
 ): NextMove | null {
   const firstRound = useFirstRound();
   const notHere = useNotHereList(view);
+  const justChecked = useJustChecked(view);
   const hold = useRef<Hold | null>(null);
   const bucket = t === null ? null : Math.floor(t / 15);
   const armedKey = armed ? questionKey(armed) : null;
@@ -54,6 +55,7 @@ export function useNextMove(
       suggest: !view.daily,
       firstRound,
       notHere,
+      justChecked,
       hold: hold.current,
     });
     // A ride names a train and where it's heading; between rides, keep where it was heading.
@@ -63,7 +65,7 @@ export function useNextMove(
         ? { station: -1, answers: -1, goal: hold.current.goal }
         : null);
     return move;
-  }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere]);
+  }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere, justChecked]);
 }
 
 export { NONE as NO_TARGET };

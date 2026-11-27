@@ -80,6 +80,7 @@ describe("not here", () => {
       armedReady: false,
       suggest: true,
       notHere: [complex],
+      justChecked: { complex, at: t },
     });
     expect(move?.line).toMatch(/^Not here\. \d+ stations? left\. /);
   });

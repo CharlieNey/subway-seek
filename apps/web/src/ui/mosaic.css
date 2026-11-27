@@ -1589,3 +1589,16 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* A station still possible, marked in a list as on the map (the playable round). */
+.sc-poss {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  background: var(--color-ink);
+}
+.sc-poss.light {
+  background: var(--color-glaze-hi);
+}

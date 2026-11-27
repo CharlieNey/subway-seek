@@ -126,7 +126,7 @@ function fastForward(
       {
         glyph: "▸",
         key: "Space",
-        label: waiting ? (short ? "Leave" : "Leave now") : short ? "Next" : "Next stop",
+        label: short ? "Skip" : waiting ? "Skip to departure" : "Skip to next stop",
         title: late(next)
           ? "The next stop is after time's up"
           : waiting
@@ -138,7 +138,14 @@ function fastForward(
       {
         glyph: "▸▸",
         key: "Shift+Space",
-        label: toEnd === "the last stop" ? "Last stop" : "Your stop",
+        label:
+          toEnd === "the last stop"
+            ? short
+              ? "To last stop"
+              : "Skip to last stop"
+            : short
+              ? "To your stop"
+              : "Skip to your stop",
         title: late(end) ? `${stop} is after time's up` : `Skip to ${toEnd}, ${stop} · Shift+Space`,
         disabled: busy || late(end),
         onClick: go("end"),
@@ -150,7 +157,7 @@ function fastForward(
       {
         glyph: "▸▸",
         key: "Shift+Space",
-        label: "Arrive",
+        label: "Skip the walk",
         title: "Arrive · Shift+Space",
         disabled: busy,
         onClick: go("end"),
@@ -696,7 +703,7 @@ export function Panel() {
   // Stations you've stood in, in a round that ends at the station (notHere.ts).
   useEffect(() => {
     if (world && view && t !== null)
-      useNotHere.getState().sync(view, checkedNow(view, t, world.idx));
+      useNotHere.getState().sync(view, checkedNow(view, t, world.idx), t);
   });
   // Leaving a tab unmounts its chips without a mouseleave: forget the hover.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on tab change only

@@ -290,6 +290,8 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     const build = createLayerBuilder();
     let version = 0;
     const notHere = () => useNotHere.getState().complexes;
+    /** The map framed an answer and stopped following on its own, not the player. */
+    let autoFramed = false;
     let round: RoundData = buildRound(world, useGame.getState().view, version, notHere());
     let trains: Train[] = [];
     let lastTrains = 0;
@@ -314,6 +316,17 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       if (st.view === prev.view) return;
       version += 1;
       round = buildRound(world, st.view, version, notHere());
+      // The map stopped following to show an answer: follow again once you move off, so
+      // you don't ride out of the frame (a tester's dot went off screen).
+      if (autoFramed && st.view && prev.view && !st.follow) {
+        const was = ownTransit(prev.view).kind;
+        const now = ownTransit(st.view).kind;
+        if (was !== now && (now === "train" || now === "walking")) {
+          autoFramed = false;
+          st.setFollow(true);
+        }
+      }
+      if (st.follow) autoFramed = false;
       // An answer landed: show the stations still possible, and you (the playable round;
       // both cold plays couldn't see what the answer had done at the map's zoom).
       const answered = (v: typeof st.view) => v?.asked.filter(isAnswered).length ?? 0;
@@ -330,6 +343,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
           const lons = pts.map((p) => p[0]);
           const lats = pts.map((p) => p[1]);
           st.setFollow(false);
+          autoFramed = true;
           base.fitBounds(
             [Math.min(...lons), Math.min(...lats)],
             [Math.max(...lons), Math.max(...lats)],

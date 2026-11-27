@@ -63,18 +63,21 @@ function save(saved: Saved | null): void {
 export const useNotHere = create<{
   round: string | null;
   complexes: number[];
+  /** The station checked last, and when (game seconds): "Not here" is said for that one. */
+  last: { complex: number; at: number } | null;
   /** Keep up with the round: start it, add a station, or forget it once it's over. */
-  sync: (view: SoloView, checked: number | null) => void;
+  sync: (view: SoloView, checked: number | null, t: number) => void;
 }>((set, get) => {
   const saved = load();
   return {
     round: saved?.round ?? null,
     complexes: saved?.complexes ?? [],
-    sync: (view, checked) => {
+    last: null,
+    sync: (view, checked, t) => {
       if (view.result || isHider(view) || !view.stationOnly) {
         if (get().round !== null) {
           save(null);
-          set({ round: null, complexes: [] });
+          set({ round: null, complexes: [], last: null });
         }
         return;
       }
@@ -83,10 +86,17 @@ export const useNotHere = create<{
       const complexes = checked !== null && !kept.includes(checked) ? [...kept, checked] : kept;
       if (round === get().round && complexes === get().complexes) return;
       save({ round, complexes });
-      set({ round, complexes });
+      const added = complexes.length > kept.length ? (complexes.at(-1) ?? null) : null;
+      set({ round, complexes, last: added === null ? null : { complex: added, at: t } });
     },
   };
 });
+
+/** The station checked last this round, and when. */
+export function useJustChecked(view: SoloView | null): { complex: number; at: number } | null {
+  const { round, last } = useNotHere();
+  return view && round === roundKey(view) && !view.result ? last : null;
+}
 
 /** The stations you've stood in this round (none once it's over). */
 export function useNotHereList(view: SoloView | null): number[] {
