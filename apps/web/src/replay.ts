@@ -17,9 +17,15 @@ import { isHider } from "./hide.ts";
 import { type LogEvent, replayLog } from "./replayLog.ts";
 
 export const REPLAY_REAL_SECONDS = 25;
+/** The reveal at the end of a round: the map alone, once, quicker (DESIGN.md, Ending). */
+export const REVEAL_REAL_SECONDS = 12;
 
 interface ReplayStore {
   active: boolean;
+  /** The end-of-round reveal: the map plays, the result card keeps the panel. */
+  reveal: boolean;
+  /** Real seconds the whole round takes to play. */
+  seconds: number;
   playing: boolean;
   start: number;
   end: number;
@@ -40,7 +46,11 @@ interface ReplayStore {
    * `street: false` for a round kept without its street positions (history.ts, keptView):
    * the on-foot answers' shares of the circle can't be worked out again.
    */
-  open: (world: World, view: SoloView, opts?: { street?: boolean; botSeeker?: boolean }) => void;
+  open: (
+    world: World,
+    view: SoloView,
+    opts?: { street?: boolean; botSeeker?: boolean; reveal?: boolean },
+  ) => void;
   close: () => void;
   toggle: () => void;
   seek: (t: number) => void;
@@ -48,6 +58,8 @@ interface ReplayStore {
 
 export const useReplay = create<ReplayStore>((set, get) => ({
   active: false,
+  reveal: false,
+  seconds: REPLAY_REAL_SECONDS,
   playing: false,
   start: 0,
   end: 0,
@@ -60,7 +72,7 @@ export const useReplay = create<ReplayStore>((set, get) => ({
   settled: null,
   humanHider: false,
   botSeeker: false,
-  open: (world, view, { street = true, botSeeker = false } = {}) => {
+  open: (world, view, { street = true, botSeeker = false, reveal = false } = {}) => {
     if (!view.replay || !view.result) return;
     const start = view.hideStart;
     const end = view.result.at;
@@ -85,6 +97,8 @@ export const useReplay = create<ReplayStore>((set, get) => ({
     const reached = log.find((e) => e.text === "Hider reaches their spot");
     set({
       active: true,
+      reveal,
+      seconds: reveal ? REVEAL_REAL_SECONDS : REPLAY_REAL_SECONDS,
       playing: true,
       start,
       end,
@@ -99,7 +113,8 @@ export const useReplay = create<ReplayStore>((set, get) => ({
       botSeeker,
     });
   },
-  close: () => set({ active: false, playing: false, hider: [], seeker: [], log: [] }),
+  close: () =>
+    set({ active: false, reveal: false, playing: false, hider: [], seeker: [], log: [] }),
   toggle: () => {
     const { playing, t, end, start } = get();
     // Play from the start again once it has finished.
@@ -117,7 +132,7 @@ if (import.meta.env.DEV) (window as unknown as { __replay: typeof useReplay })._
 export function stepReplay(realMs: number) {
   const r = useReplay.getState();
   if (!r.active || !r.playing) return;
-  const rate = (r.end - r.start) / REPLAY_REAL_SECONDS; // game seconds per real second
+  const rate = (r.end - r.start) / r.seconds; // game seconds per real second
   const t = Math.min(r.end, r.t + (realMs / 1000) * rate);
   useReplay.setState({ t, playing: t < r.end });
 }

@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { hm, type TallyTile, tallyTiles } from "./ask.ts";
 import { reducedMotion, useMotion } from "./clearings.ts";
+import { Callouts, useEnding, useReveal, Verdict } from "./Ending.tsx";
 import { hubName, useGame, useGamePick, type World } from "./game.ts";
 import { HandReveal } from "./HiderCards.tsx";
 import { dailyStats } from "./history.ts";
@@ -73,7 +74,7 @@ const FOUND_SET_MS = 900;
 const TALLY_STEP_MS = 40;
 
 /** Whether the round ended while you watched, so its result sets rather than just being there. */
-function useEndedLive(): boolean {
+export function useEndedLive(): boolean {
   const ended = useMotion((s) => s.ended);
   const [live] = useState(
     () => ended !== null && performance.now() - ended < 4000 && !reducedMotion(),
@@ -173,6 +174,9 @@ export function ResultCard({ world }: { world: World }) {
   const tiles = view?.result ? tallyTiles(view) : [];
   const tallyDelay = view?.result?.kind === "found" ? FOUND_SET_MS : 0;
   const tallied = useTallyCount(tiles.length, live, tallyDelay);
+  const ending = useEnding(world, view);
+  // The map plays both routes once the tablet and the tally have set (DESIGN.md, Ending).
+  useReveal(world, view, live, tallyDelay + tiles.length * TALLY_STEP_MS + 400);
   if (!view?.result) return null;
   const hider = view.hider === null ? undefined : world.ds.complexes[view.hider];
   const elapsed = view.result.at - view.seekStart;
@@ -200,6 +204,7 @@ export function ResultCard({ world }: { world: World }) {
         hider && <p className="mt-1.5 text-[12.5px] text-ink-2">The hider was at</p>
       )}
       {hider && <NameTablet text={displayName(hider.name)} tile={3.1} maxWidth={320} />}
+      <Verdict text={ending.verdict} />
       <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">
         {hider && <Bullets routes={routesFor(world, hider.routes)} size={18} />}
         <span>
@@ -223,6 +228,7 @@ export function ResultCard({ world }: { world: World }) {
         ]}
       />
       <Tally tiles={tiles} play={live} delay={tallyDelay} />
+      <Callouts world={world} view={view} callouts={ending.callouts} />
       {view.stationOnly && (
         <p className="max-w-[300px] text-center text-[12px] text-ink-2">
           This round ended at the station, on the free map. The full game goes on to search the

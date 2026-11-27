@@ -531,7 +531,8 @@ export function Panel() {
     "hover",
     "alreadyPlayed",
   );
-  const replaying = useReplay((s) => s.active);
+  // The end-of-round reveal plays on the map only; the result card keeps the panel.
+  const replaying = useReplay((s) => s.active && !s.reveal);
   const stack = usePlayLayout() === "stack";
   const { sheet, setSheet } = useSheet();
   const t = useGameTime(4);

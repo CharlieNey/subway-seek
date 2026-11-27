@@ -808,6 +808,25 @@ The same round, replayed for the seeker after the find, scrubbed to the Veto at 
   - The zone ring draws out when the hider reaches their spot, as in the mock (scrubbed to 10:36, ring drawn), rather than at the end as the Motion row says (decided 2026-10-06). The station tablet sets on the map at the end.
   - The gold spot waits for the find; the map frames both trails and the zone, clear of the legend and the bar. The scrubber drags, and ← → step a game minute (Shift for ten).
 
+### Ending
+
+*Proposed 2026-11-27 (fun round 1), built on branch `fun-round-1` for Charlie to play before it ships.* A round that ends at the station ends flat: the tablet sets and the card waits. The reveal becomes the payoff, from facts the round already logged.
+- **Verdict:** one line under the result's tablet, set in Libre Franklin bold, worth a screenshot. It's picked from the callouts below and the numbers, never invented:
+  - found after riding through their station: "You rode right past them, and came back."
+  - found after a close call: "Within 0.3 mi at 11:16. Found at 11:57."
+  - found with neither: "Straight to them in 1:37."
+  - not found, ended within 1 mi of them: "Service ended 0.3 mi short."; otherwise "They were 2.1 mi from where you ended."
+- **How it went:** up to three callouts under the numbers, each a time tile and one sentence. Four detectors read the replay's trails and answers, in this priority:
+  - *Rode through:* a ride called at the hider's station after 10:20 and you stayed on. "10:42 · You rode straight through their station."
+  - *Express past:* a ride went between two stops that a local trip on the same timetable runs with the hider's station between them. "10:44 · Your A ran express past their station."
+  - *Closest call:* the nearest station you stood in or got off at, 10 game-min or more before the round ended, within 1 mi of theirs and not theirs. "11:16 · 0.3 mi from them, at Lexington Av/53 St."
+  - *Turning point:* the answer that cut the most, if it cut at least half. "10:30 · Radar 2 mi, No: 72 → 22."
+  - A callout is a button: it moves the map's replay to that minute.
+- **Reveal:** when the round ends while you watch, the map plays both routes once in 12 s after the tally sets. The result card stays in the panel, and the replay bar shows over the map. Watch replay opens the full replay as before (25 s, the log, the scrubber). Reduced motion skips the reveal.
+- **You hide:** the same, about the bot's hunt for you: "The seeker rode straight through your station", "The seeker's closest call", their turning point. Verdicts: "They rode right past you once." / "You held them for 1:10." / "They got within 0.3 mi and never found you."
+- **Hidden information:** everything here reads `view.replay`, which the server sends only when the round ends (every round reveals the hider then, an unfound daily included: decided 2026-10-07). Nothing here exists mid-round.
+- **The share text is unchanged:** a verdict can give the station away to a friend who hasn't played today.
+
 ### Questions
 
 The Ask tab's six categories and the on-foot questions. Mocks from the same round, on the game's real landmark data and its own search code: the Deck page, part nine.
@@ -1065,6 +1084,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | *Proposed, on branch `fun-round-1`:* the ending (Ending): a verdict line, up to three callouts from four detectors (rode through, express past, closest call, turning point), and a 12 s reveal of both routes on the map while the result card keeps the panel. Same for You hide. The share text is unchanged | Fun round 1 (Charlie, via the orchestrator): a station-only round ended flat. Every line comes from the round's own trails and answers, so nothing is invented; the share text stays as it was because a verdict can give the station away |
 | 2026-11-27 | In a round that ends at the station, the seeker gets no Up to the street: the wainscot reads "Riding below · the round ends at the station", as the hider's does. A seeker already up when the street turns off is told to go back down, and the street pane says Street View is off instead of the developer hint | Charlie, after the live smoke test: up there was a dead end. Walking needs Google's panoramas (`street.ts`), so every map click said "No street to walk to there", and the pane showed "Unset VITE_MAP_PROVIDER" to players. Going up and down only cost 4 game-min |
 | 2026-11-21 | **A round plays on a phone** (Phones): below 860 px, unless the phone is on its side, the map stacks over the panel, which is a sheet with two heights (58% of the screen, or folded to the clock, numbers, tabs, notice and wainscot); the tab row is its handle; 44 px targets; the computer notice and Try anyway go. `layout.ts` decides, with tests | Brief W32 asked for a playable phone round; most launch traffic will be phones. Built from W25's proposal, cut to what a keyless round needs; Charlie to review |
 | 2026-11-21 | A page opened below 860 px plays station-only rounds on the free map, keys or not (`streetMode.ts`, reason `phone`) | Street View needs the map beside it, Google's terms keep it beside a Google map, and the free map spends no map load |
