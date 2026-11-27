@@ -237,8 +237,10 @@ export function nextMove(input: NextMoveInput): NextMove | null {
   const n = possible.length;
   // Just stood in a station that could have been theirs: say so first (notHere.ts).
   const hereComplex = s.kind === "platform" ? idx.ds.stations[s.station]?.complex : undefined;
+  // Only until you ask from there: after that it's old news.
+  const askedSince = s.kind === "platform" && view.asked.some((a) => a.at >= s.since);
   const notHere =
-    hereComplex !== undefined && (input.notHere ?? []).includes(hereComplex)
+    hereComplex !== undefined && (input.notHere ?? []).includes(hereComplex) && !askedSince
       ? `Not here. ${n} ${n === 1 ? "station" : "stations"} left. `
       : "";
 

@@ -24,6 +24,7 @@ import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
 import { usePlayLayout } from "./layout.ts";
+import { useLearn } from "./learn.ts";
 import { useNextTarget } from "./NextMove.tsx";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
@@ -128,14 +129,18 @@ function PlatformView({
 }) {
   const { send, busy } = useGamePick("send", "busy");
   const next = useNextTarget();
+  const guide = useLearn((g) => g.guide);
   const st = world.ds.stations[state.station];
   if (!st) return null;
   const groups = platformBoard(world.idx, state, t, isHider(view) ? [] : view.curses);
   const transfers = world.idx.transfersFrom[state.station] ?? [];
   const firstBoardable = groups.flatMap((g) => g.lines).find((l) => !l.reason);
   // The round opens: the daily's line, or in practice the trains' (Voice).
+  // Not in a guided first round: there the next-move line and the guide say what to do,
+  // and "Ride toward what's left" before any question read as a third instruction.
   const opening =
     !isHider(view) &&
+    guide !== "new" &&
     view.asked.length === 0 &&
     state.station === view.hub &&
     t < view.seekStart + 15 * 60;

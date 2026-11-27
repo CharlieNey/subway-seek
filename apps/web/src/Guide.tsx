@@ -33,7 +33,7 @@ export function guideStep(
 function stepText(step: GuideStep, n: number): string {
   switch (step) {
     case 1:
-      return `The hider is at one of these ${n} stations. Each question you ask rules some out. Try the one marked, then press Ask.`;
+      return `The hider is at one of these ${n} stations. Each question you ask rules some out. Open Ask, choose the marked question, then press Ask.`;
     case 2:
       return "Watch the map as the answer lands: ruled-out stations turn hollow, and the number at the top drops.";
     case 3:
