@@ -1,6 +1,6 @@
 # Subway Seek
 
-Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. A solo hobby project by Charlie; nothing is public yet.
+Online 1v1 hide and seek on the real NYC subway timetable and Google Street View. A solo hobby project by Charlie. The code is public at https://github.com/CharlieNey/subway-seek (since 2026-11-27); `CharlieNey/stand-clear` is the private archive with the original history. Push to `origin` (subway-seek), never to `archive`.
 
 ## Read first
 

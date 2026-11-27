@@ -8,9 +8,9 @@
 
 | | State |
 |---|---|
-| Done | 0 (old cloud), 1 (name, trademark search), 3.1 (contact address), 3.2 (README read and its replay caption written), 4 (server), 5 (site, by upload), 6 (keyless chosen), 7's computer part (Chrome and WebKit with an iPhone profile) |
+| Done | 0 (old cloud), 1 (name, trademark search), 3.1 (contact address), 3.2 (README read and its replay caption written), 4 (server), 5 (site, by upload), 6 (keyless chosen), 7's computer part (Chrome and WebKit with an iPhone profile), 0.6 (the code is public at https://github.com/CharlieNey/subway-seek, 2026-11-27) |
 | Done, waiting for go | Fun round 1, merged to `main`, not deployed: `DEPLOY-FUN-ROUND.md` |
-| Left, Charlie only | 7's phone part (his iPhone), Safari and Firefox on a computer; the rumble's and pulse's defaults; 0.6 publishing the rewritten history as `subway-seek` (replaces 2.1 and 8.1); 2.2 a domain; 2.3 Google display names; 6.2–6.5 if he ever wants keys; 8.2 is the site pane's; 8.3 the posts, which he writes |
+| Left, Charlie only | 7's phone part (his iPhone), Safari and Firefox on a computer; the rumble's and pulse's defaults; 2.2 a domain; 2.3 Google display names; 6.2–6.5 if he ever wants keys; 8.2 is the site pane's; 8.3 the posts, which he writes |
 
 ### Launch day, when Charlie says go
 
@@ -20,7 +20,7 @@ Each step can be undone on its own. Go in this order.
 |---|---|---|
 | L1 | Deploy fun round 1: `DEPLOY-FUN-ROUND.md` (server, then website, then its checks). Before Saturday 5 December, or move the first themed Saturday | Its Rollback section: the previous Fly image, and Pages deployment `33d6ce93` |
 | L2 | Charlie plays a daily on his iPhone and on a computer in Safari (7) | — |
-| L3 | Optional, replaces 2.1 and 8.1: publish the rewritten history as a new repo `subway-seek` (0.6) | `gh repo edit CharlieNey/subway-seek --visibility private --accept-visibility-change-consequences`; the old private repo is untouched throughout |
+| L3 | **Done 2026-11-27:** the rewritten history published as https://github.com/CharlieNey/subway-seek (0.6) | `gh repo edit CharlieNey/subway-seek --visibility private --accept-visibility-change-consequences`; `stand-clear` stays private and untouched |
 | L4 | The personal site links the game (8.2, the site pane) | Revert that commit there |
 | L5 | Charlie posts, from `launch/` (8.3) | Delete the post |
 
@@ -47,7 +47,7 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 | 0.3 | Ask the AWS account's administrator to delete what this repo created there | The role `stand-clear-server-github` (it trusts this repo's `main` through GitHub OIDC), the ECR repository `stand-clear-server` and its images, the role and instance profile `stand-clear-server-instance`, the security group, and any IAM access key made for this <!-- keep-name --> | `infra/aws` recreates them, in an account you own (DEPLOY-PLAN keeps it as an alternative) |
 | 0.4 | Check who pays for Google | Google Cloud console, Billing, Account management: project `stand-clear-nyc` must be on a billing account in Charlie's name. If it isn't, create a new project on a personal billing account and make new keys there (the id `stand-clear-nyc` can't be renamed or moved with its keys) | Re-link the project's billing account (Billing, My projects, Change billing) |
 | 0.5 | Check the history before it's public | `git log --all -p \| grep -cE "AIza[0-9A-Za-z_-]{35}"` should print 0, and `git ls-files \| grep -E "\.env\|/logs/"` only `infra/aws/.env.example`. Both held on 2026-11-21 | If a key turns up: delete it in Google Cloud (Credentials) first, then rewrite history before going public |
-| 0.6 | **The full check, 2026-11-27: not ready as it stands.** No key or secret anywhere: gitleaks' 222 default rules with no allowlist over all 132 commits, and the real daily secret and both local keys searched for by value, all clean. But earlier commits hold the old AWS account's number, a local folder path from Charlie's machine, and the earlier wording of four proposals (reworded 2026-11-27), all gone from the current files. The fix is a rewrite, and GitHub keeps rewritten commits viewable by their hashes after a force-push, so it goes to a new repo rather than over this one. `~/.config/subway-seek/history-rewrite/rewrite.sh` does it outside the repo (its lists of strings stay out of the repo on purpose): a fresh copy of GitHub's history, `git filter-repo --replace-text`, the docs' cited hashes updated, then every check again. It pushes nothing and prints the three commands for Charlie: create `subway-seek` private, push `main`, make it public. Its tip matches `main` but for those hashes. The new repo needs the `FLY_API_TOKEN` Actions secret again for the manual deploy workflow, or deploys stay on the laptop | Make `subway-seek` private again, or delete it; `stand-clear` stays private with its full history |
+| 0.6 | **The full check, 2026-11-27: not ready as it stands.** No key or secret anywhere: gitleaks' 222 default rules with no allowlist over all 132 commits, and the real daily secret and both local keys searched for by value, all clean. But earlier commits hold the old AWS account's number, a local folder path from Charlie's machine, and the earlier wording of four proposals (reworded 2026-11-27), all gone from the current files. The fix is a rewrite, and GitHub keeps rewritten commits viewable by their hashes after a force-push, so it goes to a new repo rather than over this one. `~/.config/subway-seek/history-rewrite/rewrite.sh` does it outside the repo (its lists of strings stay out of the repo on purpose): a fresh copy of GitHub's history, `git filter-repo --replace-text`, the docs' cited hashes updated, then every check again. It pushes nothing and prints the three commands for Charlie: create `subway-seek` private, push `main`, make it public. Its tip matches `main` but for those hashes. **Done 2026-11-27 with Charlie's OK:** every check re-run on exactly the commit pushed (`bf0762d`, 135 commits: the strings, the secret values, gitleaks with and without the ignore file, lint, typecheck, 382 tests), `subway-seek` created private, pushed, the hash compared on GitHub, then made public. Its `FLY_API_TOKEN` is a new deploy token for the app alone (`github-actions-subway-seek`, expires 2027-11-27); the old repo keeps its own. The laptop's checkout pushes to `origin` (subway-seek); `archive` is stand-clear | Make `subway-seek` private again, or delete it; `stand-clear` stays private with its full history |
 
 ## 1. The name
 
@@ -63,7 +63,7 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 
 | # | Do | Command or click | Undo |
 |---|---|---|---|
-| 2.1 | Rename the GitHub repo | `gh repo rename subway-seek`, then `git remote set-url origin https://github.com/CharlieNey/subway-seek.git`. GitHub redirects the old URL | `gh repo rename stand-clear`. The redirect breaks if another repo ever takes the old name <!-- keep-name --> |
+| 2.1 | Rename the GitHub repo. *Superseded 2026-11-27 by 0.6: the new repo has the name* | `gh repo rename subway-seek`, then `git remote set-url origin https://github.com/CharlieNey/subway-seek.git`. GitHub redirects the old URL | `gh repo rename stand-clear`. The redirect breaks if another repo ever takes the old name <!-- keep-name --> |
 | 2.2 | Domain (optional) | Buy it at a registrar in your own name. `*.fly.dev` and `*.pages.dev` work without one | Let it lapse; the purchase isn't refundable |
 | 2.3 | Google Cloud display names | IAM & Admin, Settings: the project's display name. Google Maps Platform, Map management and Map styles: the two Map IDs and the style, to "Subway Seek Mosaic". The ids don't change, so no code changes | Rename them back |
 | 2.4 | Retitle the three private design artifacts linked from DESIGN.md | In claude.ai | Retitle back |
@@ -128,7 +128,7 @@ Decide here. **Keyless is a complete game:** every round ends at the station on 
 
 | # | Do | Command or click | Undo |
 |---|---|---|---|
-| 8.1 | Make the repo public (optional; the site doesn't need it). **Not this repo as it stands: see 0.6** | `gh repo edit --visibility public --accept-visibility-change-consequences` | `gh repo edit --visibility private --accept-visibility-change-consequences`. Clones and forks made meanwhile stay out there, and going private drops stars and watchers |
+| 8.1 | Make the repo public. **Done 2026-11-27 as a new repo (0.6); `stand-clear` stays private** | `gh repo edit --visibility public --accept-visibility-change-consequences` | `gh repo edit --visibility private --accept-visibility-change-consequences`. Clones and forks made meanwhile stay out there, and going private drops stars and watchers |
 | 8.2 | The personal site | charlie-site, charlie-site-ride3d, charlie-site-demo: the shared name constant to "Subway Seek", the slug to `subway-seek`, the `public/projects/` and `public/og/` names, new screenshots | Revert there |
 | 8.3 | Tell people | `docs/launch/`: the Show HN fact sheet (Charlie writes the post), the r/JetLagTheGame data post (mods first), the `/hardest` post for a transit sub | Delete the post; copies and caches remain |
 

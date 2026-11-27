@@ -1103,6 +1103,7 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | The code is public as a new repo, https://github.com/CharlieNey/subway-seek, from a rewrite of the history; `stand-clear` stays private as the archive (`docs/GO-PUBLIC.md`, 0.6) | Charlie. The history check found no key or secret, but a few strings in older commits that shouldn't be public. GitHub keeps rewritten commits viewable by hash after a force-push, so the rewrite went to a new repo instead of over the old one |
 | 2026-11-27 | **Outer boroughs Saturdays**, built on `fun-round-1`: from 2026-12-05, Saturday dailies start from four outer-borough hubs and never hide in Manhattan; seeds salted by the theme; 161 St–Yankee Stadium left out | Charlie: "yes, Outer boroughs, Saturdays only". The simulation (`pnpm sim --theme outerBoroughs`) kept the Normal band at 34–37 stations from four hubs, but only 4 from 161 St, too few for a daily that repeats |
 | 2026-11-27 | Friend challenges approved as proposed (smallest version: station only, no cards, optional name, 30 days, 10,000 live), built after the launch posts | Charlie |
 | 2026-11-27 | The two-minute daily approved, named **The Shuttle**, built after launch; guesses count as turns; it stays out of the stamp book | Charlie |
