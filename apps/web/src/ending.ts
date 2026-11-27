@@ -206,10 +206,12 @@ export function endingOf(ds: Dataset, idx: TimetableIndex, view: SoloView): Endi
   }
 
   // Closest call: the nearest other station they stood in, well before a find.
+  const startComplex = ds.stations[view.hub]?.complex;
   let closest: { t: number; complex: number; m: number } | null = null;
   for (const s of stopsOf(ds, trail, end)) {
-    // Not the start: standing at the hub at 10:20 is where everyone begins.
-    if (s.t <= from || s.complex === view.hider) continue;
+    // Not the start: the hub is where everyone begins, however long you stay or whichever
+    // of its platforms you walk to.
+    if (s.t <= from || s.complex === view.hider || s.complex === startComplex) continue;
     if (found && s.t > foundAt - CLOSE_LEAD_S) continue;
     const c = ds.complexes[s.complex];
     if (!c) continue;

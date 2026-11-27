@@ -107,6 +107,35 @@ describe("the ending", () => {
     expect(e.verdict).toMatch(/^Service ended \d\.\d mi short\.$/);
   });
 
+  it("doesn't count a platform change at the start as a close call", () => {
+    const { tr } = plainTrip();
+    const seekStart = (tr.dep[0] as number) - 300;
+    const hub = tr.stops[0] as number;
+    const hubComplex = ds.complexes[complexOf(hub)];
+    // Another platform in the hub's complex, if it has one; else the hub itself.
+    const other = hubComplex?.stations.find((s) => s !== hub) ?? hub;
+    const v = view({
+      seekStart,
+      hub,
+      hider: complexOf(tr.stops[1] as number),
+      result: { kind: "gaveUp", at: seekStart + 1200 },
+      replay: {
+        hider: [],
+        seeker: [
+          {
+            t: seekStart,
+            state: { kind: "platform", station: hub, since: seekStart, arrivedDir: null },
+          },
+          {
+            t: seekStart + 180,
+            state: { kind: "platform", station: other, since: seekStart + 180, arrivedDir: null },
+          },
+        ],
+      },
+    });
+    expect(endingOf(ds, idx, v).callouts.some((c) => c.kind === "closest")).toBe(false);
+  });
+
   it("doesn't count the start as a close call", () => {
     const { tr } = plainTrip();
     const seekStart = (tr.dep[0] as number) - 300;
