@@ -330,7 +330,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     // On a phone, arming a question with a ring round you (radar, nearest) frames the
     // ring, since the small map rarely shows it whole. A computer's map stays put.
     const unsubscribeArm = useGame.subscribe((st, prev) => {
-      if (!st.armed || st.armed === prev.armed || !st.view || !stacked()) return;
+      if (!st.armed || st.armed === prev.armed || !st.view) return;
       if (st.armed.kind !== "radar" && st.armed.kind !== "tentacles") return;
       const t = nowGameTime();
       if (t === null) return;
@@ -338,6 +338,15 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       if (pts.length === 0) return;
       const lons = pts.map((p) => p[0]);
       const lats = pts.map((p) => p[1]);
+      // A computer's map stays put, unless the ring is too big to see at this zoom (a
+      // cold-play tester couldn't see a 2-mile ring at all, 2026-11-27).
+      if (!stacked()) {
+        const lat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        const metersPerPx = (156_543.03 * Math.cos((lat * Math.PI) / 180)) / 2 ** base.getZoom();
+        const ringPx = ((Math.max(...lats) - Math.min(...lats)) * 111_320) / metersPerPx;
+        const viewPx = Math.min(innerHeight, innerWidth - 380);
+        if (ringPx <= viewPx * 0.9) return;
+      }
       st.setFollow(false);
       base.fitBounds(
         [Math.min(...lons), Math.min(...lats)],
