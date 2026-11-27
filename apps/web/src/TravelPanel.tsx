@@ -17,7 +17,7 @@ import {
   type Walking,
   walkSeconds,
 } from "@subway-seek/engine";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { hhmm } from "./ask.ts";
 import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts";
 import { cn } from "./cn.ts";
@@ -26,7 +26,6 @@ import { isHider, ownTransit } from "./hide.ts";
 import { usePlayLayout } from "./layout.ts";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
-import { play } from "./sound.ts";
 import { NameTablet } from "./ui/NameTablet.tsx";
 import {
   Bullets,
@@ -253,14 +252,6 @@ function TrainView({ world, state, t }: { world: World; state: OnTrain; t: numbe
   const [allStops, setAllStops] = useState(false);
   const trip = world.ds.trips[state.trip];
   const route = trip && world.ds.routes[trip.route];
-  // The chime, if it's on, as your own train leaves (not when a refresh finds you riding).
-  const depAt = trip?.dep[state.from];
-  const departed = depAt !== undefined && t >= depAt;
-  const heardDep = useRef(departed);
-  useEffect(() => {
-    if (departed && !heardDep.current) play("chime");
-    heardDep.current = departed;
-  }, [departed]);
   if (!trip || !route) return null;
   const nameOf = (k: number) => displayName(world.ds.stations[trip.stops[k] as number]?.name ?? "");
   const waiting = t < (trip.dep[state.from] as number);

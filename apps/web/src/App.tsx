@@ -15,6 +15,7 @@ import { Panel } from "./Panel.tsx";
 import { ReplayControls } from "./ReplayControls.tsx";
 import { SignalLoss } from "./SignalLoss.tsx";
 import { StreetView, StreetViewFailed } from "./StreetView.tsx";
+import { useSoundscape } from "./soundscape.ts";
 import { onStreet } from "./street.ts";
 import { useClockValue } from "./useGameTime.ts";
 
@@ -48,6 +49,8 @@ export function App() {
   // The top of the tree re-renders only when these change, not with the clock.
   const street = useClockValue((t) => onStreet(view, t, world));
   const signalLoss = useClockValue((t) => (isHider(view) ? null : cursed(view, "signalLoss", t)));
+  // Sound starts at the first tap on this page; the home page has none (DESIGN.md, Sound).
+  useSoundscape(world, view);
   // Overlays on the map keep clear of its own credits (Google's logo and Terms).
   const mapBox = useRef<HTMLDivElement>(null);
   const credits = useAttributionClearance(mapBox);

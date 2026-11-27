@@ -289,13 +289,14 @@ function RoundNumbers({
 function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean }) {
   const { send, alreadyPlayed, busy } = useGamePick("send", "alreadyPlayed", "busy");
   const [soundOpen, setSoundOpen] = useState(false);
+  const { master, setMaster } = useSound();
   const giveUp = () => {
     const ask = view.daily
       ? `Give up and see where the hider was?${alreadyPlayed ? "" : " Today counts as not found."}`
       : "Give up and see where the hider was?";
     if (window.confirm(ask)) send({ type: "giveUp" });
   };
-  const link = "underline decoration-grout underline-offset-2 hover:text-ink";
+  const link = "whitespace-nowrap underline decoration-grout underline-offset-2 hover:text-ink";
   return (
     <>
       <div
@@ -304,13 +305,24 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
           inline ? "relative ml-auto items-center px-3" : "justify-end px-4 pt-0.5",
         )}
       >
+        {/* The one-tap mute, kept in this browser (DESIGN.md, Sound). */}
+        <button
+          type="button"
+          aria-pressed={!master}
+          onClick={() => setMaster(!master)}
+          className={link}
+        >
+          {master ? "Mute" : "Unmute"}
+        </button>
+        {/* On a phone the tab row is tight: the sound list opens from a caret by Mute. */}
         <button
           type="button"
           aria-expanded={soundOpen}
+          aria-label={inline ? "Choose sounds" : undefined}
           onClick={() => setSoundOpen(!soundOpen)}
-          className={link}
+          className={inline ? "-ml-2 px-0.5 hover:text-ink" : link}
         >
-          Sound
+          {inline ? "▾" : "Sound"}
         </button>
         <button type="button" disabled={busy} onClick={giveUp} className={link}>
           Give up
@@ -327,8 +339,8 @@ function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean
 }
 
 /**
- * Which moments make a sound (DESIGN.md, Interaction: Sound is events). "Someone's here"
- * is on unless you turn it off; the chime and the tock are yours to turn on.
+ * Which sounds play (DESIGN.md, Interaction: Sound), under the one-tap mute. All start
+ * on; with reduced motion asked for, the rumble and the pulse start off.
  */
 function SoundSettings() {
   const { on, set } = useSound();

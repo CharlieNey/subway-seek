@@ -10,6 +10,7 @@ import { type Landing, landingPhase } from "./curseMotion.ts";
 import { useGame } from "./game.ts";
 import { isHider } from "./hide.ts";
 import { useLandings } from "./landing.ts";
+import { play } from "./sound.ts";
 import { CardFace } from "./ui/Card.tsx";
 
 const W = 264;
@@ -44,6 +45,14 @@ export function CardLanding() {
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
   }, [queue]);
+
+  // The card sound as each landing starts (DESIGN.md, Sound).
+  const heard = useRef<string | null>(null);
+  useEffect(() => {
+    if (!active || heard.current === active.key) return;
+    heard.current = active.key;
+    play("card");
+  }, [active]);
 
   // Fly it: transform and opacity only, set straight on the element each frame.
   useEffect(() => {
