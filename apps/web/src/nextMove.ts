@@ -12,14 +12,19 @@ import {
   type AskContext,
   anyReady,
   categoryOf,
+  chooseQuestion,
+  closedQuestions,
   isAnswered,
   type MapQuestion,
   nearestToCentre,
   nextReadyAt,
   planFromPlatform,
   planOnTrain,
+  QUESTION_GAP_SECONDS,
   type Question,
+  questionKey,
   questionOrigin,
+  questionPool,
   resolve,
   type SoloView,
   type TimetableIndex,
@@ -27,6 +32,7 @@ import {
 } from "@subway-seek/engine";
 import { hhmm as clockText } from "./ask.ts";
 import { displayName } from "./names.ts";
+import { stillPossible } from "./notHere.ts";
 
 export type NextTarget =
   | { kind: "none" }
@@ -60,7 +66,20 @@ export interface NextMoveInput {
   armedReady: boolean;
   /** Offer a good next question (practice rounds). */
   suggest: boolean;
+  /** A first round: suggest only from the questions it shows (SIMPLE_KINDS). */
+  firstRound?: boolean;
+  /** Stations you've stood in this round, so not theirs (notHere.ts). */
+  notHere?: readonly number[];
 }
+
+/** The questions a first round shows before "More questions" (AskPanel.tsx). */
+export const SIMPLE_KINDS: readonly Question["kind"][] = [
+  "radar",
+  "route",
+  "borough",
+  "express",
+  "moreRoutes",
+];
 
 /** An answer on its way: asked, its window still running. */
 export function answerPending(view: SoloView, t: number): boolean {
@@ -72,11 +91,21 @@ export function suggestedQuestion(
   idx: TimetableIndex,
   view: SoloView,
   t: number,
+  kinds?: readonly Question["kind"][],
+  cands: readonly number[] = view.candidates,
 ): { q: MapQuestion; ctx: AskContext } | null {
-  if (view.candidates.length < 2) return null;
+  if (cands.length < 2) return null;
   const origin = questionOrigin(view.seeker, t, idx);
-  const pick = thriftyQuestion(idx.ds, view.candidates, origin, view.thermometer, view.asked, t, 0);
-  return pick ? { q: pick.q, ctx: pick.ctx } : null;
+  if (!kinds) {
+    const pick = thriftyQuestion(idx.ds, cands, origin, view.thermometer, view.asked, t, 0);
+    return pick ? { q: pick.q, ctx: pick.ctx } : null;
+  }
+  // The same thrifty chooser, over the questions this round shows.
+  const closed = closedQuestions(view.asked);
+  const pool = questionPool(idx.ds, origin, view.thermometer).filter(
+    (x) => kinds.includes(x.q.kind) && !closed.has(questionKey(x.q)),
+  );
+  return chooseQuestion(idx.ds, cands, pool, view.asked, t, "thrifty", QUESTION_GAP_SECONDS);
 }
 
 const stationName = (idx: TimetableIndex, station: number) =>
@@ -91,9 +120,13 @@ function tripText(idx: TimetableIndex, trip: number): string {
   return `the ${route.display ?? route.letter} to ${stationName(idx, last)}`;
 }
 
-/** Where to ride: the candidate nearest the middle of what's left, not where you stand. */
-function rideTarget(idx: TimetableIndex, view: SoloView, here: number | null): number | null {
-  const others = view.candidates.filter((c) => c !== here);
+/** Where to ride: the station nearest the middle of what's left, not where you stand. */
+function rideTarget(
+  idx: TimetableIndex,
+  possible: readonly number[],
+  here: number | null,
+): number | null {
+  const others = possible.filter((c) => c !== here);
   if (others.length === 0) return null;
   return nearestToCentre(idx.ds, others).complex;
 }
@@ -102,16 +135,21 @@ function rideTarget(idx: TimetableIndex, view: SoloView, here: number | null): n
  * The travel half of a move: which train, or which stop, toward the stations still
  * possible. Null when there's nothing useful to do but wait.
  */
-function rideMove(input: NextMoveInput, lead: string): { line: string; target: NextTarget } | null {
+function rideMove(
+  input: NextMoveInput,
+  possible: readonly number[],
+  lead: string,
+): { line: string; target: NextTarget } | null {
   const { idx, view, t, tab } = input;
   const { ds } = idx;
   const s = resolve(view.seeker, t, idx);
   const here = s.kind === "platform" ? (ds.stations[s.station]?.complex ?? null) : null;
-  const goal = rideTarget(idx, view, here);
+  const goal = rideTarget(idx, possible, here);
   if (goal === null) return null;
   const targets = ds.complexes[goal]?.stations ?? [];
   const goalName = displayName(ds.complexes[goal]?.name ?? "");
-  const one = view.candidates.length === 1;
+  const one = possible.length === 1;
+  const toward = one ? goalName : "the stations still possible";
   if (s.kind === "platform") {
     const plan = planFromPlatform(idx, s.station, t, view.seekEnd, targets);
     const first = plan?.intents[0];
@@ -119,18 +157,17 @@ function rideMove(input: NextMoveInput, lead: string): { line: string; target: N
     if (first.type === "transfer") {
       // Most platforms in a complex share its name, so name the lines, as the board does.
       const to = ds.stations[first.to];
-      const here = ds.stations[s.station];
-      const named = to && here && displayName(to.name) !== displayName(here.name);
+      const from = ds.stations[s.station];
+      const named = to && from && displayName(to.name) !== displayName(from.name);
       const where = named ? stationName(idx, first.to) : `${to?.routes.join(" ") ?? ""} platform`;
       return {
-        line: `${lead}Change to the ${where}, toward ${one ? goalName : "the stations still possible"}.`,
+        line: `${lead}Change to the ${where}, toward ${toward}.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "transfer", to: first.to },
       };
     }
     if (first.type !== "board") return null;
     const trip = ds.trips[first.trip];
     if (!trip) return null;
-    const toward = one ? goalName : "the stations still possible";
     return {
       line: `${lead}Ride toward ${toward}: ${tripText(idx, first.trip)}.`,
       target:
@@ -162,7 +199,14 @@ export function nextMove(input: NextMoveInput): NextMove | null {
   if (view.result) return null;
   const s = resolve(view.seeker, t, idx);
   if (s.kind === "street") return null;
-  const n = view.candidates.length;
+  const possible = stillPossible(view, input.notHere ?? []);
+  const n = possible.length;
+  // Just stood in a station that could have been theirs: say so first (notHere.ts).
+  const hereComplex = s.kind === "platform" ? idx.ds.stations[s.station]?.complex : undefined;
+  const notHere =
+    hereComplex !== undefined && (input.notHere ?? []).includes(hereComplex)
+      ? `Not here. ${n} ${n === 1 ? "station" : "stations"} left. `
+      : "";
 
   if (answerPending(view, t)) {
     return { line: "Your answer lands in a few seconds. Watch the map.", target: { kind: "none" } };
@@ -172,26 +216,32 @@ export function nextMove(input: NextMoveInput): NextMove | null {
     return { line: to ? `Walking to the ${to} platform.` : "Walking.", target: { kind: "none" } };
   }
   if (n === 1) {
-    const ride = rideMove(input, "One station left. ");
-    return ride ?? { line: "One station left. Go there.", target: { kind: "none" } };
+    const lead = notHere ? "Not here. One station left. " : "One station left. ";
+    const ride = rideMove(input, possible, lead);
+    return ride ?? { line: `${lead}Go there.`, target: { kind: "none" } };
   }
   if (armed && armedReady) {
     return {
-      line: "Press Ask at the foot of the panel to send it.",
+      line: `${notHere}Press Ask at the foot of the panel to send it.`,
       target: tab === "ask" ? { kind: "askButton" } : { kind: "askTab" },
     };
   }
   if (anyReady(view.asked, t)) {
-    const first = view.asked.length === 0;
-    const line = first
-      ? "Ask a question to rule stations out."
-      : `${n} stations left. Ask another question to rule more out.`;
+    const line =
+      view.asked.length === 0
+        ? `${notHere}Ask a question to rule stations out.`
+        : `${notHere || `${n} stations left. `}Ask another question to rule more out.`;
     if (tab === "travel") return { line, target: { kind: "askTab" } };
-    const pick = suggest ? suggestedQuestion(idx, view, t) : null;
+    const pick = suggest
+      ? suggestedQuestion(idx, view, t, input.firstRound ? SIMPLE_KINDS : undefined, possible)
+      : null;
     return { line, target: pick ? { kind: "question", q: pick.q } : { kind: "none" } };
   }
-  const next = `Next question at ${clockText(nextReadyAt(view.asked, t))}. `;
+  const next = `${notHere}Next question at ${clockText(nextReadyAt(view.asked, t))}. `;
   return (
-    rideMove(input, next) ?? { line: `${next}Wait here, or ride on.`, target: { kind: "none" } }
+    rideMove(input, possible, next) ?? {
+      line: `${next}Wait here, or ride on.`,
+      target: { kind: "none" },
+    }
   );
 }

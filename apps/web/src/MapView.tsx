@@ -46,6 +46,7 @@ import {
 } from "./map/layers.ts";
 import { answeredShape, questionShape, type Shape } from "./map/shapes.ts";
 import { displayName } from "./names.ts";
+import { useNotHere } from "./notHere.ts";
 import { pathUntil, stepReplay, useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { walkToward } from "./street.ts";
@@ -288,7 +289,8 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     const data = buildStatic(world);
     const build = createLayerBuilder();
     let version = 0;
-    let round: RoundData = buildRound(world, useGame.getState().view, version);
+    const notHere = () => useNotHere.getState().complexes;
+    let round: RoundData = buildRound(world, useGame.getState().view, version, notHere());
     let trains: Train[] = [];
     let lastTrains = 0;
     let lastFrame = performance.now();
@@ -311,13 +313,19 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     const unsubscribeGame = useGame.subscribe((st, prev) => {
       if (st.view === prev.view) return;
       version += 1;
-      round = buildRound(world, st.view, version);
+      round = buildRound(world, st.view, version, notHere());
       const hider = st.view?.hider;
       const c = hider !== null && hider !== undefined ? world.ds.complexes[hider] : undefined;
       if (c && prev.view?.hider == null) {
         useGame.getState().setFollow(false);
         base.flyTo([c.lon, c.lat], 14);
       }
+    });
+    // A station you've stood in turns hollow, as an answer would clear it.
+    const unsubscribeNotHere = useNotHere.subscribe((st, prev) => {
+      if (st.complexes === prev.complexes) return;
+      version += 1;
+      round = buildRound(world, useGame.getState().view, version, st.complexes);
     });
     // On a phone, arming a question with a ring round you (radar, nearest) frames the
     // ring, since the small map rarely shows it whole. A computer's map stays put.
@@ -476,6 +484,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       cancelAnimationFrame(raf);
       unsubscribeGame();
       unsubscribeArm();
+      unsubscribeNotHere();
       unsubscribeReplay();
       base.setLayers([]);
       base.setVeil(null);
@@ -493,7 +502,15 @@ export function MapView({ credits = 0 }: { credits?: number }) {
           <FollowToggle
             on={follow && !mapFailed}
             disabled={!!mapFailed}
-            label={mapFailed ? "No map" : watching ? "Following the seeker" : "Following you"}
+            label={
+              mapFailed
+                ? "No map"
+                : watching
+                  ? "Following the seeker"
+                  : follow
+                    ? "Following you"
+                    : "Follow me"
+            }
             onToggle={() => setFollow(!follow)}
           />
         </div>

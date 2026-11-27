@@ -113,8 +113,15 @@ function pastBoundary(
   }
 }
 
-export function buildRound(world: World, view: SoloView | null, version: number): RoundData {
-  const candidates = new Set(view?.candidates ?? []);
+export function buildRound(
+  world: World,
+  view: SoloView | null,
+  version: number,
+  /** Stations you've stood in, so not theirs (notHere.ts): drawn ruled out. */
+  notHere: readonly number[] = [],
+): RoundData {
+  const out = new Set(notHere);
+  const candidates = new Set((view?.candidates ?? []).filter((c) => !out.has(c)));
   const hubComplex = view ? world.ds.stations[view.hub]?.complex : undefined;
   return {
     version,

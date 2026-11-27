@@ -42,6 +42,7 @@ import {
   saveHideResult,
   saveResult,
 } from "./history.ts";
+import { useLearn } from "./learn.ts";
 import { useReplay } from "./replay.ts";
 import { shareText } from "./share.ts";
 import { nyToday, saveStamp } from "./stamps.ts";
@@ -304,6 +305,8 @@ function onView(view: SoloView): Partial<GameStore> {
   // The stamp book (stamps.ts): a find as the seeker, or a finished hide. Not the bot's
   // replay of yesterday, and not a give-up's reveal.
   const home = view.hider === null ? undefined : world?.ds.complexes[view.hider];
+  // A finished seeking round: no longer a first round (learn.ts).
+  if (!replayOnly && !isHider(view)) useLearn.getState().markPlayed();
   if (home && !replayOnly) {
     if (isHider(view) && !view.incomplete) saveStamp("hidden", home.id, nyToday());
     else if (!isHider(view) && view.result.kind === "found") saveStamp("found", home.id, nyToday());

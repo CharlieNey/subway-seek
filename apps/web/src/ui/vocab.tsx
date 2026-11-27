@@ -329,6 +329,7 @@ export function Chip({
   hover,
   title,
   next,
+  wide,
 }: {
   family?: Family;
   state?: ChipState;
@@ -346,12 +347,14 @@ export function Chip({
   title?: string;
   /** The question the next-move line suggests. */
   next?: boolean;
+  /** A whole question as one chip, the width of its row. */
+  wide?: boolean;
 }) {
   const closed = state === "closed";
   return (
     <button
       type="button"
-      className={cn("sc-chip sc-focus", pict && "lm")}
+      className={cn("sc-chip sc-focus", pict && "lm", wide && "wide")}
       data-chip=""
       data-next={next || undefined}
       data-key={keys}

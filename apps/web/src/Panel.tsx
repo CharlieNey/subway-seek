@@ -19,7 +19,7 @@ import {
 } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { AskPanel, liveQuestion, QuestionBand, QuestionLog } from "./AskPanel.tsx";
-import { askBlocker, askLabel, hhmm, hm, priceText, WHAT_COUNTS } from "./ask.ts";
+import { askBlocker, askLabel, hhmm, priceText, WHAT_COUNTS } from "./ask.ts";
 import { GAME_NAME } from "./brand.ts";
 import {
   BootBoard,
@@ -40,10 +40,12 @@ import { HiderResult } from "./HiderResult.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
 import { sheetToggle, tapTab, usePlayLayout, useSheet } from "./layout.ts";
+import { useFirstRound } from "./learn.ts";
 import { stillStanding } from "./map/eliminate.ts";
 import { NextTargetContext, NO_TARGET, useNextMove, useNextTarget } from "./NextMove.tsx";
 import { displayName, formatDay } from "./names.ts";
 import type { NextMove } from "./nextMove.ts";
+import { checkedNow, stillPossible, useNotHere, useNotHereList } from "./notHere.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
 import { ReplayPanel } from "./ReplayPanel.tsx";
 import { ResultCard } from "./Result.tsx";
@@ -190,12 +192,11 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
  */
 function StationOnlyLine({ hiding }: { hiding: boolean }) {
   const off = useStreet((s) => s.off);
-  // On a phone, only what ends the round: the line about the full game is the homepage's.
+  // On a phone, only what ends the round.
   const short = usePlayLayout() === "stack";
   const line = hiding
     ? "This round ends at the station: you stay below, and the seeker finds you by reaching it."
-    : ((short ? null : streetOffLine(off)) ??
-      "This round ends when you reach the hider's station.");
+    : ((short ? null : streetOffLine(off)) ?? "The round ends when you reach the hider's station.");
   return (
     <div className="sc-station-only mt-1 max-w-[250px] text-[11.5px] leading-[1.35] text-ink-2">
       {line}
@@ -243,17 +244,33 @@ function RoundNumbers({
     search && center
       ? Math.round((search.possible.length / searchGrid(center).length) * 100)
       : null;
-  const n = view.candidates.length + standing;
+  const notHere = useNotHereList(view);
+  const n = stillPossible(view, notHere).length + standing;
+  // Plain words (the playable round): what each number is. A first round leaves out the
+  // hider's score minutes until they matter, on the result.
+  const first = useFirstRound();
   const cells: [string, string][] = [
     pct !== null
       ? [`${pct}%`, "of your circle left"]
-      : [String(n), n === 1 ? "station possible" : "stations possible"],
-    [hm(Math.max(0, view.seekEnd - t)), "left to find it"],
-    [`+${view.bonusSeconds / 60}`, "min to their score"],
+      : [String(n), n === 1 ? "station it could be" : "stations it could be"],
+    [String(Math.max(0, Math.ceil((view.seekEnd - t) / 60))), "min left to find them"],
+    ...(first
+      ? []
+      : [
+          [`+${view.bonusSeconds / 60}`, "min your questions add to their score"] as [
+            string,
+            string,
+          ],
+        ]),
   ];
   return (
     <>
-      <div className="sc-numbers mx-4 grid grid-cols-3 border-t-2 border-ink">
+      <div
+        className={cn(
+          "sc-numbers mx-4 grid border-t-2 border-ink",
+          cells.length === 3 ? "grid-cols-3" : "grid-cols-2",
+        )}
+      >
         {cells.map(([value, label], i) => (
           <div
             key={label}
@@ -447,6 +464,7 @@ function NoticeRow({
 function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: number }) {
   const { armed, send, busy } = useGamePick("armed", "send", "busy");
   const next = useNextTarget();
+  const first = useFirstRound();
   if (!armed) return null;
   const blocker = askBlocker(armed, view, t, world.idx);
   return (
@@ -462,7 +480,9 @@ function AskConfirm({ world, view, t }: { world: World; view: SoloView; t: numbe
           {askLabel(armed)}
         </span>
       </Button>
-      <WainscotText>{blocker ?? priceText(armed)}</WainscotText>
+      <WainscotText>
+        {blocker ?? (first ? "The answer comes back in about 10 seconds." : priceText(armed))}
+      </WainscotText>
     </>
   );
 }
@@ -580,6 +600,11 @@ export function Panel() {
       ? askBlocker(armed, view, t, world.idx) === null
       : false;
   const move = useNextMove(live ? world : null, view, t, tab, armed, armedReady);
+  // Stations you've stood in, in a round that ends at the station (notHere.ts).
+  useEffect(() => {
+    if (world && view && t !== null)
+      useNotHere.getState().sync(view, checkedNow(view, t, world.idx));
+  });
   // Leaving a tab unmounts its chips without a mouseleave: forget the hover.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on tab change only
   useEffect(() => hover(null), [tab]);
@@ -699,6 +724,20 @@ export function Panel() {
             </>
           )}
           <NoticeRow view={view} onFoot={onFoot && !over} move={over ? null : move} />
+          {/* The question in its window, then its answer: above the list, so it's never
+
+              scrolled out of view (the playable round; on a phone it was, 2026-11-27). */}
+
+          {!over && band.value && (
+            <div data-land="question" className={band.leaving ? "sc-anim-collapse" : undefined}>
+              <QuestionBand
+                key={`${band.value.at}|${questionKey(band.value.q)}`}
+                a={band.value}
+                world={world}
+                t={t}
+              />
+            </div>
+          )}
           <div className="sc-sheet-body contents">
             <CurseChips world={world} t={t} view={view} />
           </div>
@@ -721,19 +760,6 @@ export function Panel() {
               </>
             ) : (
               <>
-                {band.value && (
-                  <div
-                    data-land="question"
-                    className={band.leaving ? "sc-anim-collapse" : undefined}
-                  >
-                    <QuestionBand
-                      key={`${band.value.at}|${questionKey(band.value.q)}`}
-                      a={band.value}
-                      world={world}
-                      t={t}
-                    />
-                  </div>
-                )}
                 {tab === "travel" ? (
                   <TravelPanel world={world} t={t} />
                 ) : (

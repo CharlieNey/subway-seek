@@ -599,7 +599,7 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
       // walking, which needs Google's panoramas. The seeker stays below, as the hider does
       // (DESIGN.md, Phase 3, Fallback; decided 2026-11-27).
       if (view.stationOnly)
-        return <WainscotText>Riding below · the round ends at the station</WainscotText>;
+        return <WainscotText>Choose a train on the board to ride it.</WainscotText>;
       return (
         <>
           <Button

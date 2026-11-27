@@ -17,6 +17,7 @@ import { answerWord, radarLabel } from "./ask.ts";
 import { useNow } from "./Connection.tsx";
 import { useGame, type World } from "./game.ts";
 import { shapeQuestion } from "./MapView.tsx";
+import { stillPossible, useNotHereList } from "./notHere.ts";
 import { useReplay } from "./replay.ts";
 import { searchScene } from "./searchArea.ts";
 import { storageKey } from "./storage.ts";
@@ -112,11 +113,13 @@ function RoundLegend({ world }: { world: World }) {
   const t = useGameTime(2);
   useNow(2);
   const [read, setRead] = useState(loadRead);
+  const notHere = useNotHereList(view);
   const [open, setOpen] = useState<string | null>(null);
   if (!view || t === null) return null;
 
-  const n = view.candidates.length;
-  const possible = `${n} ${n === 1 ? "station" : "stations"} still possible`;
+  const n = stillPossible(view, notHere).length;
+  // While a question is previewed, the count is today's, not a forecast: say so.
+  const possible = `Now ${n} ${n === 1 ? "station" : "stations"} it could be`;
   const search = view.hasSpot ? searchScene(world, view, t) : null;
   const sq = view.result ? null : shapeQuestion(view, t, world);
   let id = "stations";
@@ -144,7 +147,7 @@ function RoundLegend({ world }: { world: World }) {
     if (answer && isAnswered({ ...sq, answer } as never)) {
       id = "answered";
       title = `${answerWord(answer, sq.q, world.idx)} · ${n} left`;
-      keys = [<span key="p">{POSSIBLE} Still possible</span>, <span key="o">{OUT} Cleared</span>];
+      keys = [<span key="p">{POSSIBLE} Still possible</span>, <span key="o">{OUT} Ruled out</span>];
     } else if (questionTitle(sq.q)) {
       id = sq.q.kind;
       title = questionTitle(sq.q);

@@ -5,7 +5,9 @@
 import { type Question, questionKey, type SoloView } from "@subway-seek/engine";
 import { createContext, useContext, useMemo } from "react";
 import type { World } from "./game.ts";
+import { useFirstRound } from "./learn.ts";
 import { type NextMove, type NextTarget, nextMove } from "./nextMove.ts";
+import { useNotHereList } from "./notHere.ts";
 
 const NONE: NextTarget = { kind: "none" };
 
@@ -33,6 +35,8 @@ export function useNextMove(
   armed: Question | null,
   armedReady: boolean,
 ): NextMove | null {
+  const firstRound = useFirstRound();
+  const notHere = useNotHereList(view);
   const bucket = t === null ? null : Math.floor(t / 15);
   const armedKey = armed ? questionKey(armed) : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: t moves in 15 s steps; armed by key
@@ -47,8 +51,10 @@ export function useNextMove(
       armedReady,
       // A suggested question helps you learn; the daily stays a puzzle (DESIGN.md).
       suggest: !view.daily,
+      firstRound,
+      notHere,
     });
-  }, [world, view, bucket, tab, armedKey, armedReady]);
+  }, [world, view, bucket, tab, armedKey, armedReady, firstRound, notHere]);
 }
 
 export { NONE as NO_TARGET };

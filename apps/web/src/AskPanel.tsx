@@ -18,6 +18,7 @@ import {
   QUESTION_RULES,
   type Question,
   type QuestionCategory,
+  questionKey,
   questionOrigin,
   RADAR_MILES,
   resolve,
@@ -43,11 +44,13 @@ import {
   readyAt,
   shortQuestion,
   toggleArm,
+  yesNoText,
 } from "./ask.ts";
 import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { canHover } from "./layout.ts";
-import { useIsNextQuestion } from "./NextMove.tsx";
+import { useFirstRound } from "./learn.ts";
+import { useIsNextQuestion, useNextTarget } from "./NextMove.tsx";
 import { displayName } from "./names.ts";
 import {
   type ArrivedPhoto,
@@ -62,6 +65,7 @@ import { onStreet } from "./street.ts";
 import { FAMILY_NAME, type Family, familyOf, familyOfCategory } from "./ui/family.ts";
 import {
   AnswerWindow,
+  Button,
   Chip,
   CoolRow,
   ExpressBand,
@@ -75,14 +79,6 @@ import {
 } from "./ui/vocab.tsx";
 import { LINES, lineFor, roundKey } from "./voice.ts";
 
-const CATEGORY_TITLE: Record<Exclude<QuestionCategory, "onFoot">, string> = {
-  matching: "Matching · same as mine?",
-  measuring: "Measuring · closer than me?",
-  radar: "Radar · within …",
-  thermometer: "Thermometer",
-  tentacles: "Nearest · which one are you closest to?",
-  photo: "Photos",
-};
 const STATION_CATEGORIES = [
   "matching",
   "measuring",
@@ -140,10 +136,12 @@ function QChip({
   dim,
   title,
   view,
+  wide,
 }: {
   q: Question;
   cooling: boolean;
   children: ReactNode;
+  wide?: boolean;
   pict?: LandmarkKind;
   count?: ReactNode;
   keys?: string;
@@ -160,6 +158,7 @@ function QChip({
       family={familyOf(q)}
       state={state}
       next={next && state === "ready"}
+      wide={wide}
       pict={pict}
       count={count}
       keys={keys}
@@ -372,11 +371,11 @@ function AskingFrom({
       <div className="flex flex-col items-end gap-1 text-right text-[12px] text-ink-2">
         {gapLeft > 0 ? (
           <>
-            <span>Next question in {Math.ceil(gapLeft / 60)} min</span>
+            <span>One question every 5 min · next at {hhmm(gapEndsAt(view))}</span>
             <TileTimer total={5} left={gapLeft / 60} size={9} />
           </>
         ) : (
-          <span>Next question: ready</span>
+          <span>You can ask now</span>
         )}
       </div>
     </div>
@@ -480,7 +479,7 @@ function PhotosBlock({
       t={t}
       view={view}
       world={world}
-      title={CATEGORY_TITLE.photo}
+      title="Photos"
       family="photo"
       open={open}
       onToggle={onToggle}
@@ -518,24 +517,203 @@ function PhotosBlock({
 }
 
 /** The five station categories, ready ones as blocks and cooling ones as rule-rows. */
-function StationCategories({
+/** A question's sentence, as the band and the log say it. */
+function sentence(q: Question, world: World, view: SoloView, t: number): string {
+  return describeQuestion(q, world.ds, askContextFor(q, view, t, world));
+}
+
+function askContextFor(q: Question, view: SoloView, t: number, world: World) {
+  return {
+    origin: questionOrigin(view.seeker, t, world.idx),
+    baseline: q.kind === "thermometer" ? view.thermometer : null,
+  };
+}
+
+/** When this family can next be asked, in words, if that's later than the shared gap. */
+function waitText(view: SoloView, t: number, category: QuestionCategory): string | null {
+  const ready = readyAt(view, category);
+  if (t >= ready || ready <= gapEndsAt(view)) return null;
+  return `again at ${hhmm(ready)}`;
+}
+
+/** The small label at a row's end: the family, its wait, and in later rounds its price. */
+function RowLabel({
+  category,
+  view,
+  t,
+}: {
+  category: Exclude<QuestionCategory, "onFoot">;
+  view: SoloView;
+  t: number;
+}) {
+  const first = useFirstRound();
+  const wait = waitText(view, t, category);
+  const price = first ? null : `+${QUESTION_RULES[category].bonusSeconds / 60} min`;
+  return (
+    <span className="sc-ask-label">
+      {[FAMILY_NAME[familyOfCategory(category)], wait, price].filter(Boolean).join(" · ")}
+    </span>
+  );
+}
+
+/** One question in sentence form, its options under it, and what Yes and No do. */
+function AskRow({
+  family,
+  text,
+  chip,
+  label,
+  options,
+  yesNo,
+  dim,
+}: {
+  family: Family;
+  /** The sentence, with options under it. */
+  text?: ReactNode;
+  /** Or the question itself as one wide chip, when there's nothing to choose. */
+  chip?: ReactNode;
+  label: ReactNode;
+  options?: ReactNode;
+  yesNo?: string;
+  dim: boolean;
+}) {
+  return (
+    <div className="sc-ask-row" data-dim={dim || undefined}>
+      {chip ?? (
+        <p className="sc-ask-sentence">
+          <FamilySquare family={family} />
+          <span className="min-w-0 flex-1">{text}</span>
+        </p>
+      )}
+      {options && <div className="sc-chips">{options}</div>}
+      <p className="sc-ask-yesno">
+        {yesNo && <span>{yesNo}</span>}
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/** The hovered or armed question's hint, under the group it belongs to. */
+function GroupHint({
+  kinds,
   world,
   view,
   t,
+}: {
+  kinds: readonly Question["kind"][];
+  world: World;
+  view: SoloView;
+  t: number;
+}) {
+  const { armed, hovered } = useAsking(view);
+  const q = [hovered, armed].find((x) => x && kinds.includes(x.kind)) ?? null;
+  if (!q) return null;
+  const hint = questionHint(q, view, t, world.idx, {
+    complexName: (c) => displayName(world.ds.complexes[c]?.name ?? "?"),
+    borough: (c) => world.ds.complexes[c]?.borough ?? "?",
+  });
+  const category = categoryOf(q);
+  const ready = readyAt(view, category);
+  return (
+    <div className="flex gap-[9px] bg-glaze px-2.5 py-2 text-[12.5px] leading-[1.4] shadow-[inset_0_0_0_1px_var(--color-grout)]">
+      <span className="mt-[3px]">
+        <FamilySquare family={familyOf(q)} />
+      </span>
+      <span>
+        <b className="font-semibold">{hint.lead}</b> {hint.rest}
+        {t < ready && ` You can ask it at ${hhmm(ready)}; choose it now to have it ready.`}
+      </span>
+    </div>
+  );
+}
+
+function Group({
+  title,
+  children,
+  kinds,
+  world,
+  view,
+  t,
+}: {
+  title: string;
+  children: ReactNode;
+  kinds: readonly Question["kind"][];
+  world: World;
+  view: SoloView;
+  t: number;
+}) {
+  return (
+    <section className="mx-4 mt-3">
+      <Rule>{title}</Rule>
+      <div className="flex flex-col gap-3 pt-2">
+        {children}
+        <GroupHint kinds={kinds} world={world} view={view} t={t} />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The good next question, in practice rounds (nextMove.ts): the thrifty seeker's pick
+ * from the stations still possible, as a sentence with a button that chooses it.
+ */
+function GoodNext({ world, view, t }: { world: World; view: SoloView; t: number }) {
+  const target = useNextTarget();
+  const { armed, toggle } = useAsking(view);
+  if (target.kind !== "question") return null;
+  const q = target.q;
+  const chosen = armed !== null && questionKey(armed) === questionKey(q);
+  return (
+    <section className="sc-good-next mx-4 mt-3">
+      <Rule>A good next question</Rule>
+      <div className="flex flex-col gap-2 pt-2">
+        <p className="sc-ask-sentence">
+          <FamilySquare family={familyOf(q)} />
+          <span className="min-w-0 flex-1">{sentence(q, world, view, t)}</span>
+        </p>
+        <p className="sc-ask-yesno">
+          {yesNoText(q, view, t, world.idx, {
+            borough: (c) => world.ds.complexes[c]?.borough ?? "?",
+          })}
+        </p>
+        <div>
+          <Button small next={!chosen} onClick={() => !chosen && toggle(q)}>
+            {chosen ? "Chosen · press Ask below" : "Choose this question"}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The station questions as sentences (DESIGN.md, Interaction: the playable round), grouped
+ * by what they ask about. A family that's waiting dims in place with its time; nothing
+ * collapses after you ask. In a first round the places and the thermometer fold away.
+ */
+function StationQuestions({
+  world,
+  view,
+  t,
+  skipPhotos,
   opened,
   toggle,
-  skipPhotos,
 }: {
   world: World;
   view: SoloView;
   t: number;
+  skipPhotos?: boolean;
   opened: Set<string>;
   toggle: (c: string) => void;
-  skipPhotos?: boolean;
 }) {
   const { ds } = world;
   const { send, busy } = useGamePick("send", "busy");
+  const first = useFirstRound();
+  const [more, setMore] = useState(false);
   const origin = questionOrigin(view.seeker, t, world.idx);
+  const cooling = (c: QuestionCategory) => t < readyAt(view, c);
+  const yn = (q: Question) =>
+    yesNoText(q, view, t, world.idx, { borough: (c) => ds.complexes[c]?.borough ?? "?" });
   const thermoFrom = view.thermometer;
   const moved = thermoFrom
     ? Math.hypot(
@@ -543,185 +721,196 @@ function StationCategories({
         (origin.lon - thermoFrom.lon) * 111_320 * Math.cos((origin.lat * Math.PI) / 180),
       )
     : 0;
+  const landmarkChips = (kind: "matching" | "measuring") =>
+    LANDMARK_KINDS.map((landmark) => (
+      <QChip
+        key={landmark}
+        q={{ kind, landmark }}
+        cooling={cooling(kind)}
+        pict={landmark}
+        view={view}
+      >
+        {LANDMARK_CHIP[landmark]}
+      </QChip>
+    ));
+  const showMore = !first || more;
   return (
     <>
-      {STATION_CATEGORIES.filter((c) => !(skipPhotos && c === "photo")).map((category) => {
-        const props = {
-          category,
-          t,
-          view,
-          world,
-          title: CATEGORY_TITLE[category],
-          family: familyOfCategory(category),
-          open: opened.has(category),
-          onToggle: () => toggle(category),
-        } as const;
-        switch (category) {
-          case "matching":
-            return (
-              <Category key={category} {...props}>
-                {(cooling) => (
-                  <>
-                    <Prompt>Is your nearest … the same as mine?</Prompt>
-                    <div className="sc-chips">
-                      {LANDMARK_KINDS.map((kind) => (
-                        <QChip
-                          key={kind}
-                          q={{ kind: "matching", landmark: kind }}
-                          cooling={cooling}
-                          pict={kind}
-                          view={view}
-                        >
-                          {LANDMARK_CHIP[kind]}
-                        </QChip>
-                      ))}
-                    </div>
-                    <Prompt>Your station</Prompt>
-                    <div className="sc-chips">
-                      <QChip q={{ kind: "borough" }} cooling={cooling} view={view}>
-                        Same borough?
-                      </QChip>
-                      <QChip q={{ kind: "express" }} cooling={cooling} view={view}>
-                        Same kind of stop?
-                      </QChip>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span className="mr-1 text-[12px] text-ink-2">Lines here:</span>
-                      {linesHere(world, origin.complex).map((r) => (
-                        <RouteChip key={r.letter} route={r} cooling={cooling} view={view} />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </Category>
-            );
-          case "measuring":
-            return (
-              <Category key={category} {...props}>
-                {(cooling) => (
-                  <>
-                    <Prompt>Are you closer to a … than me?</Prompt>
-                    <div className="sc-chips">
-                      {LANDMARK_KINDS.map((kind) => (
-                        <QChip
-                          key={kind}
-                          q={{ kind: "measuring", landmark: kind }}
-                          cooling={cooling}
-                          pict={kind}
-                          view={view}
-                        >
-                          {LANDMARK_CHIP[kind]}
-                        </QChip>
-                      ))}
-                      <QChip q={{ kind: "moreRoutes" }} cooling={cooling} view={view}>
-                        More lines than mine?
-                      </QChip>
-                    </div>
-                  </>
-                )}
-              </Category>
-            );
-          case "radar":
-            return (
-              <Category key={category} {...props}>
-                {(cooling) => (
-                  <div className="sc-chips">
-                    {RADAR_MILES.map((miles, i) => (
-                      <QChip
-                        key={miles}
-                        q={{ kind: "radar", miles }}
-                        cooling={cooling}
-                        keys={String(i + 1)}
-                        view={view}
-                      >
-                        {radarLabel(miles)}
-                      </QChip>
-                    ))}
-                  </div>
-                )}
-              </Category>
-            );
-          case "thermometer":
-            return (
-              <Category key={category} {...props}>
-                {(cooling) => (
-                  <>
-                    <Prompt>
-                      {!thermoFrom
-                        ? "Start it here, ride somewhere else, then ask if you got closer."
-                        : thermoFrom.complex === origin.complex || moved < 400
-                          ? `Move 400 m to another station first · ${metersText(moved)} so far`
-                          : `${distanceText(moved)} from ${displayName(ds.complexes[thermoFrom.complex]?.name ?? "?")}`}
-                    </Prompt>
-                    <div className="sc-chips">
-                      <FreeChip disabled={busy} onClick={() => send({ type: "startThermometer" })}>
-                        {thermoFrom ? "Restart here · free" : "Start here · free"}
-                      </FreeChip>
-                      <QChip q={{ kind: "thermometer" }} cooling={cooling} view={view}>
-                        Am I closer?
-                      </QChip>
-                    </div>
-                  </>
-                )}
-              </Category>
-            );
-          case "tentacles":
-            return (
-              <Category key={category} {...props}>
-                {(cooling) => (
-                  <>
-                    <Prompt>Of the … near me, which is nearest you?</Prompt>
-                    <div className="sc-chips">
-                      {TENTACLE_KINDS.map((kind) => {
-                        const miles = TENTACLE_MILES[kind] as number;
-                        const n = landmarksWithin(ds, kind, origin, miles).length;
-                        return (
-                          <QChip
-                            key={kind}
-                            q={{ kind: "tentacles", landmark: kind }}
-                            cooling={cooling}
-                            pict={kind}
-                            count={
-                              n === 0
-                                ? `· none within ${radarLabel(miles)}`
-                                : `· ${n} within ${radarLabel(miles)}`
-                            }
-                            dim={
-                              n === 0
-                                ? `No ${LANDMARK_WORDS[kind].many} within ${milesText(miles)} of you`
-                                : undefined
-                            }
-                            view={view}
-                          >
-                            {capital(LANDMARK_WORDS[kind].many)}
-                          </QChip>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </Category>
-            );
-          case "photo":
-            return (
-              <PhotosBlock
-                key="photo"
-                world={world}
-                view={view}
-                t={t}
-                open={opened.has("photo")}
-                onToggle={() => toggle("photo")}
-              />
-            );
-        }
-        return null;
-      })}
+      <Group title="How far" kinds={["radar"]} world={world} view={view} t={t}>
+        <AskRow
+          family="radar"
+          dim={cooling("radar")}
+          text="Is your station within … of me?"
+          label={<RowLabel category="radar" view={view} t={t} />}
+          options={RADAR_MILES.map((miles, i) => (
+            <QChip
+              key={miles}
+              q={{ kind: "radar", miles }}
+              cooling={cooling("radar")}
+              keys={canHover() ? String(i + 1) : undefined}
+              view={view}
+            >
+              {milesText(miles)}
+            </QChip>
+          ))}
+          yesNo={yn({ kind: "radar", miles: 1 })}
+        />
+      </Group>
+      <Group
+        title="Your station"
+        kinds={["route", "borough", "express", "moreRoutes"]}
+        world={world}
+        view={view}
+        t={t}
+      >
+        <AskRow
+          family="match"
+          dim={cooling("matching")}
+          text="Does this line stop at your station?"
+          label={<RowLabel category="matching" view={view} t={t} />}
+          options={linesHere(world, origin.complex).map((r) => (
+            <RouteChip key={r.letter} route={r} cooling={cooling("matching")} view={view} />
+          ))}
+          yesNo={yn({ kind: "route", letter: "" })}
+        />
+        {(["borough", "express"] as const).map((kind) => (
+          <AskRow
+            key={kind}
+            family="match"
+            dim={cooling("matching")}
+            chip={
+              <QChip q={{ kind }} cooling={cooling("matching")} view={view} wide>
+                {sentence({ kind }, world, view, t)}
+              </QChip>
+            }
+            label={<RowLabel category="matching" view={view} t={t} />}
+            yesNo={yn({ kind })}
+          />
+        ))}
+        <AskRow
+          family="measure"
+          dim={cooling("measuring")}
+          chip={
+            <QChip q={{ kind: "moreRoutes" }} cooling={cooling("measuring")} view={view} wide>
+              {sentence({ kind: "moreRoutes" }, world, view, t)}
+            </QChip>
+          }
+          label={<RowLabel category="measuring" view={view} t={t} />}
+          yesNo={yn({ kind: "moreRoutes" })}
+        />
+      </Group>
+      {first && (
+        <div className="mx-4 mt-3">
+          <button
+            type="button"
+            className="sc-focus text-[12.5px] text-ink-2 underline decoration-grout underline-offset-2"
+            aria-expanded={more}
+            onClick={() => setMore(!more)}
+          >
+            {more ? "Fewer questions" : "More questions: places near you, hotter or colder"}
+          </button>
+        </div>
+      )}
+      {showMore && (
+        <>
+          <Group
+            title="Places near you"
+            kinds={["matching", "measuring", "tentacles"]}
+            world={world}
+            view={view}
+            t={t}
+          >
+            <AskRow
+              family="match"
+              dim={cooling("matching")}
+              text="Is your nearest … the same as mine?"
+              label={<RowLabel category="matching" view={view} t={t} />}
+              options={landmarkChips("matching")}
+              yesNo="Yes keeps the stations with the same nearest one, No clears them."
+            />
+            <AskRow
+              family="measure"
+              dim={cooling("measuring")}
+              text="Are you closer to a … than I am?"
+              label={<RowLabel category="measuring" view={view} t={t} />}
+              options={landmarkChips("measuring")}
+              yesNo={yn({ kind: "measuring", landmark: "park" })}
+            />
+            <AskRow
+              family="tent"
+              dim={cooling("tentacles")}
+              text="Of the … near me, which is nearest you?"
+              label={<RowLabel category="tentacles" view={view} t={t} />}
+              options={TENTACLE_KINDS.map((kind) => {
+                const miles = TENTACLE_MILES[kind] as number;
+                const n = landmarksWithin(ds, kind, origin, miles).length;
+                return (
+                  <QChip
+                    key={kind}
+                    q={{ kind: "tentacles", landmark: kind }}
+                    cooling={cooling("tentacles")}
+                    pict={kind}
+                    count={
+                      n === 0
+                        ? `· none within ${radarLabel(miles)}`
+                        : `· ${n} within ${radarLabel(miles)}`
+                    }
+                    dim={
+                      n === 0
+                        ? `No ${LANDMARK_WORDS[kind].many} within ${milesText(miles)} of you`
+                        : undefined
+                    }
+                    view={view}
+                  >
+                    {capital(LANDMARK_WORDS[kind].many)}
+                  </QChip>
+                );
+              })}
+              yesNo={yn({ kind: "tentacles", landmark: "museum" })}
+            />
+          </Group>
+          <Group title="Hotter or colder" kinds={["thermometer"]} world={world} view={view} t={t}>
+            <AskRow
+              family="thermo"
+              dim={cooling("thermometer")}
+              text={
+                !thermoFrom
+                  ? "Start here, ride somewhere else, then ask: am I closer to you than where I started?"
+                  : thermoFrom.complex === origin.complex || moved < 400
+                    ? `Started. Move 400 m to another station, then ask · ${metersText(moved)} so far`
+                    : `Am I closer to you than ${displayName(ds.complexes[thermoFrom.complex]?.name ?? "?")}? (${distanceText(moved)} from it)`
+              }
+              label={<RowLabel category="thermometer" view={view} t={t} />}
+              options={
+                <>
+                  <FreeChip disabled={busy} onClick={() => send({ type: "startThermometer" })}>
+                    {thermoFrom ? "Start again here · free" : "Start here · free"}
+                  </FreeChip>
+                  <QChip q={{ kind: "thermometer" }} cooling={cooling("thermometer")} view={view}>
+                    Am I closer?
+                  </QChip>
+                </>
+              }
+              yesNo={yn({ kind: "thermometer" })}
+            />
+          </Group>
+        </>
+      )}
+      {!skipPhotos && (
+        <PhotosBlock
+          world={world}
+          view={view}
+          t={t}
+          open={opened.has("photo")}
+          onToggle={() => toggle("photo")}
+        />
+      )}
     </>
   );
 }
 
 /**
- * On foot, the station categories fold into one list with their next ready times, so the
+ * On foot, the station questions fold into one list with their next ready times, so the
  * On foot block and the photos lead.
  */
 function FoldedStation({
@@ -752,7 +941,7 @@ function FoldedStation({
       </button>
       {show ? (
         <div className="-mx-4">
-          <StationCategories
+          <StationQuestions
             world={world}
             view={view}
             t={t}
@@ -770,11 +959,7 @@ function FoldedStation({
                 <FamilySquare family={familyOfCategory(c)} />
                 <span className="flex-1">{FAMILY_NAME[familyOfCategory(c)]}</span>
                 <span className="text-[12px] text-ink-2 tabular-nums">
-                  {t >= ready
-                    ? "ready"
-                    : ready > gapEndsAt(view)
-                      ? `next ${hhmm(ready)}`
-                      : "after the gap"}
+                  {t >= ready ? "ready" : `at ${hhmm(ready)}`}
                 </span>
               </li>
             );
@@ -820,15 +1005,18 @@ export function AskPanel({ world, t }: { world: World; t: number }) {
           <FoldedStation world={world} view={view} t={t} opened={opened} toggle={toggle} />
         </>
       ) : (
-        <StationCategories
-          world={world}
-          view={view}
-          t={t}
-          opened={opened}
-          toggle={toggle}
-          // No photos when the round ends at the station, or when there's nothing to photograph.
-          skipPhotos={view.stationOnly || (!view.hasSpot && !view.hasExitPhoto)}
-        />
+        <>
+          <GoodNext world={world} view={view} t={t} />
+          <StationQuestions
+            world={world}
+            view={view}
+            t={t}
+            opened={opened}
+            toggle={toggle}
+            // No photos when the round ends at the station, or when there's nothing to photograph.
+            skipPhotos={view.stationOnly || (!view.hasSpot && !view.hasExitPhoto)}
+          />
+        </>
       )}
       <QuestionLog world={world} />
       <p className="px-4 pt-3 pb-4 text-[10.5px] text-ink-3">{world.ds.landmarkAttribution}</p>

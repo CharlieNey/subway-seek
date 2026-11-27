@@ -103,8 +103,8 @@ export function refuseGoogle(reason: string): void {
 /** The one line the page shows about it, or null while the street endgame is on. */
 export function streetOffLine(off: StreetOff | null): string | null {
   if (off === null) return null;
-  if (off === "phone") return "On a phone, this round ends when you reach the hider's station.";
+  if (off === "phone") return "On a phone, the round ends when you reach the hider's station.";
   return off === "demo" || off === "replay"
-    ? "This round ends when you reach the hider's station. The full game then searches the street in Street View."
-    : "Google's map isn't available right now, so this round ends at the station, on the free map.";
+    ? "The round ends when you reach the hider's station."
+    : "Street View isn't available right now, so the round ends when you reach the hider's station.";
 }
