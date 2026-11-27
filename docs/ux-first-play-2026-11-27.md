@@ -2,6 +2,8 @@
 
 *Why:* Charlie played the live game and found it hard to play, "especially working out how to ask a question" (brief: playability round). This file records where a newcomer gets stuck, worst first, before anything was redesigned. The fixes are proposed in `DESIGN.md` (Interaction: the playable round) and built on branch `playable-1`.
 
+Before and after screenshots at phone and desktop size, and the report for Charlie: [Playable Round 1](https://claude.ai/artifact/BjmLA5TStKRbzRpX3in8G1) (private link).
+
 ## How it was run
 
 - **Cold play, yes.** Two fresh Claude sessions, each started from an empty folder with no project files or instructions, so neither had seen this repo or its docs. Each was given only the local address and a headed Chrome, and told to play today's daily, then a practice round, narrating what it thought each control did. One played at phone size (390×844), one at desktop size (1440×900). Neither read the source.

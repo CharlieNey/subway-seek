@@ -44,6 +44,13 @@ The blocking items from the launch-prep review of 2026-10-06, what's done, and w
 - [ ] Play a full daily, practice seeking and You hide on the deployed site, on Chrome, Safari and Firefox. *2026-11-27: Chrome on a computer done on the live site, and WebKit with an iPhone profile; Charlie's real iPhone, Safari and Firefox still to do.*
 - [x] S3 role-filtered sockets, paced seeker, panorama-ID persistence, hider results and separate browser history (2026-10-08). Photo screens use fixtures; the bot has no photo perception.
 
+## Playability round (2026-11-27)
+
+Ahead of everything else below. Charlie found the live game hard to play; two cold plays by fresh testers found where (`docs/ux-first-play-2026-11-27.md`), and branch `playable-1` changes what the seeker sees, not the rules. On the second cold play no one stalled.
+
+- [ ] **Charlie: play the branch** (README, Run it, in a private window so it counts as a first visit) and decide the proposals in DESIGN.md's decision log, dated 2026-11-27.
+- [ ] Then merge `playable-1` with fun round 1, and deploy both by `DEPLOY-FUN-ROUND.md`.
+
 ## Fun round 1 (2026-11-27)
 
 Built on `fun-round-1`, reviewed, and QA'd locally on 2026-11-27: the ending, sound, par, the daily percentile, days running, the stamp book, Outer boroughs Saturdays (from 5 December), the 90-day log sweep, the phone touch sizes. QA covered every page and mode at desktop, 390×844 and 360×740, in Chromium and in WebKit with an iPhone profile. It also covered keyboard only, a slow connection, reload during an answer, two tabs, back and forward, a server restart mid-round, a daily played to the find and played again, and a themed Saturday through the dev date flag. The first screen is +2.9 KB gzipped on the homepage, and paints no slower.
