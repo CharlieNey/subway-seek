@@ -46,6 +46,7 @@ import {
 } from "./ask.ts";
 import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
+import { canHover } from "./layout.ts";
 import { displayName } from "./names.ts";
 import {
   type ArrivedPhoto,
@@ -122,7 +123,8 @@ function useAsking(view: SoloView) {
     hovered,
     state: (q: Question, cooling: boolean) => chipState(q, { armed, closed, cooling }),
     toggle: (q: Question) => arm(toggleArm(armed, q)),
-    hover,
+    // A tap fires enter and focus too: on a touch screen only the armed question draws.
+    hover: (q: Question | null) => (q === null || canHover()) && hover(q),
   };
 }
 

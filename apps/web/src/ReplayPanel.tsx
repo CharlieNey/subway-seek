@@ -13,9 +13,7 @@ import { displayName } from "./names.ts";
 import { Numbers, shareFor, useNewRound } from "./Result.tsx";
 import { REPLAY_REAL_SECONDS, useReplay } from "./replay.ts";
 import { currentEvent, type LogEvent } from "./replayLog.ts";
-import { CopyButton } from "./ui/CopyButton.tsx";
 import { NameTablet } from "./ui/NameTablet.tsx";
-import { useNarrow } from "./ui/useNarrow.ts";
 import { Button, FamilySquare, Wainscot } from "./ui/vocab.tsx";
 
 function Mark({ e }: { e: LogEvent }) {
@@ -41,7 +39,6 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
     "replayOnly",
     "botReplay",
   );
-  const narrow = useNarrow();
   const newRound = useNewRound();
   const { log, t, seek } = useReplay();
   const box = useRef<HTMLDivElement>(null);
@@ -127,15 +124,7 @@ export function ReplayPanel({ world, roundLine }: { world: World; roundLine: str
           </button>
         ))}
       </div>
-      {narrow && replayOnly ? (
-        // A phone can watch but not play: the round needs a computer (DESIGN.md, Phones).
-        <Wainscot>
-          <CopyButton text={`${location.origin}/`} label="Copy link for a computer" ink />
-          <a className="sc-btn" href="/">
-            Home
-          </a>
-        </Wainscot>
-      ) : botReplay ? (
+      {botReplay ? (
         <Wainscot>
           <Button kind="ink" onClick={() => location.assign("/play?daily")}>
             Play today's daily

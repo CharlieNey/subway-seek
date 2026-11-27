@@ -1,68 +1,139 @@
-.sc-computer-page {
-  min-height: 100%;
-  padding: 32px 20px;
-  display: grid;
-  align-items: center;
+/*
+ * A round on a phone (DESIGN.md, Phones; layout.ts decides when). The map on top, the
+ * panel under it as a sheet at full width: open it takes 58% of the screen, folded it keeps
+ * the clock, the numbers, the tabs, the notice row and the wainscot. Controls are 44 px
+ * tall for a thumb. The computer layout has none of these classes.
+ */
+.sc-play-stack {
+  flex-direction: column;
+  height: 100dvh;
 }
-.sc-computer-wall {
+.sc-play-stack > .sc-play-map {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.sc-play-stack > aside {
   width: 100%;
-  max-width: 600px;
-  margin: auto;
-  padding: 28px 20px;
-  border: 2px solid var(--color-ink);
-  border-bottom: 12px solid var(--color-buff-deep);
+  height: 58dvh;
+  flex: none;
+  min-height: 0;
+  border-left: 0;
+  box-shadow: inset 0 1px 0 var(--color-grout);
 }
-.sc-computer-wall h1 {
-  margin: 28px 0 12px;
+.sc-play-stack[data-sheet="folded"] > aside.sc-sheet {
+  height: auto;
+}
+.sc-play-stack[data-sheet="folded"] .sc-sheet .sc-sheet-body {
+  display: none;
+}
+
+/* The strip: the round on the left, the clock on the right, the station line under both. */
+.sc-play-stack .sc-ptop {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+.sc-play-stack .sc-station-only {
+  max-width: none;
+  margin-top: 0;
+}
+.sc-play-stack .sc-clock > .sc-cap {
+  font-size: 17px;
+}
+.sc-play-stack .sc-ff {
+  width: 40px;
+  min-height: 44px;
+}
+
+/* The three numbers on one row, smaller; Sound and Give up beside them. */
+.sc-play-stack .sc-numbers > div {
+  padding-top: 5px;
+  padding-bottom: 2px;
+}
+.sc-play-stack .sc-numbers b {
+  font-size: 18px;
+}
+.sc-play-stack .sc-numbers > div:first-child b {
+  font-size: 22px;
+}
+.sc-play-stack .sc-numbers-links {
+  padding-top: 0;
+}
+.sc-play-stack .sc-numbers-links button {
+  min-height: 44px;
+}
+
+/* The tab row is the sheet's handle; the fold toggle sits at its right end. */
+.sc-play-stack .sc-tabrow {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.sc-play-stack .sc-tab {
+  min-height: 44px;
+}
+.sc-sheet-toggle {
+  min-height: 44px;
+  padding: 0 12px;
   font-family: var(--font-display);
+  font-size: 12px;
   font-weight: 700;
-  font-size: 28px;
-  line-height: 1.15;
-}
-.sc-computer-wall p {
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-.sc-computer-escape {
-  display: block;
-  margin-top: 20px;
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--color-glaze-hi);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
   cursor: pointer;
 }
-.sc-computer-wall :focus-visible {
-  outline: 3px solid var(--color-faience);
-  outline-offset: 3px;
+.sc-sheet-toggle:active {
+  transform: translateY(2px);
+}
+
+/* A thumb's targets. */
+.sc-play-stack .sc-chip,
+.sc-play-stack .sc-btn,
+.sc-play-stack .sc-cc-row,
+.sc-play-stack .sc-cool,
+.sc-play-stack .sc-notice {
+  min-height: 44px;
+}
+.sc-play-stack .sc-wains {
+  min-height: 0;
+  padding-top: 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+/* The replay's bar on a phone: tighter, so the scrubber keeps room for its phase labels. */
+.sc-play-stack .sc-rp-bar {
+  left: 8px;
+  right: 52px;
+  gap: 6px;
+  padding: 0 8px;
+}
+.sc-play-stack .sc-rp-bar .sc-cap {
+  font-size: 13px;
+}
+.sc-play-stack .sc-rp-bar > .sc-btn {
+  padding-inline: 0.7em;
 }
 
 /*
- * A replay with no round (yesterday's daily, or your own kept one) on a phone: the map on
- * top, the log under it, both full width. Rounds keep the desktop layout (DESIGN.md,
- * Phones).
+ * A replay with no round (yesterday's daily, or your own kept one): a fixed split, the map
+ * over the log. Close goes home, and the panel's foot has Home: the scrubber gets the room.
  */
-@media (width < 860px) {
-  .sc-play-stack {
-    flex-direction: column;
-    height: 100dvh;
-  }
-  .sc-play-stack > .sc-play-map {
-    flex: 0 0 44%;
-  }
-  /* Close goes home, and the panel's foot has Home: give the scrubber the room. */
-  .sc-play-stack .sc-rp-bar {
-    left: 8px;
-    right: 52px;
-    gap: 8px;
-  }
-  .sc-play-stack .sc-rp-bar > .sc-btn {
+.sc-play-replay > .sc-play-map {
+  flex: 0 0 44%;
+}
+.sc-play-replay > aside {
+  height: auto;
+  flex: 1 1 0;
+}
+.sc-play-replay .sc-rp-bar > .sc-btn {
+  display: none;
+}
+
+/* No pointer that hovers: the printed keys mean nothing (a touch screen). */
+@media (hover: none) {
+  .sc-kbd {
     display: none;
-  }
-  .sc-play-stack > aside {
-    width: 100%;
-    height: auto;
-    flex: 1 1 0;
-    min-height: 0;
-    box-shadow: inset 0 1px 0 var(--color-grout);
   }
 }

@@ -10,7 +10,7 @@
 
 ## Why it works on a phone
 
-`/hardest` is a table, and it works at 390 px (checked headless 2026-11-21). Yesterday's daily also plays as a replay on a phone (`/play?replay=yesterday`). A round needs a computer; say so.
+`/hardest` is a table, and it works at 390 px (checked headless 2026-11-21). Yesterday's daily also plays as a replay on a phone (`/play?replay=yesterday`), and a round plays on a phone too, ending at the station (`DESIGN.md`, Phones).
 
 ## The angle
 

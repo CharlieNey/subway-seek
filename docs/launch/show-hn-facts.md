@@ -22,7 +22,7 @@ Plain, no "vibe coded", no name needed:
 - The hider rides for 20 minutes from 10:00 and gets off somewhere. The seeker asks questions ("within 2 miles of me?", "does the A stop there?", "is your nearest hospital the same as mine?") that rule stations out.
 - With Google keys the seeker then comes up and searches the street in Street View; without them the round ends at the station. **Say which one the live site does on the day** (`docs/GO-PUBLIC.md`, step "Keys or keyless").
 - A daily (everyone hunts the same station from the same start), practice at Easy, Normal and Hard, and You hide.
-- Rounds need a computer. On a phone: yesterday's daily as a replay, and `/hardest`.
+- Phones play too: below 860 px the map stacks over the panel, and a phone round ends at the station, since Street View needs the map beside it. Yesterday's daily also plays as a 25-second replay.
 
 ## The data
 
@@ -59,7 +59,7 @@ Plain, no "vibe coded", no name needed:
 
 ## What's missing (say it before a commenter does)
 
-- Rounds on a phone (`DESIGN.md`, Phones (proposed)).
+- The street endgame on a phone (`DESIGN.md`, Phones).
 - Two-player rooms: rounds are against a bot.
 - One weekday's timetable, pinned, not live trains.
 

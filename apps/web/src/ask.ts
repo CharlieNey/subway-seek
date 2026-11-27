@@ -350,6 +350,31 @@ export const HINTS: Record<HintId, string> = {
 };
 
 /**
+ * A hint as this screen says it. The questions live on the Ask tab, so from Travel the
+ * first hint sends you there; a touch screen taps instead of hovering; and where the round
+ * ends at the station, the last one rides rather than going up.
+ */
+export function hintText(
+  id: HintId,
+  { touch = false, tab = "ask", stationOnly = false }: HintContext = {},
+): string {
+  if (id === "hover") {
+    const verb = touch ? "tap" : "hover";
+    return tab === "ask"
+      ? `${touch ? "Tap" : "Hover"} a question to see what it does.`
+      : `Open Ask and ${verb} a question to start.`;
+  }
+  if (id === "three" && stationOnly) return "Three left. Ride to each in turn.";
+  return HINTS[id];
+}
+
+export interface HintContext {
+  touch?: boolean;
+  tab?: "travel" | "ask";
+  stationOnly?: boolean;
+}
+
+/**
  * Which onboarding hint shows now, if any: before the first question, after the first
  * answer, and at three stations or fewer. Each shows once.
  */

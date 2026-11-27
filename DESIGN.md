@@ -16,8 +16,8 @@ Two layers of deduction make it work online:
 ## Format
 
 - **v1: 1v1.** One hider, one seeker, then swap. Longest hide wins. **Ties stand in v1**; an overtime round is in the parking lot.
-- **Platform:** desktop browser first (map + Street View + board side by side); responsive phone layout later. Below 860 px, `/play` shows a computer notice before loading or connecting the game: 380 px for the board plus at least 480 px for the map. Back to the homepage is the main action; a quiet Try anyway opens the desktop layout, preserving the chosen mode and the escape on refresh. The homepage gives the same warning and escape. Resizing an open round keeps its game mounted and its clock running.
-  - **Phones today** (2026-11-21): replays open below 860 px, the map stacked over the log, and the homepage's phone block offers yesterday's daily replayed by the bot (25 s), the hardest stations, and a link to copy for a computer. A round still shows the notice. What a playable phone round needs: Phones (proposed), under Look and motion.
+- **Platform:** desktop browser first (map + Street View + board side by side: 380 px for the board plus at least 480 px for the map). Resizing an open round keeps its game mounted and its clock running.
+  - **Phones** (2026-11-21, brief W32): below 860 px a round stacks the map over the panel, which folds like a sheet, and ends at the station on the free map. Replays stack too. The computer notice is gone. Phones, under Look and motion.
 - Build around **two sides (hider / seekers), each with 1+ players**. Every later format is then a config change:
   - 1 hider vs 2 seekers: the show's format; one seeker rides while the other studies photos
   - 2v2 duos: pairs take turns hiding
@@ -721,7 +721,7 @@ One job: get the visitor into today's daily in one click. Shared result lines ar
   - Stats: played, found, streak and fastest find.
   - A tile wall with one tile per day, built from the browser's existing history. Found days are ink with the time, finds under 45 minutes get a gold edge, misses are struck through in terra cotta, and days off stay blank.
 - **Yesterday's hider (new idea):** once a day is over, its station is revealed as a mosaic tablet with your result. The question trail is drawn as family squares, not the share text's emoji.
-- **Narrow screens:** below 860 px, the hero says "Play on a computer" and explains that trying the desktop layout here may leave controls cramped or cut off. Copy link is the main action; the quiet Try anyway link opens `/play` with its computer notice explicitly bypassed. Other game links show the notice first.
+- **Narrow screens:** below 860 px, the hero has the same door, Play today's daily, and under it "New here?" with yesterday's daily as a 25-second replay and the hardest stations (2026-11-21, brief W32; Phones). Until then it said "Play on a computer", with Copy link as the main action and a quiet Try anyway.
 - **States:**
   - First visit: an empty tile wall with today outlined in gold.
   - Daily in progress: "Resume daily #23".
@@ -968,18 +968,18 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 - [x] **Veto needs a window, and the window must not leak the hand.** Decided 2026-10-06: every station question gets the same 1 game-min (10 s real) answer window, whether or not the hider can use it, and in solo rounds too. The answer goes out when the window ends. The hider screens and the seeker's "Asked" panel are mocked this way. Built 2026-10-06.
 - [ ] **Replay pace.** Uniform compression keeps rule 1, but squeezing a 2-hour round into 25 s runs trains at about 290× real-world speed. Check it's readable. If not, use speed steps that are still linear within each step, rather than easing.
 - [x] **Does the seeker see the hider's hand size?** No, decided 2026-10-06. It would leak the same way as the veto window. The seeker sees only card plays that affect them. The solo client's "The hider holds N cards · played M" row is gone from both the view the server sends and the panel (2026-10-06).
-### Phones (proposed)
+### Phones
 
-*Built 2026-11-21 (brief W25): the replay on a phone.* Below 860 px a replay with no round behind it (yesterday's daily, or your own kept one) stacks the map (44% of the height) over the panel. The bar drops Close, since the foot has Home, so the scrubber keeps its phase labels; the foot reads "Copy link for a computer" and Home. `GET /replay/yesterday` plays yesterday's daily with the bot as the seeker, at the station only, once per date; its log, legend and map label say Seeker, not You. `/hardest` was checked at 390 px and needed nothing.
+*Built 2026-11-21 (brief W25): the replay on a phone.* Below 860 px a replay with no round behind it (yesterday's daily, or your own kept one) stacks the map (44% of the height) over the panel. The bar drops Close, since the foot has Home, so the scrubber keeps its phase labels; the foot read "Copy link for a computer" and Home until phones could play (below): yesterday's replay now ends on Play today's daily and Home, and your own on Practice round and Share, as on a computer. `GET /replay/yesterday` plays yesterday's daily with the bot as the seeker, at the station only, once per date; its log, legend and map label say Seeker, not You. `/hardest` was checked at 390 px and needed nothing.
 
-*Proposed, not built: a round on a phone.* What it would take, in order of size:
-- **Stacked live layout:** the map on top and the panel under it, as the replay does, with the clock and the three numbers pinned in a strip between them.
-- **Board and Ask as bottom sheets** over the map's lower half, one at a time, with the tab row as the sheet's handle. The departure board's rows are already whole-row buttons; they need 44 px rows.
-- **Touch on the map:** tap a station for its tooltip and route tiles, tap again to travel there; the map's hover states (question shapes on hover) become press-and-hold.
-- **Street View:** none below 860 px, or a full-screen toggle that hides the map, since Google's terms keep Street View beside a Google map only. Until then a phone round ends at the station, which the fallback already supports.
-- **Length:** a round's seek is up to two game-hours, 20 real minutes at 6×; the daily played on 2026-11-21 took 56 game-min, about 9 real minutes. Phone sessions are short and get interrupted; the 3-minute grace covers a lock screen but not a call. Either keep a solo round on the server until midnight (Open questions, "A drop pauses the daily") or offer a 12× phone clock with the same game-time scores.
-- **Sound and the keyboard:** the printed keys go; the three sounds stay.
-
+*Built 2026-11-21 (brief W32 asked for a playable phone round; Charlie to review): a round on a phone.* The proposal W25 wrote is the plan, cut to what a keyless round needs:
+- **When:** below 860 px wide, except a phone on its side (under 560 px tall and wider than tall), where the computer layout's map beside the panel fits better than a stack. `apps/web/src/layout.ts` decides, with tests. The computer notice and Try anyway are gone.
+- **The round ends at the station.** A page opened below 860 px plays station-only rounds on the free map, keys or not: Street View needs the map beside it, Google's terms keep it beside a Google map, and the free map spends no map load. The round line says so ("On a phone, this round ends when you reach the hider's station."). A computer round narrowed mid-way keeps its street search and stacks.
+- **Stacked:** the map on top, the panel under it as a sheet at full width. It reads as the panel does: the round line and the clock with ▸ ▸▸ on one strip, the three numbers on one row, the tabs, the board or the questions, and the wainscot at the bottom, under the thumb.
+- **Two heights.** Open, the sheet takes 58% of the screen. Folded, it keeps the strip, the numbers, the tabs, the notice row and the wainscot, and the map gets about two thirds. The tab row is the handle: tapping the tab you're on folds or opens the sheet, tapping the other tab opens it there, and a square at the row's right end says which ("Map ▴" open, "Board ▾" folded). The armed question's confirm stays on the wainscot, so a question can be armed, folded to read its shape on the map, and asked.
+- **Touch:** chips, tabs, the clock's squares, board rows and Get off are 44 px tall. A tap arms a chip; there's no hover preview, so the first hint says "Tap a question to see what it does." A tap on a station shows its name and route tiles. Printed keys hide on screens without a pointer that hovers. The three sounds stay.
+- **Homepage:** a phone gets the same door as a computer, Play today's daily with "or a practice round", and yesterday's replay and the hardest stations as a second row.
+- **Not built:** the street endgame on a phone (a full-screen Street View would still need a Google map beside it); a 12× phone clock; keeping a solo round past the 3-minute grace, which covers a lock screen but not a call (Open questions, "A drop pauses the daily").
 
 ## Open questions & risks
 
@@ -1065,6 +1065,11 @@ Decelerate is `cubic-bezier(0.2, 0.7, 0.2, 1)`. Ease-out quad is `cubic-bezier(0
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-21 | **A round plays on a phone** (Phones): below 860 px, unless the phone is on its side, the map stacks over the panel, which is a sheet with two heights (58% of the screen, or folded to the clock, numbers, tabs, notice and wainscot); the tab row is its handle; 44 px targets; the computer notice and Try anyway go. `layout.ts` decides, with tests | Brief W32 asked for a playable phone round; most launch traffic will be phones. Built from W25's proposal, cut to what a keyless round needs; Charlie to review |
+| 2026-11-21 | A page opened below 860 px plays station-only rounds on the free map, keys or not (`streetMode.ts`, reason `phone`) | Street View needs the map beside it, Google's terms keep it beside a Google map, and the free map spends no map load |
+| 2026-11-21 | On a phone the map opens at zoom 12.6, not 13.5, and arming a radar or nearest question frames its ring; a computer's map is unchanged | The phone's map is a third as wide: at the computer's zoom the 2-mile ring was off screen when armed |
+| 2026-11-21 | Touch screens get no hover preview, and printed keys hide where nothing hovers | A tap fires the mouse's enter and focus, so the preview stuck on after a tap |
+| 2026-11-21 | First run (brief W32): from Travel the first hint reads "Open Ask and hover a question to start." ("tap" on touch); in station-only rounds the third reads "Three left. Ride to each in turn." and Up to the street is the white alternative on a platform; the homepage's lede and How it plays' third stop say the round ends at the station when it does; a first visit sees "New here?" with yesterday's 25-second replay on any screen | Read as a stranger: the opening hint pointed at questions the Travel tab doesn't show, the ink Up to the street read as the way to win a round that ends below, and a keyless homepage promised a street search |
 | 2026-11-21 | The game's new name is **Subway Seek**, applied with `pnpm rename "Subway Seek"` <!-- keep-name --> | Charlie chose it (1 am, 2026-11-21); another site already uses the old name. "Stand clear of the closing doors" stays where it is the announcement <!-- keep-name --> |
 | 2026-11-21 | The name lives in `apps/web/src/brand.json` (`name`, `slug`, `formerSlugs`); pages read it through `brand.ts` and `%VITE_GAME_NAME%`; `pnpm rename` (`scripts/rename.ts`) rewrites it with the package scope, the Fly app, the docs and the link preview, and prints the steps outside the repo | Brief W25: renaming should be one step. Tested on throwaway copies as "Hidden Stop", then "Step Lively" on top: lint, typecheck and 331 tests passed after each |
 | 2026-11-21 | Browser storage keys move to `<slug>:<name>`, with a one-time migration of the four old `standClear.*` keys and any key under a former slug; a key already under the new name wins | Brief W25 ("yes, with a one-time migration"). Nobody loses a streak across a rename |

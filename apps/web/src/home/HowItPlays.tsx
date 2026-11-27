@@ -8,7 +8,9 @@ import { milesToMeters } from "@subway-seek/engine";
 import { useEffect, useRef, useState } from "react";
 import { useGame, type World } from "../game.ts";
 import { ring } from "../map/shapes.ts";
+import { useStreet } from "../streetMode.ts";
 import { FAMILIES, FAMILY_NAME } from "../ui/family.ts";
+import { NameTablet } from "../ui/NameTablet.tsx";
 import { Caption, FamilySquare } from "../ui/vocab.tsx";
 import { drawBase, drawDot, fit, project, viewOf } from "./schematic.ts";
 
@@ -125,6 +127,7 @@ function drawSeek(x: CanvasRenderingContext2D, w: number, h: number, world: Worl
 }
 
 export function HowItPlays() {
+  const off = useStreet((s) => s.off);
   const hide = useArt(drawHide);
   const seek = useArt(drawSeek);
   const world = useGame((s) => s.world);
@@ -170,23 +173,38 @@ export function HowItPlays() {
           ))}
         </ul>
       </div>
-      <div className="hp-stop">
-        <span className="ph">Endgame</span>
-        <h3>Come up and find them</h3>
-        <p>
-          Get off where you think they are, climb to the street and search in Street View. They
-          appear once you pass within 40 m; get within 25 m to catch them.
-        </p>
-        {/* Street View itself only shows in the game, beside the Google map. */}
-        <div
-          className="hp-art dark"
-          role="img"
-          aria-label="The catch prompt and the hider's gold marker"
-        >
-          <span className="catch">Someone's here</span>
-          <span className="marker" aria-hidden="true" />
+      {off === null ? (
+        <div className="hp-stop">
+          <span className="ph">Endgame</span>
+          <h3>Come up and find them</h3>
+          <p>
+            Get off where you think they are, climb to the street and search in Street View. They
+            appear once you pass within 40 m; get within 25 m to catch them.
+          </p>
+          {/* Street View itself only shows in the game, beside the Google map. */}
+          <div
+            className="hp-art dark"
+            role="img"
+            aria-label="The catch prompt and the hider's gold marker"
+          >
+            <span className="catch">Someone's here</span>
+            <span className="marker" aria-hidden="true" />
+          </div>
         </div>
-      </div>
+      ) : (
+        // Rounds here end at the station (streetMode.ts): say so, not the street search.
+        <div className="hp-stop">
+          <span className="ph">Find</span>
+          <h3>Reach their station</h3>
+          <p>
+            Get off where you think they are. Arriving at the hider's station finds them, and the
+            sooner you get there, the lower their score.
+          </p>
+          <div className="hp-art hp-art-found sc-tilefield">
+            <NameTablet text="Found" style="irt-gold" rows={9} maxWidth={200} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

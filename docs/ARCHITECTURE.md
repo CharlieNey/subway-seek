@@ -60,7 +60,7 @@ The seeker must never learn where the hider is except through answers. Clients c
 
 **Sessions survive drops and deploys.** A session token in the browser picks the round back up for 3 minutes after a drop. It travels as a second WebSocket subprotocol (`session.<token>`, beside `game.v1`), not in the URL, so it stays out of access logs. A solo clock keeps running through a drop, since a pause would be free thinking time on the daily. Sessions are saved to SQLite (Node's built-in) on every change and restored at boot, so a deploy shorter than three minutes ends no rounds. Google's coordinates are never stored, only panorama IDs, which the terms allow; coordinates are looked up again on restore.
 
-**Rounds that end at the station.** Without Street View (no key on the server, `STREET_ENDGAME=off`, or the client reporting that Google refused) a round is `stationOnly`: no spot, no photos, no street curses, and reaching the hider's station is the find. A round can switch mid-way through the `streetOff` intent. The client's side is `apps/web/src/streetMode.ts`: it watches for Google's refusals, remembers one until Google's quotas reset at midnight Pacific, and rebuilds the map as MapLibre. `GET /replay/yesterday` plays yesterday's daily this way with the bot seeking, once per date, for the phone replay.
+**Rounds that end at the station.** Without Street View (no key on the server, `STREET_ENDGAME=off`, or the client reporting that Google refused) a round is `stationOnly`: no spot, no photos, no street curses, and reaching the hider's station is the find. A round can switch mid-way through the `streetOff` intent. The client's side is `apps/web/src/streetMode.ts`: it watches for Google's refusals, remembers one until Google's quotas reset at midnight Pacific, and rebuilds the map as MapLibre. A page opened below 860 px asks for station-only rounds too, keys or not (`layout.ts`). `GET /replay/yesterday` plays yesterday's daily this way with the bot seeking, once per date, for the homepage's 25-second replay.
 
 ## 4. The client derives, the server decides
 
@@ -94,7 +94,7 @@ CI (`.github/workflows/ci.yml`) runs Biome, `tsc` in every package, Vitest, the 
 - **Two-player rooms.** The engine and protocol are built for sides with one or more players, but rooms, matchmaking and a two-player disconnect rule aren't (M3 in `DESIGN.md`). Solo comes first because it needs no playtesters.
 - **Curated Street View zones.** Walks are checked one target at a time, and the catch is straight-line distance. Validating moves against a panorama graph waits for two-player rounds.
 - **Accounts and server-side records.** The daily record lives in the browser, on the honor system, until there is a record worth protecting.
-- **A phone round.** Map, Street View and board need about 860 px side by side. Phones get replays (yesterday's daily played by the bot, and their own), the hardest-stations page, and a notice with a "try anyway" for rounds. What a phone round needs is a proposal in `DESIGN.md` (Phones).
+- **The street endgame on a phone.** Map, Street View and board need about 860 px side by side. Below that a round stacks the map over the panel, a sheet that folds, and ends at the station on the free map (`apps/web/src/layout.ts`; `DESIGN.md`, Phones).
 - **Three cards** (Move, Signal problems, Local only), and real-time delays (a GTFS-RT replay of a real day).
 - **An LLM opponent.** Decided against on 2026-10-06: the bot's choices are small exact searches that must be deterministic, reproducible in tests and free (section 5).
 

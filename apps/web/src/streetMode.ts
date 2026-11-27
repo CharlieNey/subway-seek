@@ -10,6 +10,7 @@
  * both: the free map, and no panorama or photo.
  */
 import { create } from "zustand";
+import { streetFits } from "./layout.ts";
 import { storageKey } from "./storage.ts";
 
 export type StreetOff =
@@ -20,7 +21,9 @@ export type StreetOff =
   /** Google refused the map or Street View on this page. */
   | "refused"
   /** A replay: the map alone, no round, so the free map saves a billed map load. */
-  | "replay";
+  | "replay"
+  /** A phone: Street View, the map and the board don't fit side by side (layout.ts). */
+  | "phone";
 
 const REFUSED_KEY = storageKey("google-refused-until");
 
@@ -65,6 +68,8 @@ function initial(): StreetOff | null {
   )
     return "demo";
   if (import.meta.env.VITE_MAP_PROVIDER === "maplibre") return "demo";
+  // Too narrow for the street endgame when the page opened: a station round, free map.
+  if (typeof innerWidth === "number" && !streetFits(innerWidth)) return "phone";
   return refusedUntil() > Date.now() ? "refusedToday" : null;
 }
 
@@ -98,6 +103,7 @@ export function refuseGoogle(reason: string): void {
 /** The one line the page shows about it, or null while the street endgame is on. */
 export function streetOffLine(off: StreetOff | null): string | null {
   if (off === null) return null;
+  if (off === "phone") return "On a phone, this round ends when you reach the hider's station.";
   return off === "demo" || off === "replay"
     ? "This round ends when you reach the hider's station. The full game then searches the street in Street View."
     : "Google's map isn't available right now, so this round ends at the station, on the free map.";

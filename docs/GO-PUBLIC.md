@@ -1,8 +1,20 @@
-*Written 2026-11-21 (brief W25). The ordered path from "pick the name" to "it's live". Each step has its command or click and its undo; do them in order, because later steps assume the earlier ones. Nothing here has been run: no account was created, nothing deployed, nothing made public. The background for each step is in [`DEPLOY-PLAN.md`](DEPLOY-PLAN.md) (hosting, keys, cost caps) and [`LAUNCH.md`](LAUNCH.md) (the longer checklist).*
+*Written 2026-11-21 (brief W25), brought up to date the same night (brief W32). The ordered path from "pick the name" to "it's live". **Every step left is one only Charlie can do**: an account, a payment, a legal check, a name outside the repo, or a post. Each has its command or click and its undo; do them in order, because later steps assume the earlier ones. No account was created, nothing deployed, nothing made public. The background for each step is in [`DEPLOY-PLAN.md`](DEPLOY-PLAN.md) (hosting, keys, cost caps) and [`LAUNCH.md`](LAUNCH.md) (the longer checklist).*
 
 # Going public
 
+## Done in the repo (2026-11-21)
+
+Nothing to do here; listed so the steps below can assume it.
+
+- The name: `pnpm rename "Subway Seek"`, committed (1.3 below).
+- The screenshots and the replay GIF in the README retaken under the new name, from a local keyless run (`docs/screenshots/`). The link preview, `apps/web/public/og.png`, already showed the new name.
+- Phones play a round, ending at the station (DESIGN.md, Phones).
+- Checks on the final commit: `pnpm lint`, `pnpm typecheck`, `pnpm test`, the four simulations, and full rounds in a headless browser at 1440×900 and 390×844, with no Google keys. CI runs the same checks on every push.
+- The history check of 0.5 held again: no `AIza…` key in `git log --all -p`, and the only tracked env file is `infra/aws/.env.example`.
+
 ## 0. Clean up the old cloud setup first
+
+**Done 2026-11-27.** GitHub: the AWS secrets (`AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`) are deleted and the old AWS "Deploy server" workflow is disabled (`gh workflow enable deploy-server.yml` once the Fly version is on `main`). AWS: the ECR repository and its 3 images, both roles, the instance profile, the security group and the GitHub OIDC provider are deleted; no instance, network interface or Elastic IP was left. Google: `stand-clear-nyc` is on Charlie's personal account and billing account, with no organization.
 
 The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't use the earlier AWS setup). Undo it before anything new exists, so nothing points two ways.
 
@@ -19,7 +31,7 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 | # | Do | Command or click | Undo |
 |---|---|---|---|
 | 1.1 | Pick the name | Decided 2026-11-21: **Subway Seek** (DESIGN.md, decision log) | `pnpm rename "<Other Name>"` |
-| 1.2 | **Search the trademark by hand** | USPTO Trademark Search (tmsearch.uspto.gov): the word mark `SUBWAY SEEK`, `SUBWAYSEEK`, then `SUBWAY` alone and `SUBWAY` followed by anything, in classes 9 (software), 28 (games) and 41 (entertainment), live and dead. Then the US App Store, Google Play, Steam and itch.io for "Subway Seek" | — |
+| 1.2 | **Search the trademark by hand** (done 2026-11-27 against the databases: [`trademark-check-2026-11-27.md`](trademark-check-2026-11-27.md)) | USPTO Trademark Search (tmsearch.uspto.gov): the word mark `SUBWAY SEEK`, `SUBWAYSEEK`, then `SUBWAY` alone and `SUBWAY` followed by anything, in classes 9 (software), 28 (games) and 41 (entertainment), live and dead. Then the US App Store, Google Play, Steam and itch.io for "Subway Seek" | — |
 | 1.3 | Rename the repo's contents | Done: `pnpm rename "Subway Seek"` was run and committed on 2026-11-21 (`git log --grep "Subway Seek"`) | `git revert <that commit>`, or `pnpm rename` again: a browser's storage keys move on to the new name either way, and the daily's seed never changes |
 
 **Plainly: "Subway" is a registered trademark of the Subway sandwich chain, in other classes than games.** A different class often means no conflict, but it is a famous mark and the name starts with it. Games already use the word too (the mobile game Subway Surfers is the best known). Nobody has searched "Subway Seek": not the overnight work, and not the rename research, which never screened it. Do 1.2 by hand before buying a domain or posting anywhere. If `SUBWAY` or a "Subway …" game mark turns up live in classes 9, 28 or 41, or the result is unclear, ask a trademark lawyer before going on. If the name has to change, `pnpm rename` makes it one commit.
@@ -38,8 +50,8 @@ The earlier deploy ran in an AWS account Charlie doesn't own (DEPLOY-PLAN, Don't
 | # | Do | Command or click | Undo |
 |---|---|---|---|
 | 3.1 | A contact address in the terms | Replace `CONTACT-ADDRESS` in `apps/web/terms.html`; commit | `git revert` |
-| 3.2 | Retake the screenshots that show the name | `docs/screenshots/01-home.png`, `05-radar-answered.png`, `06-you-hide.png`, `replay.gif` (the README's captions say how they were made) | `git revert` |
-| 3.3 | Checks | `pnpm lint && pnpm typecheck && pnpm test`, then `pnpm --filter @subway-seek/web build` | — |
+| 3.2 | Read the README once as a stranger would | The screenshots were retaken on 2026-11-21; check the captions say what the live site will do (keyless or keys, 6) | Edit `README.md` |
+| 3.3 | Checks, after 3.1's commit | `pnpm lint && pnpm typecheck && pnpm test`, then `pnpm --filter @subway-seek/web build`. All passed on 2026-11-21 | — |
 
 **The MTA's licence (optional).** The route symbols are the game's own hexagons since 2026-11-21 (DESIGN.md, Route tiles), so none is needed for them. The MTA licenses its "logos, maps, symbols or other intellectual property", lists "NYCT subway route indicators" and station names among them, and charges no fee for approved free apps ([licensing program](https://www.mta.info/doing-business-with-us/licensing-program), read for the market research, §3.4). In 2021 it refused one indie game, which then removed its route indicators. To bring the MTA's bullets back, apply there and wait for a yes before changing `RouteBullet` in `apps/web/src/ui/vocab.tsx`. The game takes station names from the open data feed (its terms are read in `docs/proposals/license.md`); if you apply, ask whether the names need anything more. Undo: nothing to undo; an application commits you to nothing.
 
@@ -77,7 +89,7 @@ Decide here. **Keyless is a complete game:** every round ends at the station on 
 ## 7. Smoke test on the live site
 
 - Chrome, Safari and Firefox on a computer: a daily to the end, an Easy practice round, You hide; reload mid-round and the round comes back.
-- A phone: `/`, `/hardest` and `/play?replay=yesterday` (yesterday's daily needs a day of uptime first).
+- A phone (Safari on an iPhone, Chrome on an Android if you can borrow one): `/`, a practice round to the station with the sheet folded and opened, `/hardest`, and `/play?replay=yesterday` (yesterday's daily needs a day of uptime first). Turn the phone on its side once: the map moves beside the panel.
 - `fly logs --app subway-seek-server` shows the rounds; `pnpm metrics` reads the match logs once copied down.
 - If something is wrong: `fly scale count 0` takes the server down; the site then shows its connection error.
 

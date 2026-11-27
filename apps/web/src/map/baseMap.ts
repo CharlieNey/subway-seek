@@ -58,12 +58,14 @@ export function createMapLibreBase(
   container: HTMLElement,
   center: LonLat,
   getTooltip: (info: { object?: unknown }) => { html: string } | null,
+  /** A phone's map is a third as wide, so it opens further out (DESIGN.md, Phones). */
+  startZoom = 13.5,
 ): BaseMap {
   const map = new maplibregl.Map({
     container,
     style: STYLE,
     center,
-    zoom: 13.5,
+    zoom: startZoom,
     attributionControl: { compact: true },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");

@@ -59,6 +59,10 @@
 .hp-phone {
   display: none;
 }
+/* A first visit: the 25-second replay shows on a computer too (DESIGN.md, Homepage). */
+.hp-phone.first {
+  display: block;
+}
 /* Buff brick, the wainscot's field without its layout (the hero's foot, the footer). */
 .sc-wains-field {
   background-color: var(--color-buff);
@@ -456,6 +460,16 @@
     repeating-linear-gradient(90deg, transparent 0 23px, rgb(251 248 241 / 0.07) 23px 24px),
     repeating-linear-gradient(180deg, transparent 0 11px, rgb(251 248 241 / 0.07) 11px 12px);
 }
+/* Rounds that end at the station: the result's gold tablet, centred on the tile field. */
+.hp-art.hp-art-found {
+  display: grid;
+  place-items: center;
+}
+.hp-art.hp-art-found canvas {
+  position: static;
+  width: auto;
+  height: auto;
+}
 .hp-art canvas {
   position: absolute;
   inset: 0;
@@ -817,11 +831,8 @@
   }
 }
 
-/* 380 px board + 480 px of map; matches PlayPage's computer notice. */
+/* Narrower than a computer round (layout.ts): the phone's second row of doors. */
 @media (width < 860px) {
-  .hp .hp-desk {
-    display: none;
-  }
   .hp-phone {
     display: block;
   }

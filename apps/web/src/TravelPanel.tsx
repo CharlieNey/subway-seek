@@ -23,6 +23,7 @@ import { type CountdownLine, connectionsBoard, platformBoard } from "./boards.ts
 import { cn } from "./cn.ts";
 import { useGame, useGamePick, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
+import { usePlayLayout } from "./layout.ts";
 import { displayName } from "./names.ts";
 import { routesFor } from "./routes.ts";
 import { play } from "./sound.ts";
@@ -60,11 +61,22 @@ function Where({
   /** The conductor's line for this moment, if it has one (Voice). */
   line?: string | null;
 }) {
+  // On a phone the tablet is smaller, so the board stays in view (DESIGN.md, Phones).
+  const stack = usePlayLayout() === "stack";
   const c = world.ds.complexes[complex];
   if (!c) return null;
   return (
-    <div className="sc-tilefield mx-4 mt-3 flex flex-col items-center gap-2 px-2.5 pt-3 pb-2.5 shadow-[inset_0_0_0_1px_var(--color-grout)]">
-      <NameTablet text={displayName(c.name)} tile={TABLET_TILE} maxWidth={320} />
+    <div
+      className={cn(
+        "sc-tilefield mx-4 flex flex-col items-center px-2.5 shadow-[inset_0_0_0_1px_var(--color-grout)]",
+        stack ? "mt-2 gap-1 pt-2 pb-1.5" : "mt-3 gap-2 pt-3 pb-2.5",
+      )}
+    >
+      <NameTablet
+        text={displayName(c.name)}
+        tile={stack ? 2.2 : TABLET_TILE}
+        maxWidth={stack ? 260 : 320}
+      />
       <div className="flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-2">
         {routes && <Bullets routes={routesFor(world, routes)} size={18} />}
         <span>{sub}</span>
@@ -577,10 +589,12 @@ export function TravelAction({ world, t }: { world: World; t: number }) {
   switch (s.kind) {
     case "platform":
       if (isHider(view)) return <WainscotText>Exits open at 10:20.</WainscotText>;
+      // Where the round ends at the station there's nothing to search up there, so going
+      // up is the alternative, not the main action (DESIGN.md, Phones: first run).
       return (
         <>
           <Button
-            kind="ink"
+            kind={view.stationOnly ? "white" : "ink"}
             disabled={busy}
             onClick={() => send({ type: "exit", exit: nearestExit(world, s.station) })}
           >

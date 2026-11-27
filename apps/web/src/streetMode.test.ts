@@ -18,5 +18,8 @@ describe("the street endgame's off switch", () => {
     expect(streetOffLine(null)).toBeNull();
     expect(streetOffLine("demo")).toMatch(/ends when you reach the hider's station/);
     expect(streetOffLine("refused")).toMatch(/Google's map isn't available/);
+    expect(streetOffLine("phone")).toBe(
+      "On a phone, this round ends when you reach the hider's station.",
+    );
   });
 });

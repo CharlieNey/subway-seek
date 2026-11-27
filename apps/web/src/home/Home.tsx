@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 import { hm } from "../ask.ts";
 import { GAME_NAME } from "../brand.ts";
+import { cn } from "../cn.ts";
 import { loadSession, loadWorld, useGame } from "../game.ts";
 import { type DailyResult, loadReplay, loadResults } from "../history.ts";
 import { displayName, formatDay } from "../names.ts";
@@ -57,6 +58,8 @@ function useNextDaily() {
 function homeStreetLine(off: StreetOff | null): string | null {
   if (off === "demo")
     return "Rounds here end when you reach the hider's station, on the free map. The full game goes on to search the street in Street View.";
+  if (off === "phone")
+    return "On a phone, rounds end when you reach the hider's station. On a computer they go on to search the street in Street View.";
   if (off === "refusedToday" || off === "refused")
     return "Google's map is resting until tomorrow, so today's rounds end at the station, on the free map.";
   return null;
@@ -79,7 +82,8 @@ export function Home() {
   const start = facts?.start == null ? undefined : world?.ds.complexes[facts.start];
   const done = hero.kind === "done" ? hero.result : null;
   const watch = replay?.date === date ? "/play?replay" : null;
-  const streetLine = homeStreetLine(useStreet((s) => s.off));
+  const off = useStreet((s) => s.off);
+  const streetLine = homeStreetLine(off);
 
   return (
     <div className="hp">
@@ -112,10 +116,11 @@ export function Home() {
               <div>
                 <h1>Hide and seek on the real New York subway.</h1>
                 <p className="hp-lede">
-                  A hider went underground at 10:00 and got off somewhere. Ride the real timetable,
-                  ask questions that rule stations out, then come up and find them on the street.
+                  {off === null
+                    ? "A hider went underground at 10:00 and got off somewhere. Ride the real timetable, ask questions that rule stations out, then come up and find them on the street."
+                    : "A hider went underground at 10:00 and got off somewhere. Ride the real timetable and ask questions that rule stations out, until you reach their station."}
                 </p>
-                <div className="hp-ctas hp-desk">
+                <div className="hp-ctas">
                   {done ? (
                     <>
                       <span className="sc-btn ink hp-btn-lg" style={{ cursor: "default" }}>
@@ -142,38 +147,27 @@ export function Home() {
                     </>
                   )}
                 </div>
-                {streetLine && <p className="hp-street-off hp-desk">{streetLine}</p>}
-                {/* Phones watch and read here, and play on a computer (DESIGN.md, Phones). */}
-                <div className="hp-phone hp-phone-note">
-                  <b>On a phone: watch now, play on a computer</b>A round needs a computer: the map,
-                  the departure boards and the questions sit side by side. Here you can watch a
-                  whole round in {REPLAY_REAL_SECONDS} seconds, and see which stations are hardest
-                  to find.
-                  <div className="row">
-                    {facts?.yesterday && (
-                      <a className="sc-btn ink" href="/play?replay=yesterday">
+                {streetLine && <p className="hp-street-off">{streetLine}</p>}
+                {/* A first visit, or any phone: watch a whole round in 25 s before playing. */}
+                {facts?.yesterday && (
+                  <div
+                    className={cn(
+                      "hp-phone hp-phone-note",
+                      Object.keys(results).length === 0 && "first",
+                    )}
+                  >
+                    <b>New here?</b>Watch yesterday's daily played start to finish in{" "}
+                    {REPLAY_REAL_SECONDS} seconds.
+                    <div className="row">
+                      <a className="sc-btn" href="/play?replay=yesterday">
                         Watch yesterday's daily
                       </a>
-                    )}
-                    {watch && (
-                      <a className="sc-btn" href={watch}>
-                        Watch your replay
+                      <a className="sc-btn" href="/hardest">
+                        Hardest stations
                       </a>
-                    )}
-                    <a className="sc-btn" href="/hardest">
-                      Hardest stations
-                    </a>
+                    </div>
                   </div>
-                  <div className="row">
-                    <CopyButton text={`${location.origin}/`} label="Copy link for later" />
-                    <a
-                      className="hp-alt"
-                      href={done ? "/play?practice&tryAnyway=1" : "/play?daily&tryAnyway=1"}
-                    >
-                      Try a round anyway
-                    </a>
-                  </div>
-                </div>
+                )}
                 <div className="hp-meta">
                   <span>
                     <b>Daily #{today.number}</b> · {formatDay(date)}

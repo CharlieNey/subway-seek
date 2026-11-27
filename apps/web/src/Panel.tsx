@@ -21,9 +21,9 @@ import {
   askBlocker,
   askLabel,
   currentHint,
-  HINTS,
   type HintId,
   hhmm,
+  hintText,
   hm,
   priceText,
 } from "./ask.ts";
@@ -46,6 +46,7 @@ import { HiderPanel } from "./HiderPanel.tsx";
 import { HiderResult } from "./HiderResult.tsx";
 import { isHider, ownTransit } from "./hide.ts";
 import { keyAction } from "./keys.ts";
+import { canHover, sheetToggle, tapTab, usePlayLayout, useSheet } from "./layout.ts";
 import { stillStanding } from "./map/eliminate.ts";
 import { displayName, formatDay } from "./names.ts";
 import { arrivedPhotos, Lightbox, LookingFor } from "./Photos.tsx";
@@ -157,14 +158,19 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
   const { view, alreadyPlayed, busy, send } = useGamePick("view", "alreadyPlayed", "busy", "send");
   const paused = useGame((s) => s.sync?.paused ?? false);
   const live = view && !view.result && world && t !== null;
+  // On a phone the line about the station runs the panel's width, under the clock.
+  const stack = usePlayLayout() === "stack";
+  const stationLine = view?.stationOnly && !view.result && (
+    <StationOnlyLine hiding={isHider(view)} />
+  );
   return (
-    <header className="flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
+    <header className="sc-ptop flex items-center justify-between gap-2.5 px-4 pt-3 pb-2.5">
       <div className="min-w-0">
         <div className="font-display text-[12.5px] font-bold tracking-[0.12em] uppercase">
           {GAME_NAME}
         </div>
         <div className="text-[12px] text-ink-2">{roundLine(view, alreadyPlayed)}</div>
-        {view?.stationOnly && !view.result && <StationOnlyLine hiding={isHider(view)} />}
+        {!stack && stationLine}
       </div>
       <ClockTile
         time={t === null ? null : hhmm(t)}
@@ -176,6 +182,7 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
             : undefined
         }
       />
+      {stack && stationLine && <div className="basis-full">{stationLine}</div>}
     </header>
   );
 }
@@ -186,10 +193,17 @@ function PanelTop({ t, world }: { t: number | null; world: World | null }) {
  */
 function StationOnlyLine({ hiding }: { hiding: boolean }) {
   const off = useStreet((s) => s.off);
+  // On a phone, only what ends the round: the line about the full game is the homepage's.
+  const short = usePlayLayout() === "stack";
   const line = hiding
     ? "This round ends at the station: you stay below, and the seeker finds you by reaching it."
-    : (streetOffLine(off) ?? "This round ends when you reach the hider's station.");
-  return <div className="mt-1 max-w-[250px] text-[11.5px] leading-[1.35] text-ink-2">{line}</div>;
+    : ((short ? null : streetOffLine(off)) ??
+      "This round ends when you reach the hider's station.");
+  return (
+    <div className="sc-station-only mt-1 max-w-[250px] text-[11.5px] leading-[1.35] text-ink-2">
+      {line}
+    </div>
+  );
 }
 
 /** While an elimination is in flight, re-render every frame so the count steps with it. */
@@ -211,9 +225,18 @@ function useClearingCount(): number {
  * share of your circle left), the time left, and the minutes the questions added to their
  * score. "Give up" is a quiet link.
  */
-function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: number }) {
-  const { send, alreadyPlayed, busy } = useGamePick("send", "alreadyPlayed", "busy");
-  const [soundOpen, setSoundOpen] = useState(false);
+function RoundNumbers({
+  world,
+  view,
+  t,
+  links,
+}: {
+  world: World;
+  view: SoloView;
+  t: number;
+  /** Sound and Give up under the numbers; on a phone they sit in the tab row instead. */
+  links: boolean;
+}) {
   // The count steps down one per square as an answer clears them (Motion: Ask → answer).
   const standing = useClearingCount();
   const onFoot = view.hasSpot && onStreet(view, t, world);
@@ -224,12 +247,6 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
       ? Math.round((search.possible.length / searchGrid(center).length) * 100)
       : null;
   const n = view.candidates.length + standing;
-  const giveUp = () => {
-    const ask = view.daily
-      ? `Give up and see where the hider was?${alreadyPlayed ? "" : " Today counts as not found."}`
-      : "Give up and see where the hider was?";
-    if (window.confirm(ask)) send({ type: "giveUp" });
-  };
   const cells: [string, string][] = [
     pct !== null
       ? [`${pct}%`, "of your circle left"]
@@ -239,7 +256,7 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
   ];
   return (
     <>
-      <div className="mx-4 grid grid-cols-3 border-t-2 border-ink">
+      <div className="sc-numbers mx-4 grid grid-cols-3 border-t-2 border-ink">
         {cells.map(([value, label], i) => (
           <div
             key={label}
@@ -260,25 +277,51 @@ function RoundNumbers({ world, view, t }: { world: World; view: SoloView; t: num
           </div>
         ))}
       </div>
-      <div className="flex justify-end gap-3 px-4 pt-0.5 text-[12px] text-ink-2">
+      {links && <RoundLinks view={view} />}
+    </>
+  );
+}
+
+/**
+ * "Sound" and "Give up", quiet links: under the numbers, or on a phone in the tab row
+ * (`inline`), where the sound settings open as a drop-down under them.
+ */
+function RoundLinks({ view, inline = false }: { view: SoloView; inline?: boolean }) {
+  const { send, alreadyPlayed, busy } = useGamePick("send", "alreadyPlayed", "busy");
+  const [soundOpen, setSoundOpen] = useState(false);
+  const giveUp = () => {
+    const ask = view.daily
+      ? `Give up and see where the hider was?${alreadyPlayed ? "" : " Today counts as not found."}`
+      : "Give up and see where the hider was?";
+    if (window.confirm(ask)) send({ type: "giveUp" });
+  };
+  const link = "underline decoration-grout underline-offset-2 hover:text-ink";
+  return (
+    <>
+      <div
+        className={cn(
+          "sc-numbers-links flex gap-3 text-[12px] text-ink-2",
+          inline ? "relative ml-auto items-center px-3" : "justify-end px-4 pt-0.5",
+        )}
+      >
         <button
           type="button"
           aria-expanded={soundOpen}
           onClick={() => setSoundOpen(!soundOpen)}
-          className="underline decoration-grout underline-offset-2 hover:text-ink"
+          className={link}
         >
           Sound
         </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={giveUp}
-          className="underline decoration-grout underline-offset-2 hover:text-ink"
-        >
+        <button type="button" disabled={busy} onClick={giveUp} className={link}>
           Give up
         </button>
+        {inline && soundOpen && (
+          <div className="absolute top-full right-0 z-20 w-[230px]">
+            <SoundSettings />
+          </div>
+        )}
       </div>
-      {soundOpen && <SoundSettings />}
+      {!inline && soundOpen && <SoundSettings />}
     </>
   );
 }
@@ -348,7 +391,10 @@ function NoticeRow({ view, onFoot }: { view: SoloView; onFoot: boolean }) {
   );
   const { hint, dismiss } = useHint(view, onFoot);
   const [playedSeen, setPlayedSeen] = useState(false);
-  const text = notice ?? (hint ? HINTS[hint] : null);
+  const tab = useGame((s) => s.tab);
+  const text =
+    notice ??
+    (hint ? hintText(hint, { touch: !canHover(), tab, stationOnly: view.stationOnly }) : null);
   if (text) {
     return (
       <div key={text} className="sc-anim-set mx-4 mt-2.5">
@@ -486,6 +532,8 @@ export function Panel() {
     "alreadyPlayed",
   );
   const replaying = useReplay((s) => s.active);
+  const stack = usePlayLayout() === "stack";
+  const { sheet, setSheet } = useSheet();
   const t = useGameTime(4);
   const now = useNow(4);
   const screen = useLinkScreen();
@@ -543,8 +591,17 @@ export function Panel() {
   const photos = arrivedPhotos(view);
   const lookingFor = onFoot ? [...photos].reverse().find((p) => p.q.from === "spot") : undefined;
   const asking = tab === "ask" && armed !== null && !over;
+  // On a phone the tab row is the sheet's handle (layout.ts).
+  const selectTab = (id: "travel" | "ask") => {
+    if (!stack) return setTab(id);
+    const next = tapTab({ tab, sheet }, id);
+    setTab(next.tab);
+    setSheet(next.sheet);
+  };
+  const toggle = sheetToggle(sheet);
   return (
-    <aside className={aside}>
+    // A finished round's result never folds away: the sheet is for the round.
+    <aside className={cn(aside, !over && "sc-sheet")}>
       {/* Another tab has the round, and its clock: this one doesn't know the time. */}
       <PanelTop t={screen.kind === "takenOver" ? null : t} world={world} />
       {lost.value && (
@@ -572,21 +629,34 @@ export function Panel() {
       <div className={cn("flex min-h-0 flex-1 flex-col", down && "sc-frozen")} aria-hidden={down}>
         {!over && (
           <>
-            <RoundNumbers world={world} view={view} t={t} />
-            <div className="border-b border-grout px-4 pt-2 pb-2.5">
+            <RoundNumbers world={world} view={view} t={t} links={!stack} />
+            <div className="sc-tabrow flex items-center justify-between border-b border-grout px-4 pt-2 pb-2.5">
               <TabRow
                 tabs={[
                   { id: "travel", label: "Travel" },
                   { id: "ask", label: view.asked.length ? `Ask · ${view.asked.length}` : "Ask" },
                 ]}
                 active={tab}
-                onSelect={setTab}
+                onSelect={selectTab}
               />
+              {stack && <RoundLinks view={view} inline />}
+              {stack && (
+                <button
+                  type="button"
+                  className="sc-sheet-toggle sc-focus"
+                  aria-expanded={sheet === "open"}
+                  onClick={() => setSheet(toggle.next)}
+                >
+                  {toggle.label}
+                </button>
+              )}
             </div>
           </>
         )}
         <NoticeRow view={view} onFoot={onFoot && !over} />
-        <CurseChips world={world} t={t} view={view} />
+        <div className="sc-sheet-body contents">
+          <CurseChips world={world} t={t} view={view} />
+        </div>
         {lookingFor && (
           <LookingFor
             key={lookingFor.at}
@@ -594,7 +664,7 @@ export function Panel() {
             onOpen={() => setZoom(photos.indexOf(lookingFor))}
           />
         )}
-        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
+        <div className="sc-sheet-body min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-6">
           {over ? (
             <>
               {isHider(view) ? (

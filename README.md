@@ -1,10 +1,10 @@
 # Subway Seek
 
-Hide and seek on the real New York subway timetable. A hider goes underground at 10:00 and gets off somewhere. You ride the real weekday timetable at 6× speed, ask questions that rule stations out, then come up and find them on the street in Google Street View. Or you hide, and a bot hunts you.
+**Hide and seek on the real New York subway timetable.** A hider went underground at 10:00 and got off somewhere. You ride the real weekday timetable at 6× speed and ask questions that rule stations out ("within 2 miles of me?", "does the A stop there?") until you reach their station. With Google keys you then come up and find them in Street View. Or you hide, and a bot hunts you. It plays in a browser, on a computer or a phone.
 
-![Replay of a daily round: the hider's route, the seeker's, one radar question that cut 99 stations to 49, and the find at 72 St](docs/screenshots/replay.gif)
+![REPLAY_ALT](docs/screenshots/replay.gif)
 
-*The replay of a daily: the hider's ride (terracotta), the seeker's (ink), and the questions in between. Local run on the free MapLibre map; production uses Google Maps, which Street View requires.*
+*REPLAY_CAPTION*
 
 **Status:** a solo project, not deployed yet. It runs locally with no accounts and no API keys. The timetable is pinned to Wednesday 2027-03-03.
 
@@ -78,7 +78,7 @@ Strict TypeScript, Biome, Vitest (333 tests). CI runs lint, typecheck, tests, a 
 | `pnpm rename "<New Name>"` | Rename the game in one step: the name constant, package scope, storage keys (with a one-time migration), docs and the link-preview image, then a list of what's left outside the repo. `--dry-run` lists the changes. The daily's seed doesn't change |
 | `pnpm --filter @subway-seek/data build-landmarks` | Rebuild the landmarks from OpenStreetMap and NYC Open Data |
 
-The game is at `/play`: `/play?daily`, `/play?practice&difficulty=easy|normal|hard`, `/play?hide&difficulty=…`, `/play?replay` for the last daily's replay in this browser, and `/play?replay=yesterday` for yesterday's daily played by the bot (it works on a phone). A round survives a refresh, a dropped connection and a server restart: the browser keeps a session token and the server holds the round for 3 minutes, with its clock running.
+The game is at `/play`: `/play?daily`, `/play?practice&difficulty=easy|normal|hard`, `/play?hide&difficulty=…`, `/play?replay` for the last daily's replay in this browser, and `/play?replay=yesterday` for yesterday's daily played by the bot. Every page works on a phone: below 860 px a round stacks the map over the panel and ends at the station. A round survives a refresh, a dropped connection and a server restart: the browser keeps a session token and the server holds the round for 3 minutes, with its clock running.
 
 ## Configuration
 

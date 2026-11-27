@@ -28,6 +28,7 @@ import { askContext } from "./ask.ts";
 import { reducedMotion, useMotion, watchClearings } from "./clearings.ts";
 import { nowGameTime, useGame, type World } from "./game.ts";
 import { isHider, ownTransit } from "./hide.ts";
+import { playLayout } from "./layout.ts";
 import { MapLegend } from "./MapLegend.tsx";
 import { type BaseMap, chooseProvider, createMapLibreBase } from "./map/baseMap.ts";
 import { createGoogleBase } from "./map/googleBase.ts";
@@ -53,6 +54,9 @@ import { paintAt, tablet } from "./ui/tablet.ts";
 import { Button, Caption, FollowToggle, Plaque } from "./ui/vocab.tsx";
 
 const TIMES_SQ: LonLat = [-73.9873, 40.7553];
+
+/** Whether the map sits over the panel, as on a phone (layout.ts). */
+const stacked = () => playLayout(innerWidth, innerHeight) === "stack";
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
@@ -247,7 +251,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
     const google = chooseProvider() === "google";
     const b: BaseMap = google
       ? createGoogleBase(container.current, TIMES_SQ, tooltip)
-      : createMapLibreBase(container.current, TIMES_SQ, tooltip);
+      : createMapLibreBase(container.current, TIMES_SQ, tooltip, stacked() ? 12.6 : 13.5);
     useGame.setState({ mapFailed: null });
     const failed = (reason: string) => {
       if (disposed) return;
@@ -314,6 +318,24 @@ export function MapView({ credits = 0 }: { credits?: number }) {
         useGame.getState().setFollow(false);
         base.flyTo([c.lon, c.lat], 14);
       }
+    });
+    // On a phone, arming a question with a ring round you (radar, nearest) frames the
+    // ring, since the small map rarely shows it whole. A computer's map stays put.
+    const unsubscribeArm = useGame.subscribe((st, prev) => {
+      if (!st.armed || st.armed === prev.armed || !st.view || !stacked()) return;
+      if (st.armed.kind !== "radar" && st.armed.kind !== "tentacles") return;
+      const t = nowGameTime();
+      if (t === null) return;
+      const pts = (shapeFor(world, st.view, t, null)?.rings ?? []).flat();
+      if (pts.length === 0) return;
+      const lons = pts.map((p) => p[0]);
+      const lats = pts.map((p) => p[1]);
+      st.setFollow(false);
+      base.fitBounds(
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+        { top: 44, right: 16, bottom: 36, left: 16 },
+      );
     });
     // Frame both routes when a replay opens.
     const unsubscribeReplay = useReplay.subscribe((r, prev) => {
@@ -453,6 +475,7 @@ export function MapView({ credits = 0 }: { credits?: number }) {
       resized.disconnect();
       cancelAnimationFrame(raf);
       unsubscribeGame();
+      unsubscribeArm();
       unsubscribeReplay();
       base.setLayers([]);
       base.setVeil(null);

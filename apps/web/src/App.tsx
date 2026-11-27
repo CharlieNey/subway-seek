@@ -8,6 +8,7 @@ import { cursed } from "./HiderCards.tsx";
 import { HiderMapBand } from "./HiderMapBand.tsx";
 import { isHider } from "./hide.ts";
 import { watchLandings } from "./landing.ts";
+import { usePlayLayout, useSheet } from "./layout.ts";
 import { MapFailed, MapView } from "./MapView.tsx";
 import { useAttributionClearance } from "./map/attribution.ts";
 import { Panel } from "./Panel.tsx";
@@ -37,8 +38,11 @@ export function App() {
   const view = useGame((s) => s.view);
   const world = useGame((s) => s.world);
   const everOpen = useGame((s) => s.everOpen);
-  // A replay with no round: on a phone the map stacks over the log (playLayout.css).
+  // On a phone the map stacks over the panel, which folds like a sheet (playLayout.css);
+  // a replay with no round keeps a fixed split of map and log.
   const replayOnly = useGame((s) => s.replayOnly);
+  const stack = usePlayLayout() === "stack";
+  const sheet = useSheet((s) => s.sheet);
   const veiled = useVeiled(everOpen);
   // On the street, Street View takes the top of the screen and the map shrinks below it.
   // The top of the tree re-renders only when these change, not with the clock.
@@ -52,8 +56,10 @@ export function App() {
     <main
       className={cn(
         "flex h-screen w-screen overflow-hidden bg-glaze text-ink",
-        replayOnly && "sc-play-stack",
+        stack && "sc-play-stack",
+        stack && replayOnly && "sc-play-replay",
       )}
+      data-sheet={stack && !replayOnly ? sheet : undefined}
     >
       <div className="sc-play-map flex min-w-0 flex-1 flex-col">
         {/* Kept mounted once created: one Street View panorama per page keeps billing down. */}
