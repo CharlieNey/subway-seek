@@ -71,8 +71,7 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
           <Callouts world={world} view={view} callouts={ending.callouts} />
           {view.stationOnly && (
             <p className="max-w-[300px] text-center text-[12px] text-ink-2">
-              This round ended at the station, on the free map: you stayed below until the seeker
-              reached it.
+              This round ended at the station: you stayed below until the seeker reached it.
             </p>
           )}
           <HandReveal hand={view.hand} own />
@@ -113,7 +112,7 @@ export function HiderResult({ world, view }: { world: World; view: HiderView }) 
       <span className="text-[12px] text-ink-2">
         {streetOn()
           ? `Searches with ${SEEKER_LEVELS[difficulty].endgameAt} stations left.`
-          : "On the free map every level hunts station by station."}
+          : "Here every level hunts station by station."}
       </span>
     </section>
   );

@@ -311,14 +311,14 @@ export function ResultCard({ world }: { world: World }) {
         ]}
       />
       <Tally tiles={tiles} play={live} delay={tallyDelay} />
+      {/* Plain words (the playable round): what the score is, and which way is good. */}
+      <p className="max-w-[320px] text-center text-[12px] leading-[1.4] text-ink-2">
+        Their score is how long they stayed hidden, plus your questions' minutes
+        {view.bonusSeconds > questionMin * 60 ? " and the time bonuses they held" : ""}. Lower is
+        better for you.
+      </p>
       <Standing world={world} view={view} counts={!alreadyPlayed} />
       <Callouts world={world} view={view} callouts={ending.callouts} />
-      {view.stationOnly && (
-        <p className="max-w-[300px] text-center text-[12px] text-ink-2">
-          This round ended at the station, on the free map. The full game goes on to search the
-          street in Street View.
-        </p>
-      )}
       {view.hiderHand && <HandReveal hand={view.hiderHand} />}
       {view.daily && (
         <p className="text-[12px] text-ink-2">
