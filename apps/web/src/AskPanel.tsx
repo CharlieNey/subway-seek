@@ -360,31 +360,43 @@ function AskingFrom({
   const origin = questionOrigin(view.seeker, t, world.idx);
   const name = displayName(world.ds.complexes[origin.complex]?.name ?? "?");
   const gapLeft = Math.max(0, gapEndsAt(view) - t);
+  // Which kinds are ready, in the families' own names, as the rows label them.
+  const kinds = STATION_CATEGORIES.filter((c) => c !== "photo");
+  const ready = kinds
+    .filter((c) => t >= readyAt(view, c))
+    .map((c) => FAMILY_NAME[familyOfCategory(c)]);
+  const resting = kinds
+    .filter((c) => t < readyAt(view, c))
+    .map((c) => FAMILY_NAME[familyOfCategory(c)]);
   return (
-    <div className="flex items-end justify-between gap-2.5 px-4 pt-3 pb-1">
-      <div className="min-w-0">
-        <small className="block font-display text-[12px] font-bold tracking-[0.08em] text-ink-2 uppercase">
-          Asking from
-        </small>
-        <b className="text-[17px] leading-tight font-bold">
-          {onFoot ? `The street near ${name}` : name}
-        </b>
+    <>
+      <div className="flex items-end justify-between gap-2.5 px-4 pt-3 pb-1">
+        <div className="min-w-0">
+          <small className="block font-display text-[12px] font-bold tracking-[0.08em] text-ink-2 uppercase">
+            Asking from
+          </small>
+          <b className="text-[17px] leading-tight font-bold">
+            {onFoot ? `The street near ${name}` : name}
+          </b>
+        </div>
+        <div className="flex flex-col items-end gap-1 text-right text-[12px] text-ink-2">
+          {gapLeft > 0 ? (
+            <>
+              <span>One question every 5 min · next at {hhmm(gapEndsAt(view))}</span>
+              <TileTimer total={5} left={gapLeft / 60} size={9} />
+            </>
+          ) : (
+            <span>You can ask now</span>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-1 text-right text-[12px] text-ink-2">
-        {gapLeft > 0 ? (
-          <>
-            <span>One question every 5 min · next at {hhmm(gapEndsAt(view))}</span>
-            <TileTimer total={5} left={gapLeft / 60} size={9} />
-          </>
-        ) : (
-          <span>
-            {STATION_CATEGORIES.some((c) => c !== "photo" && t < readyAt(view, c))
-              ? "Ask any question that isn't greyed out"
-              : "You can ask now"}
-          </span>
-        )}
-      </div>
-    </div>
+      {gapLeft <= 0 && resting.length > 0 && (
+        <p className="px-4 pb-1 text-[12px] leading-[1.4] text-ink-2">
+          Ready now: {ready.join(", ") || "none"}. Each kind of question rests after you ask it (
+          {resting.join(", ")} later).
+        </p>
+      )}
+    </>
   );
 }
 

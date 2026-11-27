@@ -228,7 +228,8 @@ function rideMove(
       const to = ds.stations[first.to];
       const from = ds.stations[s.station];
       const named = to && from && displayName(to.name) !== displayName(from.name);
-      const where = named ? stationName(idx, first.to) : `${to?.routes.join(" ") ?? ""} platform`;
+      const lines = `${to?.routes.join(" ") ?? ""} platform`;
+      const where = named ? `${lines} at ${displayName(to.name)}` : lines;
       return {
         line: `${lead}Change to the ${where}, toward ${toward}.`,
         target: tab === "ask" ? { kind: "travelTab" } : { kind: "transfer", to: first.to },

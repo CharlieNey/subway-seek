@@ -452,6 +452,20 @@ function Treads({ state, t }: { state: Walking; t: number }) {
   return <TileTimer total={total} left={done} size={11} />;
 }
 
+/** "Walking to the L platform", or to another station by name (a tester was told it was
+ * walking to the station it stood in). */
+function walkingTo(world: World, state: Walking): string {
+  const dest = state.dest;
+  if (dest.kind !== "platform") return "Walking";
+  const to = world.ds.stations[dest.station];
+  if (!to) return "Walking";
+  const name = displayName(to.name);
+  const from = displayName(world.ds.complexes[state.fromComplex]?.name ?? "");
+  return name === from
+    ? `Walking to the ${to.routes.join(" ")} platform`
+    : `Walking to the ${to.routes.join(" ")} platform at ${name}`;
+}
+
 function WalkingView({ world, state, t }: { world: World; state: Walking; t: number }) {
   // Seconds count down in real time, like the walking band and the answer window.
   const speed = useGame((s) => s.sync?.speed ?? 6);
@@ -468,7 +482,7 @@ function WalkingView({ world, state, t }: { world: World; state: Walking; t: num
         ? "Back down"
         : state.reason === "street"
           ? "Walking"
-          : `Walking to ${displayName(dest.kind === "platform" ? (world.ds.stations[dest.station]?.name ?? "") : "")}`;
+          : walkingTo(world, state);
   return (
     <>
       {complex !== undefined && (
@@ -673,6 +687,22 @@ export function TravelAction({
               Get off sooner, at {nameOf(next)}
             </Button>
             <WainscotText>You get off at {nameOf(s.to)}</WainscotText>
+          </>
+        );
+      }
+      // The line recommends a stop further on: offer that one, not just the next.
+      if (target.kind === "stop" && target.stop !== next) {
+        return (
+          <>
+            <Button
+              kind="ink"
+              next
+              disabled={busy}
+              onClick={() => send({ type: "alightAt", stop: target.stop })}
+            >
+              Get off at {nameOf(target.stop)}
+            </Button>
+            <WainscotText>Or choose another stop above.</WainscotText>
           </>
         );
       }

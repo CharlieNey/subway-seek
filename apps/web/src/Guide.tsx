@@ -48,10 +48,12 @@ export function guideStep(
   return 3;
 }
 
-function stepText(step: GuideStep, n: number): string {
+function stepText(step: GuideStep, n: number, marked: boolean): string {
   switch (step) {
     case 1:
-      return `The hider is at one of these ${n} stations. Each question you ask rules some out. Open Ask, choose the marked question, then press Ask.`;
+      return marked
+        ? `The hider is at one of these ${n} stations. Each question you ask rules some out. Open Ask, choose the marked question, then press Ask.`
+        : `The hider is at one of these ${n} stations. Each question you ask rules some out. Open Ask, choose a question, then press Ask.`;
     case 2:
       return "Watch the map as the answer lands: ruled-out stations turn hollow, and the number at the top drops.";
     case 3:
@@ -99,7 +101,9 @@ export function Guide({
           Skip the guide
         </button>
       </p>
-      <p className="sc-guide-text">{stepText(step, stillPossible(view, notHere).length)}</p>
+      <p className="sc-guide-text">
+        {stepText(step, stillPossible(view, notHere).length, !view.daily)}
+      </p>
     </section>
   );
 }

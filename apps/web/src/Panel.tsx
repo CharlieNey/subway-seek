@@ -669,6 +669,12 @@ export function Panel() {
     if (stack) setSheet("open");
     sheetBody.current?.scrollTo({ top: 0 });
   }, [ended]);
+  // A new round starts the list at its top (a tester's daily opened scrolled down).
+  const roundId = view ? roundKey(view) : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a new round only
+  useEffect(() => {
+    sheetBody.current?.scrollTo({ top: 0 });
+  }, [roundId]);
   // The next move, worked out once for the line and the outline it draws (nextMove.ts).
   const live = !!(world && view && t !== null && !view.result && !isHider(view));
   const armedReady =
@@ -676,6 +682,17 @@ export function Panel() {
       ? askBlocker(armed, view, t, world.idx) === null
       : false;
   const move = useNextMove(live ? world : null, view, t, tab, armed, armedReady);
+  // When it points at something new in the list (a train, a platform, a stop), bring that
+  // into view: a tester's marked Walk button sat below the board, off a phone's screen.
+  const targetKey = move ? JSON.stringify(move.target) : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a new target only
+  useEffect(() => {
+    if (!/"kind":"(board|transfer|stop|question)"/.test(targetKey)) return;
+    const id = requestAnimationFrame(() =>
+      sheetBody.current?.querySelector("[data-next]")?.scrollIntoView({ block: "nearest" }),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [targetKey, tab]);
   // Stations you've stood in, in a round that ends at the station (notHere.ts).
   useEffect(() => {
     if (world && view && t !== null)
